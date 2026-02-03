@@ -30,6 +30,7 @@ export default function MentorCreateProfile({ onBack }) {
 
   const [expertiseInput, setExpertiseInput] = useState("");
   const [expertise, setExpertise] = useState<string[]>([]);
+  const [schoolID, setSchoolID] = useState<File | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,6 +245,29 @@ export default function MentorCreateProfile({ onBack }) {
                         className="w-24"
                       />
                       <span className="text-slate-500">groups</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              <div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      Upload your School ID
+                    </CardTitle>
+                    <CardDescription>
+                      We will verify if you're a legitimate faculty member
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-4">
+                      <Input
+                        id="SchoolID"
+                        type="file"
+                        onChange={(e) =>
+                          setSchoolID(e.target.files ? e.target.files[0] : null)
+                        }
+                      />
                     </div>
                   </CardContent>
                 </Card>

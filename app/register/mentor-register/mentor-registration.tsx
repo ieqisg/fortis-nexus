@@ -86,7 +86,7 @@ export default function MentorRegistration({ onNext }: { onNext: () => void }) {
           <CardContent>
             <form className="space-y-5" onSubmit={handleSubmit}>
               <div>
-                <Label htmlFor="email">Email (Representative) *</Label>
+                <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
