@@ -16,7 +16,11 @@ import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, UserRound, Plus, X } from "lucide-react";
 
-export default function MentorCreateProfile({ onBack }) {
+export default function MentorCreateProfile({
+  onBack,
+}: {
+  onBack: () => void;
+}) {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
