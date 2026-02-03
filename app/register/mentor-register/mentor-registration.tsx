@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ArrowLeft, UserRound, Eye, EyeOff, Check } from "lucide-react";
-
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function MentorRegistration({ onNext }: { onNext: () => void }) {
+  const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -67,7 +68,11 @@ export default function MentorRegistration({ onNext }: { onNext: () => void }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50  py-12 px-4">
       <div className="max-w-2xl mx-auto">
-        <Button variant="ghost" className="mb-6">
+        <Button
+          variant="ghost"
+          className="mb-6"
+          onClick={() => router.push("/")}
+        >
           <ArrowLeft className="w-4 h-4" />
           Back To Home
         </Button>
@@ -173,7 +178,11 @@ export default function MentorRegistration({ onNext }: { onNext: () => void }) {
 
               {/* Buttons */}
               <div className="flex gap-2 justify-end">
-                <Button type="button" className="bg-gray-400 ">
+                <Button
+                  type="button"
+                  className="bg-gray-400 "
+                  onClick={() => router.push("/")}
+                >
                   Cancel
                 </Button>
                 <Button

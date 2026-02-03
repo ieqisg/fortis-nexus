@@ -1,5 +1,5 @@
 "use client";
-
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { ArrowLeft, UserRound, Eye, EyeOff, Check } from "lucide-react";
 
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
+  const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -67,7 +68,11 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 py-12 px-4">
       <div className="max-w-2xl mx-auto">
-        <Button variant="ghost" className="mb-6">
+        <Button
+          variant="ghost"
+          className="mb-6"
+          onClick={() => router.push("/")}
+        >
           <ArrowLeft className="w-4 h-4" />
           Back To Home
         </Button>
@@ -176,6 +181,7 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
                 <Button
                   type="button"
                   className="bg-gray-400 hover:bg-green-500"
+                  onClick={() => router.push("/")}
                 >
                   Cancel
                 </Button>
