@@ -26,7 +26,7 @@ export default function MentorRegistration({ onNext }: { onNext: () => void }) {
   const isLengthValid = password.length >= 8;
   const hasUppercase = /[A-Z]/.test(password);
   const hasNumber = /\d/.test(password);
-  const hasSpecialChar = /[@$!%*?&]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*-_]/.test(password);
   const isPasswordStrong =
     isLengthValid && hasUppercase && hasNumber && hasSpecialChar;
 

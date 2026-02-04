@@ -16,17 +16,26 @@ import { Label } from "@/components/ui/label";
 
 export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
   const router = useRouter();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
 
+  // Load saved credentials on mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("email") || "";
+    const savedPassword = localStorage.getItem("password") || "";
+    setEmail(savedEmail);
+    setPassword(savedPassword);
+  }, []);
+
   // Real-time password validation flags
   const isLengthValid = password.length >= 8;
   const hasUppercase = /[A-Z]/.test(password);
   const hasNumber = /\d/.test(password);
-  const hasSpecialChar = /[@$!%*?&]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*\-_]/.test(password); // added _ and -
   const isPasswordStrong =
     isLengthValid && hasUppercase && hasNumber && hasSpecialChar;
 
@@ -39,7 +48,7 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
       setPasswordError("");
     } else if (!isPasswordStrong) {
       setPasswordError(
-        "Password must be at least 8 characters, include uppercase, number, and special character.",
+        "Password must be at least 8 characters, include uppercase, number, and special character (_ or - included).",
       );
     } else if (password !== confirmPassword) {
       setPasswordError("Passwords do not match.");
@@ -48,18 +57,20 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
     }
   }, [password, confirmPassword, isPasswordStrong]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!isFormValid) return; // button is disabled anyway
-
-    console.log("Form submitted:", { password, confirmPassword });
-    onNext(); // proceed
+    if (!isFormValid) return;
+    localStorage.setItem("email", email);
+    localStorage.setItem("password", password);
+    onNext();
   };
 
   const renderCheck = (valid: boolean) => (
     <span
-      className={`flex items-center gap-1 ${valid ? "text-green-600" : "text-gray-400"}`}
+      className={`flex items-center gap-1 ${
+        valid ? "text-green-600" : "text-gray-400"
+      }`}
     >
       {valid && <Check className="w-4 h-4" />}
     </span>
@@ -95,6 +106,8 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
                 <Input
                   id="email"
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="student@fit.edu.ph"
                 />
@@ -126,7 +139,6 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
                   </Button>
                 </div>
 
-                {/* Live password strength UI */}
                 <ul className="mt-2 text-sm space-y-1">
                   <li className="flex items-center gap-1">
                     {renderCheck(isLengthValid)} At least 8 characters
@@ -139,7 +151,7 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
                   </li>
                   <li className="flex items-center gap-1">
                     {renderCheck(hasSpecialChar)} Contains special character
-                    (@$!%*?&)
+                    (!@#$%^&*-_)
                   </li>
                 </ul>
               </div>
@@ -153,7 +165,7 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Re-enter your password"
                     required
-                    value={confirmPassword}
+                    value={confirmPassword} // fixed binding
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
                   <Button
@@ -171,12 +183,10 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
                 </div>
               </div>
 
-              {/* Password Error */}
               {passwordError && (
                 <p className="text-red-600 text-sm">{passwordError}</p>
               )}
 
-              {/* Buttons */}
               <div className="flex gap-2 justify-end">
                 <Button
                   type="button"
