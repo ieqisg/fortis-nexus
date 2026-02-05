@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import AdminSidebar from "@/components/ui/AdminSidebar";
 import {
   Card,
   CardContent,
@@ -70,6 +71,7 @@ import {
 } from "@/lib/mockData";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
 export default function Admin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [userFilter, setUserFilter] = useState("all");
@@ -148,61 +150,11 @@ export default function Admin() {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-blue-900">Admin Panel</h2>
-          <p className="text-sm text-gray-600">Matching System</p>
-        </div>
-
-        <nav className="p-4 space-y-2">
-          <a
-            href="#overview"
-            className="flex items-center space-x-3 px-3 py-2 rounded-lg bg-blue-50 text-blue-700"
-          >
-            <BarChart3 className="w-5 h-5" />
-            <span className="font-medium">Dashboard Overview</span>
-          </a>
-          <a
-            href="#users"
-            className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700"
-          >
-            <Users className="w-5 h-5" />
-            <span>User Management</span>
-          </a>
-          <a
-            href="#matches"
-            className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700"
-          >
-            <UserCheck className="w-5 h-5" />
-            <span>Match Monitoring</span>
-          </a>
-          <a
-            href="#analytics"
-            className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700"
-          >
-            <TrendingUp className="w-5 h-5" />
-            <span>Analytics & Reports</span>
-          </a>
-          <a
-            href="#adjustment"
-            className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700"
-          >
-            <Settings className="w-5 h-5" />
-            <span>Match Adjustment</span>
-          </a>
-          <a
-            href="#alerts"
-            className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700"
-          >
-            <Bell className="w-5 h-5" />
-            <span>Notifications & Alerts</span>
-          </a>
-        </nav>
-      </div>
+      <AdminSidebar />
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-8">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-8 md:pl-8 pl-16">
           <h1 className="text-3xl font-bold mb-2">
             Mentor–Mentee Matching System
           </h1>
@@ -370,7 +322,8 @@ export default function Admin() {
               </CardContent>
             </Card>
           </div>
-          <div>
+
+          <div id="matches">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -528,7 +481,8 @@ export default function Admin() {
               </CardContent>
             </Card>
           </div>
-          <div id="RegMentors">
+
+          <div id="analytics">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -584,11 +538,12 @@ export default function Admin() {
               </CardContent>
             </Card>
           </div>
-          <div id="RegMentors">
+
+          <div id="adjustment">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  Registered Meente Groups
+                  Registered Mentee Groups
                 </CardTitle>
                 <CardDescription>
                   Complete list of all registered mentee groups
@@ -723,85 +678,90 @@ export default function Admin() {
               </CardContent>
             </Card>
           </div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-purple-600" /> Algorithm Flow
-                Logs
-              </CardTitle>
-              <CardDescription>
-                Visualization of the Matching Algorithm Phases
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {mockAlgorithmLogs.map((log) => (
-                  <div
-                    key={log.phase}
-                    className="border rounded-lg overflow-hidden"
-                  >
+
+          <div id="alerts">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-purple-600" /> Algorithm
+                  Flow Logs
+                </CardTitle>
+                <CardDescription>
+                  Visualization of the Matching Algorithm Phases
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {mockAlgorithmLogs.map((log) => (
                     <div
-                      className={`p-4 ${log.phase === 1 ? "bg-blue-50 border-b border-blue-200" : log.phase === 2 ? "bg-emerald-50 border-b border-emerald-200" : "bg-amber-50 border-b border-amber-200"}`}
+                      key={log.phase}
+                      className="border rounded-lg overflow-hidden"
                     >
-                      <div className="flex justify-between items-center">
-                        <h3 className="font-semibold">
-                          Phase {log.phase}: {log.phaseName}
-                        </h3>
-                        <span className="text-sm text-slate-500">
-                          {log.timestamp}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="p-4 space-y-3">
-                      {log.entries.map((entry, index) => (
-                        <div
-                          key={index}
-                          className={`flex items-start gap-3 p-3 rounded-lg ${entry.status === "success" ? "bg-green-50" : entry.status === "pending" ? "bg-amber-50" : "bg-red-50"}`}
-                        >
-                          {entry.status === "success" ? (
-                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-                          ) : entry.status === "pending" ? (
-                            <Clock className="w-5 h-5 text-amber-600 mt-0.5" />
-                          ) : (
-                            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                          )}
-                          <div>
-                            <p className="font-medium text-sm">
-                              {entry.action}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {entry.details}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                  <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5" /> Perfect Matches
-                  </h3>
-                  <div className="space-y-2">
-                    {mockMenteeGroups
-                      .filter((g) => g.status === "matched")
-                      .map((group) => (
-                        <div
-                          key={group.id}
-                          className="flex items-center justify-between p-2 bg-white rounded"
-                        >
-                          <span className="font-medium">{group.groupName}</span>
-                          <span className="text-emerald-600">
-                            {" "}
-                            →{group.assignedMentor}
+                      <div
+                        className={`p-4 ${log.phase === 1 ? "bg-blue-50 border-b border-blue-200" : log.phase === 2 ? "bg-emerald-50 border-b border-emerald-200" : "bg-amber-50 border-b border-amber-200"}`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <h3 className="font-semibold">
+                            Phase {log.phase}: {log.phaseName}
+                          </h3>
+                          <span className="text-sm text-slate-500">
+                            {log.timestamp}
                           </span>
                         </div>
-                      ))}
+                      </div>
+                      <div className="p-4 space-y-3">
+                        {log.entries.map((entry, index) => (
+                          <div
+                            key={index}
+                            className={`flex items-start gap-3 p-3 rounded-lg ${entry.status === "success" ? "bg-green-50" : entry.status === "pending" ? "bg-amber-50" : "bg-red-50"}`}
+                          >
+                            {entry.status === "success" ? (
+                              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                            ) : entry.status === "pending" ? (
+                              <Clock className="w-5 h-5 text-amber-600 mt-0.5" />
+                            ) : (
+                              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                            )}
+                            <div>
+                              <p className="font-medium text-sm">
+                                {entry.action}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {entry.details}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                    <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5" /> Perfect Matches
+                    </h3>
+                    <div className="space-y-2">
+                      {mockMenteeGroups
+                        .filter((g) => g.status === "matched")
+                        .map((group) => (
+                          <div
+                            key={group.id}
+                            className="flex items-center justify-between p-2 bg-white rounded"
+                          >
+                            <span className="font-medium">
+                              {group.groupName}
+                            </span>
+                            <span className="text-emerald-600">
+                              {" "}
+                              →{group.assignedMentor}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
