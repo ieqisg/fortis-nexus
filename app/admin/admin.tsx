@@ -34,6 +34,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -51,6 +52,10 @@ import {
   Edit,
   CheckCircle2,
   XCircle,
+  Calendar,
+  FileText,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 import {
   mockMatches,
@@ -60,18 +65,24 @@ import {
   mockMentees,
   type Mentor,
   type Mentee,
+  mockAlgorithmLogs,
+  mockMenteeGroups,
 } from "@/lib/mockData";
-
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
 export default function Admin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [userFilter, setUserFilter] = useState("all");
   const [matchFilter, setMatchFilter] = useState("all");
+  const [selectedMentor, setSelectedMentor] = useState("");
   const [selectedUser, setSelectedUser] = useState<(Mentor | Mentee) | null>(
     null,
   );
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [minThreshold, setMinThreshold] = useState(0.1);
   const [maxCapacity, setMaxCapacity] = useState(3);
+  const totalAssigned = 20;
+  const totalCapacity = 130;
 
   // Calculate statistics
   const totalMatches = mockMatches.length;
@@ -261,102 +272,14 @@ export default function Admin() {
                 </CardContent>
               </Card>
             </div>
-
-            {/* Visualizations */}
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Mentees per Mentor</CardTitle>
-                  <CardDescription>Workload distribution</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {mockMentors.map((mentor) => {
-                      const count = mentorLoad.get(mentor.id) || 0;
-                      const percentage = (count / maxCapacity) * 100;
-                      return (
-                        <div key={mentor.id}>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="font-medium">{mentor.name}</span>
-                            <span className="text-gray-600">
-                              {count} / {maxCapacity}
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full ${
-                                percentage >= 100
-                                  ? "bg-red-500"
-                                  : percentage >= 80
-                                    ? "bg-amber-500"
-                                    : "bg-green-500"
-                              }`}
-                              style={{ width: `${Math.min(percentage, 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Match Score Distribution</CardTitle>
-                  <CardDescription>Quality breakdown</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {[
-                      {
-                        label: "High (≥70%)",
-                        count: mockMatches.filter((m) => m.score >= 0.7).length,
-                        color: "bg-green-500",
-                      },
-                      {
-                        label: "Medium (40-69%)",
-                        count: mockMatches.filter(
-                          (m) => m.score >= 0.4 && m.score < 0.7,
-                        ).length,
-                        color: "bg-blue-500",
-                      },
-                      {
-                        label: "Low (<40%)",
-                        count: mockMatches.filter((m) => m.score < 0.4).length,
-                        color: "bg-amber-500",
-                      },
-                    ].map((category) => (
-                      <div key={category.label}>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="font-medium">{category.label}</span>
-                          <span className="text-gray-600">
-                            {category.count} matches
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full ${category.color}`}
-                            style={{
-                              width: `${(category.count / totalMatches) * 100}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </div>
-
           {/* User Management */}
           <div id="users">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              User Management
-            </h2>
             <Card>
               <CardHeader>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                  User Management
+                </h2>
                 <CardTitle className="flex items-center">
                   <Users className="w-5 h-5 mr-2 text-blue-600" />
                   All Users
@@ -447,417 +370,440 @@ export default function Admin() {
               </CardContent>
             </Card>
           </div>
-
-          {/* Match Monitoring */}
-          <div id="matches">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Match Monitoring
-            </h2>
+          <div>
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <UserCheck className="w-5 h-5 mr-2 text-green-600" />
-                  All Matches
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-purple-600" />
+                  Mentor Capacity Tracking
                 </CardTitle>
                 <CardDescription>
-                  View and monitor mentor-mentee pairs
+                  Overview of mentor capacities and remaining slots
                 </CardDescription>
-                <div className="flex items-center space-x-4 mt-4">
-                  <Select value={matchFilter} onValueChange={setMatchFilter}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Matches</SelectItem>
-                      <SelectItem value="high">High Score (≥70%)</SelectItem>
-                      <SelectItem value="medium">
-                        Medium Score (40-69%)
-                      </SelectItem>
-                      <SelectItem value="low">Low Score (&lt;40%)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </CardHeader>
               <CardContent>
+                <div className="space-y-6">
+                  <div className="p-4 bg-slate-50 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium">
+                        Overall Capacity Utilization
+                      </span>
+                      <span className="text-sm text-slate-600">
+                        {totalAssigned} / {totalCapacity} slots filled (
+                        {Math.round((totalAssigned / totalCapacity) * 100)}%)
+                      </span>
+                    </div>
+                    <Progress
+                      value={(totalAssigned / totalCapacity) * 100}
+                      className="h-3"
+                    />
+                  </div>
+                </div>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Mentor Name</TableHead>
-                      <TableHead>Mentee Group</TableHead>
-                      <TableHead>Compatibility Score</TableHead>
-                      <TableHead>Top Keywords Matched</TableHead>
+                      <TableHead>Mentor</TableHead>
+                      <TableHead>Staff ID</TableHead>
+                      <TableHead>Total Capacity</TableHead>
+                      <TableHead>Assigned</TableHead>
+                      <TableHead>Remaining</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredMatches.map((match) => {
-                      const mentor = getMentorById(match.mentorId);
-                      const mentee = getMenteeById(match.menteeId);
-                      if (!mentor || !mentee) return null;
+                    {mockMentors.map((mentor) => {
+                      const remaining =
+                        mentor.capacity - mentor.assignedMentees;
+                      const utilizationPercent =
+                        (mentor.assignedMentees / mentor.capacity) * 100;
 
                       return (
-                        <TableRow key={match.menteeId}>
+                        <TableRow key={mentor.id}>
                           <TableCell className="font-medium">
                             {mentor.name}
                           </TableCell>
+                          <TableCell>{mentor.staffId}</TableCell>
+                          <TableCell>{mentor.capacity}</TableCell>
+                          <TableCell>{mentor.assignedMentees}</TableCell>
                           <TableCell>
-                            <div>
-                              <p className="font-medium">
-                                {mentee.groupMembers[0]}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {mentee.researchTitle}
-                              </p>
-                            </div>
+                            <span
+                              className={
+                                remaining === 0
+                                  ? "text-red-600 font-medium"
+                                  : "text-green-600 font-medium"
+                              }
+                            >
+                              {remaining}
+                            </span>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center space-x-2">
-                              <span className="font-semibold">
-                                {(match.score * 100).toFixed(0)}%
+                            <div className="w-32">
+                              <Progress
+                                value={utilizationPercent}
+                                className={`h-2 ${
+                                  utilizationPercent === 100
+                                    ? "[&>div]:bg-red-500"
+                                    : "[&>div]:bg-emerald-500"
+                                }`}
+                              />
+                              <span className="text-xs text-slate-500">
+                                {Math.round(utilizationPercent)}% filled
                               </span>
-                              <Badge
-                                variant="secondary"
-                                className={
-                                  match.score >= 0.7
-                                    ? "bg-green-100 text-green-800"
-                                    : match.score >= 0.4
-                                      ? "bg-blue-100 text-blue-800"
-                                      : "bg-amber-100 text-amber-800"
-                                }
-                              >
-                                {match.score >= 0.7
-                                  ? "High"
-                                  : match.score >= 0.4
-                                    ? "Medium"
-                                    : "Low"}
-                              </Badge>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {match.keywords
-                                .slice(0, 5)
-                                .map((keyword, idx) => (
-                                  <Badge
-                                    key={idx}
-                                    variant="outline"
-                                    className="text-xs"
-                                  >
-                                    {keyword}
-                                  </Badge>
-                                ))}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="sm">
-                              <Eye className="w-4 h-4" />
-                            </Button>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedMentor(mentor)}
+                                >
+                                  <Eye className="w-4 h-4 mr-1" /> View
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                  <DialogTitle>{mentor.name}</DialogTitle>
+                                  <DialogDescription>
+                                    Mentor Profile Details
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <ScrollArea className="max-h-[60vh]">
+                                  <div className="space-y-4 p-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <p className="text-sm text-slate-500">
+                                          Staff ID
+                                        </p>
+                                        <p className="font-medium">
+                                          {mentor.staffId}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <p className="text-sm text-slate-500">
+                                          Email
+                                        </p>
+                                        <p className="font-medium">
+                                          {mentor.email}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <p className="text-sm text-slate-500">
+                                          Technical Expertise
+                                        </p>
+                                        <div className="flex flex-wrap gap-1">
+                                          {mentor.technicalExpertise.map(
+                                            (exp) => (
+                                              <Badge
+                                                key={exp}
+                                                variant="secondary"
+                                              >
+                                                {exp}
+                                              </Badge>
+                                            ),
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <p className="text-sm text-slate-500">
+                                          Description
+                                        </p>
+                                        <p className="font-medium">
+                                          {mentor.selfDescription}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </ScrollArea>
+                              </DialogContent>
+                            </Dialog>
                           </TableCell>
                         </TableRow>
                       );
                     })}
                   </TableBody>
                 </Table>
-
-                {unmatchedMentees > 0 && (
-                  <Alert className="mt-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Unmatched Mentees</AlertTitle>
-                    <AlertDescription>
-                      {unmatchedMentees} mentee group(s) did not receive a
-                      match. Consider adjusting thresholds or adding more
-                      mentors.
-                    </AlertDescription>
-                  </Alert>
-                )}
               </CardContent>
             </Card>
           </div>
-
-          {/* Analytics & Reporting */}
-          <div id="analytics">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Analytics & Reporting
-            </h2>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Match Statistics</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Matches:</span>
-                    <span className="font-bold">{totalMatches}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">
-                      Average Compatibility Score:
-                    </span>
-                    <span className="font-bold">
-                      {(avgScore * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">
-                      Mentor Capacity Utilization:
-                    </span>
-                    <span className="font-bold">
-                      {Math.round(
-                        (totalMatches / (mockMentors.length * maxCapacity)) *
-                          100,
-                      )}
-                      %
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Unmatched Mentees:</span>
-                    <span className="font-bold text-amber-600">
-                      {unmatchedMentees}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Top 10 Matched Keywords</CardTitle>
-                  <CardDescription>Most in-demand skills</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {topKeywords.map(([keyword, count]) => (
-                      <div
-                        key={keyword}
-                        className="flex justify-between items-center"
-                      >
-                        <Badge variant="outline">{keyword}</Badge>
-                        <span className="text-sm font-semibold">
-                          {count} matches
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Match Adjustment */}
-          <div id="adjustment">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Match Adjustment
-            </h2>
+          <div id="RegMentors">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Settings className="w-5 h-5 mr-2 text-purple-600" />
-                  Algorithm Settings & Controls
+                  Registered Mentors
                 </CardTitle>
                 <CardDescription>
-                  Configure matching parameters and re-run algorithm
+                  Complete list of all registered mentors with their profiles
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <Label>Minimum Compatibility Threshold</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={minThreshold}
-                      onChange={(e) =>
-                        setMinThreshold(parseFloat(e.target.value))
-                      }
-                      className="mt-2"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Minimum score required for matching (0.0 - 1.0)
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label>Maximum Mentees per Mentor</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={maxCapacity}
-                      onChange={(e) => setMaxCapacity(parseInt(e.target.value))}
-                      className="mt-2"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Capacity limit for balanced distribution
-                    </p>
-                  </div>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {mockMentors.map((mentor) => (
+                    <Card key={mentor.id} className="border-slate-200">
+                      <CardContent className="pt-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="font-semibold text-lg">
+                              {mentor.name}
+                            </h3>
+                            <p className="text-sm text-slate-500">
+                              {mentor.staffId} · {mentor.email}
+                            </p>
+                          </div>
+                          <Badge
+                            variant={
+                              mentor.assignedMentees < mentor.capacity
+                                ? "default"
+                                : "secondary"
+                            }
+                          ></Badge>
+                        </div>
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-xs text-slate-500 mb-1">
+                              Capacity
+                            </p>
+                            <Progress
+                              value={
+                                (mentor.assignedMentees / mentor.capacity) * 100
+                              }
+                              className="h-2"
+                            />
+                            <p className="text-xs text-slate-500 mt-1">
+                              {mentor.assignedMentees} / {mentor.capacity}{" "}
+                              assigned
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-
-                <div className="flex space-x-4">
-                  <Button
-                    onClick={handleRerunMatching}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Re-run Matching Algorithm
-                  </Button>
-                  <Button variant="outline">Manual Override</Button>
-                </div>
-
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Note</AlertTitle>
-                  <AlertDescription>
-                    Re-running the algorithm will recalculate all matches based
-                    on current settings. Manual overrides allow you to adjust
-                    specific matches if needed.
-                  </AlertDescription>
-                </Alert>
               </CardContent>
             </Card>
           </div>
-
-          {/* Notifications & Alerts */}
-          <div id="alerts">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Notifications & Alerts
-            </h2>
-            <div className="space-y-4">
-              {unmatchedMentees > 0 && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Unmatched Mentees Alert</AlertTitle>
-                  <AlertDescription>
-                    {unmatchedMentees} mentee group(s) are currently unmatched.
-                    Consider lowering the threshold or adding more mentors.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {mockMentors.some(
-                (m) => (mentorLoad.get(m.id) || 0) >= maxCapacity,
-              ) && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Mentor Overload Warning</AlertTitle>
-                  <AlertDescription>
-                    Some mentors have reached maximum capacity. Consider
-                    redistributing mentees or increasing capacity limits.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Bell className="w-5 h-5 mr-2 text-blue-600" />
-                    System Logs
-                  </CardTitle>
-                  <CardDescription>
-                    Recent algorithm runs and changes
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {[
-                      {
-                        time: "2026-01-29 10:30",
-                        action: "Matching algorithm executed",
-                        status: "success",
-                      },
-                      {
-                        time: "2026-01-28 15:45",
-                        action: "Manual override: Mentee ME002 reassigned",
-                        status: "info",
-                      },
-                      {
-                        time: "2026-01-27 09:15",
-                        action: "Threshold adjusted to 0.10",
-                        status: "info",
-                      },
-                      {
-                        time: "2026-01-26 14:20",
-                        action: "New mentor added: Dr. Anna Reyes",
-                        status: "success",
-                      },
-                    ].map((log, idx) => (
-                      <div
-                        key={idx}
-                        className="flex justify-between items-center border-b border-gray-200 pb-2"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {log.action}
-                          </p>
-                          <p className="text-xs text-gray-500">{log.time}</p>
-                        </div>
-                        <Badge
-                          variant="secondary"
-                          className={
-                            log.status === "success"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-blue-100 text-blue-800"
-                          }
-                        >
-                          {log.status}
-                        </Badge>
-                      </div>
+          <div id="RegMentors">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  Registered Meente Groups
+                </CardTitle>
+                <CardDescription>
+                  Complete list of all registered mentee groups
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Group Name</TableHead>
+                      <TableHead>Members</TableHead>
+                      <TableHead>Thesis Title</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Assigned Mentor</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mockMentees.map((group, index) => (
+                      <TableRow key={group.id}>
+                        <TableCell className="font-medium">
+                          {group.groupName}
+                        </TableCell>
+                        <TableCell>
+                          {group.groupMembers.length} students
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {group.researchTitle}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              group.status === "matched"
+                                ? "default"
+                                : group.status === "pending"
+                                  ? "secondary"
+                                  : "destructive"
+                            }
+                            className={
+                              group.status === "matched"
+                                ? "bg-green-600"
+                                : group.status === "pending"
+                                  ? "bg-amber-500"
+                                  : ""
+                            }
+                          >
+                            {group.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{group.assignedMentor || "-"}</TableCell>
+                        <TableCell>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedMentor(group)}
+                              >
+                                {" "}
+                                <Eye className="w-4 h-4 mr-1" /> View{" "}
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                              <DialogHeader>
+                                <DialogTitle>{group.groupName}</DialogTitle>
+                                <DialogDescription>
+                                  Mentee Group Profile
+                                </DialogDescription>
+                                <ScrollArea className="max-h-[60vh]">
+                                  <div className="space-y-4 p-4">
+                                    <div>
+                                      <p className="font-bold">Members</p>
+                                      <div className="space-y-1">
+                                        {group.groupMembers.map(
+                                          (name, index) => (
+                                            <p
+                                              key={group.studentNumbers[index]}
+                                              className="text-sm"
+                                            >
+                                              {name} (
+                                              {group.studentNumbers[index]})
+                                            </p>
+                                          ),
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <p className="font-bold">
+                                        Representative Email
+                                      </p>
+                                      <p className="text-sm">{group.email} </p>
+                                    </div>
+                                    <div>
+                                      <p className="font-bold">Thesis Title </p>
+                                      <p className="text-sm">
+                                        {group.researchTitle}{" "}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="font-bold">
+                                        Research Description{" "}
+                                      </p>
+                                      <p className="text-sm">
+                                        {group.researchDescription}{" "}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="font-bold">
+                                        Mentor Preferences
+                                      </p>
+                                      <p className="text-sm">
+                                        {group.preferences}{" "}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="font-bold">Availability </p>
+                                      <p className="text-sm">
+                                        Days: {group.availability.days} | Time:{" "}
+                                        {group.availability.timeSlots}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </ScrollArea>
+                              </DialogHeader>
+                            </DialogContent>
+                          </Dialog>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-purple-600" /> Algorithm Flow
+                Logs
+              </CardTitle>
+              <CardDescription>
+                Visualization of the Matching Algorithm Phases
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {mockAlgorithmLogs.map((log) => (
+                  <div
+                    key={log.phase}
+                    className="border rounded-lg overflow-hidden"
+                  >
+                    <div
+                      className={`p-4 ${log.phase === 1 ? "bg-blue-50 border-b border-blue-200" : log.phase === 2 ? "bg-emerald-50 border-b border-emerald-200" : "bg-amber-50 border-b border-amber-200"}`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <h3 className="font-semibold">
+                          Phase {log.phase}: {log.phaseName}
+                        </h3>
+                        <span className="text-sm text-slate-500">
+                          {log.timestamp}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      {log.entries.map((entry, index) => (
+                        <div
+                          key={index}
+                          className={`flex items-start gap-3 p-3 rounded-lg ${entry.status === "success" ? "bg-green-50" : entry.status === "pending" ? "bg-amber-50" : "bg-red-50"}`}
+                        >
+                          {entry.status === "success" ? (
+                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                          ) : entry.status === "pending" ? (
+                            <Clock className="w-5 h-5 text-amber-600 mt-0.5" />
+                          ) : (
+                            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                          )}
+                          <div>
+                            <p className="font-medium text-sm">
+                              {entry.action}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {entry.details}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                  <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5" /> Perfect Matches
+                  </h3>
+                  <div className="space-y-2">
+                    {mockMenteeGroups
+                      .filter((g) => g.status === "matched")
+                      .map((group) => (
+                        <div
+                          key={group.id}
+                          className="flex items-center justify-between p-2 bg-white rounded"
+                        >
+                          <span className="font-medium">{group.groupName}</span>
+                          <span className="text-emerald-600">
+                            {" "}
+                            →{group.assignedMentor}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-
-      {/* Edit User Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit User Profile</DialogTitle>
-            <DialogDescription>Make corrections to user data</DialogDescription>
-          </DialogHeader>
-          {selectedUser && (
-            <div className="space-y-4">
-              <div>
-                <Label>Name</Label>
-                <Input
-                  value={
-                    "name" in selectedUser
-                      ? selectedUser.name
-                      : selectedUser.groupMembers[0]
-                  }
-                  readOnly
-                />
-              </div>
-              <div>
-                <Label>Email</Label>
-                <Input value={selectedUser.email} />
-              </div>
-              <div>
-                <Label>Account Type</Label>
-                <Input
-                  value={"name" in selectedUser ? "Mentor" : "Mentee"}
-                  readOnly
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsEditDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={() => setIsEditDialogOpen(false)}>
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
