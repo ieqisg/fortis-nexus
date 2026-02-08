@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, UserRound, Plus, X } from "lucide-react";
+import { ArrowLeft, UserRound, Plus, X, Clock } from "lucide-react";
 
 export default function MentorCreateProfile({
   onBack,
@@ -35,6 +35,9 @@ export default function MentorCreateProfile({
   const [expertiseInput, setExpertiseInput] = useState("");
   const [expertise, setExpertise] = useState<string[]>([]);
   const [schoolID, setSchoolID] = useState<File | null>(null);
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
+  const [weeklyHours, setWeeklyHours] = useState(10);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -276,6 +279,29 @@ export default function MentorCreateProfile({
                   </CardContent>
                 </Card>
               </div>
+              <div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-blue-600" /> Availability
+                    </CardTitle>
+                    <CardDescription>
+                      When is your group available for mentoring sessions?
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <AvailabilitySelector
+                      selectedDays={selectedDays}
+                      selectedTimeSlots={selectedTimeSlots}
+                      weeklyHours={weeklyHours}
+                      onDaysChange={setSelectedDays}
+                      onTimeSlotsChange={setSelectedTimeSlots}
+                      onWeeklyHoursChange={setWeeklyHours}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+
               <div className="flex gap-2 justify-end">
                 <Button
                   type="submit"
