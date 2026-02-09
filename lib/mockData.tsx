@@ -26,24 +26,23 @@ export interface MenteeGroup {
 export interface Mentor {
   id: string;
   name: string;
-  staffId?: string;
+  staffId: string;
   email: string;
-  previousTheses?: string[];
-  publishedPapers?: string[];
-  certifications?: string[];
-  technicalExpertise?: string[];
-  selfDescription?: string;
-  researchTopics?: string[];
-  availability?: {
+
+  previousTheses: string[];
+  publishedPapers: string[];
+  certifications: string[];
+  technicalExpertise: string[];
+  selfDescription: string;
+  researchTopics: string[];
+  availability: {
     days: string[];
     timeSlots: string[];
     weeklyHours: number;
   };
-  capacity?: number;
-  assignedMentees?: number;
-  expertise?: string;
-  skills?: string[];
-  description?: string;
+
+  capacity: number; // ✅ REQUIRED
+  assignedMentees: number; // ✅ REQUIRED
 }
 
 export interface Mentee {
@@ -187,7 +186,7 @@ export const mockMentors: Mentor[] = [
 ];
 
 // Mentees
-export const mockMentees: Mentee[] = [
+export const mockMentees: MenteeGroup[] = [
   {
     id: "ME001",
     groupName: "Fortis Programmatores",

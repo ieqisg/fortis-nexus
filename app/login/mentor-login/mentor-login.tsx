@@ -18,7 +18,12 @@ export default function MentorLogin() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
 
+  const DUMMY_ACCOUNT = {
+    email: "prof@fit.edu.ph",
+    password: "prof@1234",
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50  py-12 px-4">
       <div className="max-w-2xl mx-auto">
@@ -49,6 +54,8 @@ export default function MentorLogin() {
                   type="email"
                   required
                   placeholder="prof@fit.edu.ph"
+                  onChange={(e) => setEmail(e.target.value)}
+                  value={email}
                 />
               </div>
 
@@ -96,8 +103,18 @@ export default function MentorLogin() {
                     Cancel
                   </Button>
                   <Button
-                    type="submit"
+                    type="button"
                     className="bg-blue-600 hover:bg-blue-700"
+                    onClick={() => {
+                      if (
+                        email === DUMMY_ACCOUNT.email &&
+                        password === DUMMY_ACCOUNT.password
+                      ) {
+                        router.push("/mentor-dashboard");
+                      } else {
+                        alert("Invalid email or password");
+                      }
+                    }}
                   >
                     Login
                   </Button>

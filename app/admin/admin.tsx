@@ -76,7 +76,8 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [userFilter, setUserFilter] = useState("all");
   const [matchFilter, setMatchFilter] = useState("all");
-  const [selectedMentor, setSelectedMentor] = useState("");
+  const [selectedMentor, setSelectedMentor] = useState<Mentor | null>(null);
+
   const [selectedUser, setSelectedUser] = useState<(Mentor | Mentee) | null>(
     null,
   );

@@ -87,7 +87,9 @@ export default function MenteeDashboard() {
                           Skills:
                         </p>
                         <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline">qwerty,qwerty,qwerty</Badge>
+                          <Badge variant="outline">
+                            NLP, Machine Learning, AI
+                          </Badge>
                         </div>
                       </div>
 

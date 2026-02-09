@@ -18,6 +18,12 @@ export default function MenteeLogin() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+
+  const DUMMY_ACCOUNT = {
+    email: "juan.delacruz@fit.edu.ph",
+    password: "Test@1234",
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 py-12 px-4">
@@ -49,6 +55,8 @@ export default function MenteeLogin() {
                   type="email"
                   required
                   placeholder="student@fit.edu.ph"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
 
@@ -91,14 +99,22 @@ export default function MenteeLogin() {
                   <Button
                     type="button"
                     className="bg-gray-400 hover:bg-green-500"
-                    onClick={() => router.push("/")}
                   >
                     Cancel
                   </Button>
                   <Button
-                    type="submit"
+                    type="button"
                     className="bg-green-600 hover:bg-green-700"
-                    onClick={() => router.push("/mentee-dashboard")}
+                    onClick={() => {
+                      if (
+                        email === DUMMY_ACCOUNT.email &&
+                        password === DUMMY_ACCOUNT.password
+                      ) {
+                        router.push("../../mentee-dashboard/");
+                      } else {
+                        alert("Invalid email or password");
+                      }
+                    }}
                   >
                     Login
                   </Button>
