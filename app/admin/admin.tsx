@@ -19,7 +19,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -27,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -37,7 +35,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Users,
   BarChart3,
@@ -82,8 +79,7 @@ export default function Admin() {
     null,
   );
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [minThreshold, setMinThreshold] = useState(0.1);
-  const [maxCapacity, setMaxCapacity] = useState(3);
+
   const totalAssigned = 20;
   const totalCapacity = 130;
 
@@ -134,10 +130,6 @@ export default function Admin() {
     if (matchFilter === "low") return match.score < 0.4;
     return true;
   });
-
-  const handleRerunMatching = () => {
-    alert("Matching algorithm re-run initiated with current settings.");
-  };
 
   const handleEditUser = (user: Mentor | Mentee) => {
     setSelectedUser(user);
