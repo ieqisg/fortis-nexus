@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Plus, X, Clock, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,77 +21,128 @@ export default function MenteeCreateProfile({
 }: {
   onBack: () => void;
 }) {
+  interface GroupMembers {
+    name: string;
+    student_number: string | "";
+  }
+  interface MenteeCreateProfile {
+    email: string;
+    password: string;
+    group_name: string;
+    group_members: GroupMembers[];
+    role: string;
+    thesis_title: string;
+    research_description: string;
+    mentor_preferences: string;
+    thesis_file: File | null;
+    available_days: string[];
+    time_slot: string[];
+  }
   // Form state
-  const [groupName, setGroupName] = useState("");
-  const [members, setMembers] = useState([{ name: "", studentNo: "" }]);
-  const [thesisTitle, setThesisTitle] = useState("");
-  const [thesisFile, setThesisFile] = useState<File | null>(null);
-  const [researchDesc, setResearchDesc] = useState("");
-  const [mentorPrefs, setMentorPrefs] = useState("");
-
-  // Availability
-  const [selectedDays, setSelectedDays] = useState<string[]>([]);
-  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
-  const [weeklyHours, setWeeklyHours] = useState(10);
+  const [formData, setFormData] = useState<MenteeCreateProfile>({
+    email: "",
+    password: "",
+    group_name: "",
+    group_members: [{ name: "", student_number: "" }],
+    role: "",
+    thesis_title: "",
+    research_description: "",
+    mentor_preferences: "",
+    thesis_file: null,
+    available_days: [],
+    time_slot: [],
+  });
 
   // Validation
   const isFormValid = () => {
+    if (!formData) return false;
+
     if (
-      !groupName ||
-      !thesisTitle ||
-      !thesisFile ||
-      !researchDesc ||
-      !mentorPrefs
+      !formData.group_name ||
+      !formData.group_members ||
+      !formData.thesis_title ||
+      !formData.research_description ||
+      !formData.mentor_preferences ||
+      !formData.thesis_file ||
+      !formData.available_days ||
+      !formData.time_slot
     )
       return false;
 
-    // Check all members are filled
-    for (const m of members) {
-      if (!m.name || !m.studentNo) return false;
-    }
-
-    // Check availability
-    if (selectedDays.length === 0 || selectedTimeSlots.length === 0)
+    if (formData.time_slot.length > 2 || formData.available_days.length > 2)
       return false;
 
     return true;
   };
 
+  const [studentNumValid, setStudentNumValid] = useState("");
+  const [disableAddMember, setDisableAddMember] = useState(true);
+  const [timeAndDayValid, setTimeAndDayValid] = useState("");
+
+  useEffect(() => {
+    formData.group_members.forEach((student) => {
+      if (student.student_number.length > 9) {
+        setStudentNumValid("Student Number should not be longer than 9 digits");
+        setDisableAddMember(false);
+      } else {
+        setStudentNumValid("");
+        setDisableAddMember(true);
+      }
+      if (formData.time_slot.length > 2 || formData.available_days.length > 2) {
+        setTimeAndDayValid(
+          "Selected Available Days or Time slots should not be longer than 2",
+        );
+      } else {
+        setTimeAndDayValid("");
+      }
+    });
+  }, [
+    formData.group_members.map((member) => member.student_number).join(","),
+    formData.available_days.map((day) => day.available_days).join(","),
+    formData.time_slot.map((time) => time.time_slot).join(","),
+  ]);
+
   // Handle dynamic member changes
   const updateMember = (
     index: number,
-    field: "name" | "studentNo",
+    field: keyof GroupMembers,
     value: string,
   ) => {
-    const newMembers = [...members];
-    newMembers[index][field] = value;
-    setMembers(newMembers);
+    setFormData((prev) => {
+      const updatedMembers = [...prev.group_members];
+
+      updatedMembers[index] = {
+        ...updatedMembers[index],
+        [field]: field === "student_number" ? String(value) : value,
+      };
+
+      return {
+        ...prev,
+        group_members: updatedMembers,
+      };
+    });
   };
 
-  const addMember = () => setMembers([...members, { name: "", studentNo: "" }]);
+  const addMember = () =>
+    setFormData((prev) => ({
+      ...prev,
+      group_members: [...prev.group_members, { name: "", student_number: "" }],
+    }));
+
   const removeMember = (index: number) => {
-    const newMembers = [...members];
-    newMembers.splice(index, 1);
-    setMembers(newMembers);
+    setFormData((prev) => ({
+      ...prev,
+      group_members: prev.group_members.filter((_, i) => i !== index),
+    }));
   };
-
   // Handle submit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!isFormValid()) return;
+    console.log(formData);
 
     // Proceed with form submission logic
-    console.log({
-      groupName,
-      members,
-      thesisTitle,
-      thesisFile,
-      researchDesc,
-      mentorPrefs,
-      selectedDays,
-      selectedTimeSlots,
-      weeklyHours,
-    });
 
     alert("Mentee profile created successfully!");
   };
@@ -119,21 +170,29 @@ export default function MenteeCreateProfile({
             <form className="space-y-5" onSubmit={handleSubmit}>
               {/* Group Name */}
               <div>
-                <Label htmlFor="groupName">Group Name *</Label>
+                <Label htmlFor="groupName">
+                  Group Name <span className="text-red-600">*</span>
+                </Label>
                 <Input
+                  required
                   id="groupName"
                   placeholder="e.g Fortis Programmatores"
-                  value={groupName}
-                  onChange={(e) => setGroupName(e.target.value)}
+                  value={formData.group_name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, group_name: e.target.value })
+                  }
                 />
               </div>
 
               {/* Group Members */}
               <div>
-                <Label>Group Members *</Label>
-                {members.map((member, idx) => (
+                <Label>
+                  Group Members <span className="text-red-600">*</span>
+                </Label>
+                {formData.group_members.map((member, idx) => (
                   <div key={idx} className="flex gap-2 mb-2">
                     <Input
+                      required
                       placeholder="Member name"
                       value={member.name}
                       onChange={(e) =>
@@ -141,12 +200,15 @@ export default function MenteeCreateProfile({
                       }
                     />
                     <Input
+                      type="text"
+                      required
                       placeholder="Student no."
-                      value={member.studentNo}
+                      value={member.student_number}
                       onChange={(e) =>
-                        updateMember(idx, "studentNo", e.target.value)
+                        updateMember(idx, "student_number", e.target.value)
                       }
                     />
+
                     <Button
                       type="button"
                       variant="outline"
@@ -160,6 +222,7 @@ export default function MenteeCreateProfile({
                 <Button
                   type="button"
                   variant="outline"
+                  disabled={!disableAddMember}
                   size="sm"
                   className="mt-1"
                   onClick={addMember}
@@ -167,53 +230,82 @@ export default function MenteeCreateProfile({
                   <Plus className="w-4 h-4 mr-2" />
                   Add member
                 </Button>
+                {studentNumValid && (
+                  <p className="text-red-600 text-sm mt-1">{studentNumValid}</p>
+                )}
               </div>
 
               {/* Thesis Title */}
               <div>
-                <Label htmlFor="thesisTitle">Research/Thesis Title *</Label>
+                <Label htmlFor="thesisTitle">
+                  Research/Thesis Title <span className="text-red-600">*</span>
+                </Label>
                 <Input
+                  required
                   id="thesisTitle"
                   placeholder="Enter your thesis title"
-                  value={thesisTitle}
-                  onChange={(e) => setThesisTitle(e.target.value)}
+                  value={formData.thesis_title}
+                  onChange={(e) =>
+                    setFormData({ ...formData, thesis_title: e.target.value })
+                  }
                 />
               </div>
 
               {/* Thesis File */}
               <div>
                 <Label htmlFor="thesisFile">
-                  Thesis 1 Document (Proposal) *
+                  Thesis 1 Document (Proposal){" "}
+                  <span className="text-red-600">*</span>
                 </Label>
                 <Input
+                  required
                   type="file"
-                  id="thesisFile"
+                  id="thesis_file"
                   onChange={(e) =>
-                    setThesisFile(e.target.files ? e.target.files[0] : null)
+                    setFormData({
+                      ...formData,
+                      thesis_file: e.target.files ? e.target.files[0] : null,
+                    })
                   }
                 />
               </div>
 
               {/* Research Description */}
               <div>
-                <Label htmlFor="researchDesc">Research Description *</Label>
+                <Label htmlFor="researchDesc">
+                  Research Description <span className="text-red-600">*</span>
+                </Label>
                 <Textarea
+                  required
                   id="researchDesc"
                   placeholder="Describe your research, tools/frameworks, and algorithms"
-                  value={researchDesc}
-                  onChange={(e) => setResearchDesc(e.target.value)}
+                  value={formData.research_description}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      research_description: e.target.value,
+                    })
+                  }
                   rows={5}
                 />
               </div>
 
               {/* Mentor Preferences */}
               <div>
-                <Label htmlFor="mentorPrefs">Mentor Preferences *</Label>
+                <Label htmlFor="mentorPrefs">
+                  Mentor Preferences <span className="text-red-600">*</span>
+                </Label>
                 <Textarea
+                  required
                   id="mentorPrefs"
                   placeholder="Describe what you're looking for in a mentor"
-                  value={mentorPrefs}
-                  onChange={(e) => setMentorPrefs(e.target.value)}
+                  value={formData.mentor_preferences}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      mentor_preferences: e.target.value,
+                    })
+                  }
                   rows={5}
                 />
                 <p className="text-sm text-gray-500 mt-1">
@@ -235,13 +327,26 @@ export default function MenteeCreateProfile({
                   </CardHeader>
                   <CardContent>
                     <AvailabilitySelector
-                      selectedDays={selectedDays}
-                      selectedTimeSlots={selectedTimeSlots}
-                      weeklyHours={weeklyHours}
-                      onDaysChange={setSelectedDays}
-                      onTimeSlotsChange={setSelectedTimeSlots}
-                      onWeeklyHoursChange={setWeeklyHours}
+                      selectedDays={formData.available_days}
+                      selectedTimeSlots={formData.time_slot}
+                      onDaysChange={(days) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          available_days: days,
+                        }))
+                      }
+                      onTimeSlotsChange={(time) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          time_slot: time,
+                        }))
+                      }
                     />
+                    {timeAndDayValid && (
+                      <p className="text-red-600 text-sm mt-1">
+                        {timeAndDayValid}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </div>

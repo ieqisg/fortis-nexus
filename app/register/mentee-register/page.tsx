@@ -3,7 +3,7 @@ import MenteeCreateProfile from "./mentee-create-profile";
 import MenteeRegistration from "./mentee-registration";
 import { useState } from "react";
 export default function Page() {
-  const [menteeStep, setMenteeStep] = useState(1);
+  const [menteeStep, setMenteeStep] = useState(2);
 
   const handleNext = () => {
     setMenteeStep(menteeStep + 1);

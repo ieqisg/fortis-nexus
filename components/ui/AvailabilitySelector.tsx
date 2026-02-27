@@ -41,7 +41,10 @@ export function AvailabilitySelector({
       {/* Days of the Week */}
       <div className="space-y-3">
         <Label className="text-base font-semibold text-slate-700">
-          Available Days
+          Available Days{" "}
+          <span className="text-gray-100 text-sm">
+            (Select 2 available days only)
+          </span>
         </Label>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           {daysOfWeek.map((day) => (
@@ -49,7 +52,7 @@ export function AvailabilitySelector({
               key={day}
               className={`flex items-center space-x-2 p-3 rounded-lg border transition-all ${
                 selectedDays.includes(day)
-                  ? "bg-blue-50 border-blue-300"
+                  ? "bg-emerald-50 border-emerald-300"
                   : "bg-white border-slate-200 hover:border-slate-300"
               }`}
             >
@@ -73,6 +76,9 @@ export function AvailabilitySelector({
       <div className="space-y-3">
         <Label className="text-base font-semibold text-slate-700">
           Preferred Time Slots
+          <span className="text-gray-100 text-sm">
+            (Select 2 available time slots only)
+          </span>
         </Label>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {timeSlotOptions.map((slot) => (
@@ -97,28 +103,6 @@ export function AvailabilitySelector({
               </Label>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Weekly Hours */}
-      <div className="space-y-3">
-        <Label
-          htmlFor="weeklyHours"
-          className="text-base font-semibold text-slate-700"
-        >
-          Weekly Commitment (Hours)
-        </Label>
-        <div className="flex items-center gap-4">
-          <Input
-            id="weeklyHours"
-            type="number"
-            min={1}
-            max={40}
-            value={weeklyHours}
-            onChange={(e) => onWeeklyHoursChange(parseInt(e.target.value) || 0)}
-            className="w-32"
-          />
-          <span className="text-sm text-slate-500">hours per week</span>
         </div>
       </div>
     </div>

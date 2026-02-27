@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { UserAuth } from "../../context/authContext";
 
 export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
   const router = useRouter();
@@ -22,14 +23,6 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
-
-  // Load saved credentials on mount
-  useEffect(() => {
-    const savedEmail = localStorage.getItem("email") || "";
-    const savedPassword = localStorage.getItem("password") || "";
-    setEmail(savedEmail);
-    setPassword(savedPassword);
-  }, []);
 
   // Real-time password validation flags
   const isLengthValid = password.length >= 8;
@@ -41,7 +34,6 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
 
   // Form valid if password is strong AND matches confirm password
   const isFormValid = isPasswordStrong && password === confirmPassword;
-
   // Real-time password error messages
   useEffect(() => {
     if (password === "" && confirmPassword === "") {
@@ -57,15 +49,11 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
     }
   }, [password, confirmPassword, isPasswordStrong]);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!isFormValid) return;
-    localStorage.setItem("email", email);
-    localStorage.setItem("password", password);
     onNext();
   };
-
   const renderCheck = (valid: boolean) => (
     <span
       className={`flex items-center gap-1 ${
