@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowLeft, Plus, X, Clock, UserRound } from "lucide-react";
-
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
+import { UserAuth } from "@/app/context/authContext";
 
 export default function MenteeCreateProfile({
   onBack,
@@ -74,10 +75,13 @@ export default function MenteeCreateProfile({
 
     return true;
   };
-
+  const router = useRouter();
+  const { userData, signUpMentee } = UserAuth();
   const [studentNumValid, setStudentNumValid] = useState("");
   const [disableAddMember, setDisableAddMember] = useState(true);
   const [timeAndDayValid, setTimeAndDayValid] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     formData.group_members.forEach((student) => {
@@ -136,15 +140,20 @@ export default function MenteeCreateProfile({
     }));
   };
   // Handle submit
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!isFormValid()) return;
-    console.log(formData);
-
-    // Proceed with form submission logic
-
-    alert("Mentee profile created successfully!");
+    try {
+      const result = await signUpMentee();
+      if (result.success) {
+        alert("Mentee profile created successfully!");
+        console.log(formData);
+        router.push("/mentee-dashboard");
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -200,7 +209,7 @@ export default function MenteeCreateProfile({
                       }
                     />
                     <Input
-                      type="text"
+                      type="number"
                       required
                       placeholder="Student no."
                       value={member.student_number}

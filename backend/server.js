@@ -1,8 +1,7 @@
-require("dotenv").config();
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
 
-const express = require("express");
-const cors = require("cors");
-const authRouter = require("./router/authRouter.js");
 const app = express();
 const PORT = process.env.PORT;
 
@@ -13,5 +12,3 @@ app.use(express.json());
 app.listen(5000, () => {
   console.log(`Server is running on Port ${PORT}`);
 });
-
-app.use("/register", authRouter);

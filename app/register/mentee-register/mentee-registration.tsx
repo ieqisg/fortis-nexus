@@ -17,6 +17,7 @@ import { UserAuth } from "../../context/authContext";
 
 export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
   const router = useRouter();
+  const { setUserData } = UserAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -52,6 +53,7 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
+    setUserData({ email, password });
     onNext();
   };
   const renderCheck = (valid: boolean) => (

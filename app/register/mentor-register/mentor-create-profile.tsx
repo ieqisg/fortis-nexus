@@ -28,7 +28,6 @@ export default function MentorCreateProfile({
     surname: "",
     description: "",
   });
-
   const [skillInput, setSkillInput] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
 
