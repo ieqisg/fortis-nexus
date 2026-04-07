@@ -16,31 +16,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
 import { UserAuth } from "@/app/context/authContext";
+import { GroupMembers, MenteeFormProfile } from "../mentee-register/menteeTypes"
+import { supabase } from "@/app/config/supabaseClient";
 
 export default function MenteeCreateProfile({
   onBack,
 }: {
   onBack: () => void;
 }) {
-  interface GroupMembers {
-    name: string;
-    student_number: string | "";
-  }
-  interface MenteeCreateProfile {
-    email: string;
-    password: string;
-    group_name: string;
-    group_members: GroupMembers[];
-    role: string;
-    thesis_title: string;
-    research_description: string;
-    mentor_preferences: string;
-    thesis_file: File | null;
-    available_days: string[];
-    time_slot: string[];
-  }
+  
   // Form state
-  const [formData, setFormData] = useState<MenteeCreateProfile>({
+  const [formData, setFormData] = useState<MenteeFormProfile>({
     email: "",
     password: "",
     group_name: "",
@@ -52,6 +38,7 @@ export default function MenteeCreateProfile({
     thesis_file: null,
     available_days: [],
     time_slot: [],
+    
   });
 
   // Validation
@@ -92,18 +79,18 @@ export default function MenteeCreateProfile({
         setStudentNumValid("");
         setDisableAddMember(true);
       }
-      if (formData.time_slot.length > 2 || formData.available_days.length > 2) {
-        setTimeAndDayValid(
-          "Selected Available Days or Time slots should not be longer than 2",
-        );
-      } else {
-        setTimeAndDayValid("");
-      }
     });
+    if (formData.time_slot.length > 2 || formData.available_days.length > 2) {
+      setTimeAndDayValid(
+        "Selected Available Days or Time slots should not be longer than 2",
+      );
+    } else {
+      setTimeAndDayValid("");
+    }
   }, [
     formData.group_members.map((member) => member.student_number).join(","),
-    formData.available_days.map((day) => day.available_days).join(","),
-    formData.time_slot.map((time) => time.time_slot).join(","),
+    formData.available_days.join(","),
+    formData.time_slot.join(","),
   ]);
 
   // Handle dynamic member changes
@@ -151,6 +138,7 @@ export default function MenteeCreateProfile({
         console.log(formData);
         router.push("/mentee-dashboard");
       }
+      
     } catch (err) {
       console.error(err);
     }
@@ -338,6 +326,7 @@ export default function MenteeCreateProfile({
                     <AvailabilitySelector
                       selectedDays={formData.available_days}
                       selectedTimeSlots={formData.time_slot}
+                      
                       onDaysChange={(days) =>
                         setFormData((prev) => ({
                           ...prev,
@@ -348,6 +337,12 @@ export default function MenteeCreateProfile({
                         setFormData((prev) => ({
                           ...prev,
                           time_slot: time,
+                        }))
+                      }
+                      onWeeklyHoursChange={(hours) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          weekly_hours: hours,
                         }))
                       }
                     />

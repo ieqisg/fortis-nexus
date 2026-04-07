@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { ArrowLeft, UserRound, Eye, EyeOff, Check } from "lucide-react";
+import { UserAuth } from "@/app/context/authContext";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,11 +20,9 @@ export default function MenteeLogin() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
+  const { userData, signInMentee } = UserAuth()
 
-  const DUMMY_ACCOUNT = {
-    email: "juan.delacruz@fit.edu.ph",
-    password: "Test@1234",
-  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 py-12 px-4">
@@ -106,14 +105,7 @@ export default function MenteeLogin() {
                     type="button"
                     className="bg-green-600 hover:bg-green-700"
                     onClick={() => {
-                      if (
-                        email === DUMMY_ACCOUNT.email &&
-                        password === DUMMY_ACCOUNT.password
-                      ) {
-                        router.push("../../mentee-dashboard/");
-                      } else {
-                        alert("Invalid email or password");
-                      }
+
                     }}
                   >
                     Login
