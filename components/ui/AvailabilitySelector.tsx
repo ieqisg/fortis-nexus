@@ -6,7 +6,7 @@ import { daysOfWeek, timeSlotOptions } from "@/lib/mockData";
 interface AvailabilitySelectorProps {
   selectedDays: string[];
   selectedTimeSlots: string[];
-  weeklyHours: number;
+  
   onDaysChange: (days: string[]) => void;
   onTimeSlotsChange: (slots: string[]) => void;
   onWeeklyHoursChange: (hours: number) => void;
@@ -15,7 +15,7 @@ interface AvailabilitySelectorProps {
 export function AvailabilitySelector({
   selectedDays,
   selectedTimeSlots,
-  weeklyHours,
+  
   onDaysChange,
   onTimeSlotsChange,
   onWeeklyHoursChange,
