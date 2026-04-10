@@ -17,7 +17,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
 import { UserAuth } from "@/app/context/authContext";
 import { GroupMembers, MenteeFormProfile } from "../mentee-register/menteeTypes"
+import { MenteeGroupInsert } from "@/app/types/menteeModelTypes";
 import { supabase } from "@/app/config/supabaseClient";
+
 
 export default function MenteeCreateProfile({
     onBack,
@@ -27,15 +29,12 @@ export default function MenteeCreateProfile({
 
     // Form state
     const [formData, setFormData] = useState<MenteeFormProfile>({
-        email: "",
-        password: "",
         group_name: "",
         group_members: [{ name: "", student_number: "" }],
-        role: "",
+        role: "mentee",
         thesis_title: "",
         research_description: "",
         mentor_preferences: "",
-        thesis_file: null,
         available_days: [],
         time_slot: [],
 
@@ -51,7 +50,6 @@ export default function MenteeCreateProfile({
             !formData.thesis_title ||
             !formData.research_description ||
             !formData.mentor_preferences ||
-            !formData.thesis_file ||
             !formData.available_days ||
             !formData.time_slot
         )
@@ -63,12 +61,10 @@ export default function MenteeCreateProfile({
         return true;
     };
     const router = useRouter();
-    const { userData, signUpMentee } = UserAuth();
+    const { userData, signUp, getUser, signIn } = UserAuth();
     const [studentNumValid, setStudentNumValid] = useState("");
     const [disableAddMember, setDisableAddMember] = useState(true);
     const [timeAndDayValid, setTimeAndDayValid] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
 
     useEffect(() => {
         formData.group_members.forEach((student) => {
@@ -132,11 +128,36 @@ export default function MenteeCreateProfile({
 
         if (!isFormValid()) return;
         try {
-            const result = await signUpMentee();
-            if (result.success) {
+            const signUpResult = await signUp();
+            if (!signUpResult) return;
+            const signInResult = await signIn()
+            if (!signInResult) return;
+            const userResult = await getUser()
+            if (!userResult.success || !userResult.data) return;
+            if (userResult.success) {
                 alert("Mentee profile created successfully!");
                 console.log(formData);
-                router.push("/mentee-dashboard");
+                const payload: MenteeGroupInsert = {
+                    id: userResult.data.id,
+                    group_name: formData.group_name,
+                    research_title: formData.thesis_title,
+                    research_description: formData.research_description,
+                    mentor_preference: formData.mentor_preferences,
+                    role: "mentee",
+                    available_days: formData.available_days,
+                    time_slot: formData.time_slot,
+                    group_members: formData.group_members.map((member) => JSON.stringify(member))
+                };
+                const { data, error } = await supabase
+                    .from("MENTEE_GROUPS")
+                    .insert(payload)
+                if (error) {
+                    console.error("Insert error", error)
+                    await supabase.auth.admin.deleteUser(userResult.data.user.id);
+                    alert("Failed to create profile, signup has been rolled back.");
+                    return;
+                }
+
             }
 
         } catch (err) {
@@ -339,12 +360,7 @@ export default function MenteeCreateProfile({
                                                     time_slot: time,
                                                 }))
                                             }
-                                            onWeeklyHoursChange={(hours) =>
-                                                setFormData((prev) => ({
-                                                    ...prev,
-                                                    weekly_hours: hours,
-                                                }))
-                                            }
+
                                         />
                                         {timeAndDayValid && (
                                             <p className="text-red-600 text-sm mt-1">

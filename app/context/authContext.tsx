@@ -2,6 +2,7 @@
 import { createContext, useEffect, useState, useContext, ReactNode } from "react";
 import { supabase } from "../config/supabaseClient";
 
+
 type AuthResponse = {
     success: boolean;
     data?: any;
@@ -9,18 +10,22 @@ type AuthResponse = {
 }
 
 type AuthContextType = {
-    signUpMentee: () => Promise<AuthResponse>;
-    signInMentee: () => Promise<AuthResponse>
+    signUp: () => Promise<AuthResponse>;
+    signIn: () => Promise<AuthResponse>
+    getUser: () => Promise<AuthResponse>
     userData: { email: string; password: string };
     setUserData: (data: { email: string; password: string }) => void;
+
 };
+
+
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     const [userData, setUserData] = useState({ email: "", password: "" });
 
-    const signUpMentee = async (): Promise<AuthResponse> => {
+    const signUp = async (): Promise<AuthResponse> => {
         const { email, password } = userData;
 
         if (!email || !password) {
@@ -35,10 +40,12 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
             }
             return { success: false, error };
         }
+
+
         return { success: true, data };
     };
 
-    const signInMentee = async (): Promise<AuthResponse> => {
+    const signIn = async (): Promise<AuthResponse> => {
         const { email, password } = userData
 
         if (!email || !password) {
@@ -47,15 +54,27 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
         if (error) {
-            console.error("Error Singing in", error)
+            console.error("Error Signing in", error)
+            if (error.message.includes("Invalid")) {
+                alert(" Invalid login credentials")
+            }
             return { success: false, error }
         }
         return { success: true, data }
     }
 
+    const getUser = async (): Promise<AuthResponse> => {
+        const { data: { user }, error } = await supabase.auth.getUser()
+        if (error) {
+            console.error("Error getting user", error)
+            return { success: false, error }
+        }
+        return { success: true, data: user }
+    }
+
 
     return (
-        <AuthContext.Provider value={{ signUpMentee, userData, setUserData, signInMentee }}>
+        <AuthContext.Provider value={{ signUp, userData, setUserData, signIn, getUser }}>
             {children}
         </AuthContext.Provider>
     );
