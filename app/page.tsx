@@ -88,7 +88,7 @@ export default function Home() {
                                 <Button
                                     variant="outline"
                                     className="border-white/30 text-white hover:bg-white/10 bg-transparent"
-                                    onClick={() => router.push("/login/mentee-login")}
+                                    onClick={() => router.push("/login")}
                                 >
                                     <LogIn className="w-4 h-4 mr-2" />
                                     Login
@@ -130,7 +130,7 @@ export default function Home() {
                                 <Button
                                     variant="outline"
                                     className="border-white/30 text-white hover:bg-white/10 bg-transparent"
-                                    onClick={() => router.push("/login/mentee-login")}
+                                    onClick={() => router.push("/login")}
                                 >
                                     <LogIn className="w-4 h-4 mr-2" />
                                     Login

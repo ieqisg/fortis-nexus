@@ -16,10 +16,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
 import { UserAuth } from "@/app/context/authContext";
-import { GroupMembers, MenteeFormProfile } from "../mentee-register/menteeTypes"
-import { MenteeGroupInsert } from "@/app/types/menteeModelTypes";
-import { supabase } from "@/app/config/supabaseClient";
-
+import { GroupMembers, MenteeFormProfile } from "@/app/types/menteeTypes";
+import { MenteeGroupInsert } from "@/app/types/modelTypes";
+import { createMenteeProfile } from "@/app/lib/actions/menteeActions";
 
 export default function MenteeCreateProfile({
     onBack,
@@ -68,8 +67,8 @@ export default function MenteeCreateProfile({
 
     useEffect(() => {
         formData.group_members.forEach((student) => {
-            if (student.student_number.length > 9) {
-                setStudentNumValid("Student Number should not be longer than 9 digits");
+            if (student.student_number.length !== 9) {
+                setStudentNumValid("Student Number should be exactly 9 digits");
                 setDisableAddMember(false);
             } else {
                 setStudentNumValid("");
@@ -125,45 +124,45 @@ export default function MenteeCreateProfile({
     // Handle submit
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
         if (!isFormValid()) return;
+
         try {
             const signUpResult = await signUp();
-            if (!signUpResult) return;
-            const signInResult = await signIn()
-            if (!signInResult) return;
-            const userResult = await getUser()
-            if (!userResult.success || !userResult.data) return;
-            if (userResult.success) {
-                alert("Mentee profile created successfully!");
-                console.log(formData);
-                const payload: MenteeGroupInsert = {
-                    id: userResult.data.id,
-                    group_name: formData.group_name,
-                    research_title: formData.thesis_title,
-                    research_description: formData.research_description,
-                    mentor_preference: formData.mentor_preferences,
-                    role: "mentee",
-                    available_days: formData.available_days,
-                    time_slot: formData.time_slot,
-                    group_members: formData.group_members.map((member) => JSON.stringify(member))
-                };
-                const { data, error } = await supabase
-                    .from("MENTEE_GROUPS")
-                    .insert(payload)
-                if (error) {
-                    console.error("Insert error", error)
-                    await supabase.auth.admin.deleteUser(userResult.data.user.id);
-                    alert("Failed to create profile, signup has been rolled back.");
-                    return;
-                }
+            if (!signUpResult.success) return;
 
+            const signInResult = await signIn();
+            if (!signInResult.success) return;
+
+            const userResult = await getUser();
+            if (!userResult.success || !userResult.data?.user) return;
+
+            const payload: MenteeGroupInsert = {
+                id: userResult.data.user.id,
+                group_name: formData.group_name,
+                research_title: formData.thesis_title,
+                research_description: formData.research_description,
+                mentor_preference: formData.mentor_preferences,
+                role: "mentee",
+                available_days: formData.available_days,
+                time_slot: formData.time_slot,
+                group_members: formData.group_members.map((member) => JSON.stringify(member))
+            };
+
+            const result = await createMenteeProfile(payload);
+
+            if (!result.success) {
+                alert(result.message);
+                return;
             }
+
+            alert("Mentee profile created successfully!");
+            router.push("/mentee-dashboard");
 
         } catch (err) {
             console.error(err);
         }
     };
+
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 py-12 px-4">

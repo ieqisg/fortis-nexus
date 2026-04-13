@@ -14,11 +14,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "../config/supabaseClient";
 
 export default function Login() {
     const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
-    const { userData, signIn, setUserData } = UserAuth()
+    const { userData, signIn, setUserData, getUser } = UserAuth()
     const { email, password } = userData
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -26,11 +27,16 @@ export default function Login() {
         if (!email || !password) return;
 
         try {
-            const result = await signIn()
-            if (result.success) {
-                alert("Login success")
-                //router.push("/mentee-dashboard")
+            const userSignIn = await signIn()
+            if (!userSignIn.success) return;
+            if (userSignIn.data.role === "mentee") {
+                router.push("/mentee-dashboard")
+            } else if (userSignIn.data.role === "mentor") {
+                router.push("/mentor-dashboard")
+            } else {
+                alert("Unknown role")
             }
+
         } catch (err) {
             console.error(err)
         }

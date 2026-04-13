@@ -1,11 +1,16 @@
 "use client";
 import { createContext, useEffect, useState, useContext, ReactNode } from "react";
 import { supabase } from "../config/supabaseClient";
+import { getUserRole } from "../lib/actions/authActions";
 
 
 type AuthResponse = {
     success: boolean;
-    data?: any;
+    data?: {
+        user?: any;
+        session?: any;
+        role?: string;
+    };
     error?: any;
 }
 
@@ -13,6 +18,7 @@ type AuthContextType = {
     signUp: () => Promise<AuthResponse>;
     signIn: () => Promise<AuthResponse>
     getUser: () => Promise<AuthResponse>
+    signOut: () => Promise<AuthResponse>
     userData: { email: string; password: string };
     setUserData: (data: { email: string; password: string }) => void;
 
@@ -60,7 +66,10 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
             }
             return { success: false, error }
         }
-        return { success: true, data }
+
+        const { role } = await getUserRole(data.user.id)
+
+        return { success: true, data: { ...data, role } }
     }
 
     const getUser = async (): Promise<AuthResponse> => {
@@ -69,12 +78,22 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
             console.error("Error getting user", error)
             return { success: false, error }
         }
-        return { success: true, data: user }
+        return { success: true, data: { user } }
+    }
+
+    const signOut = async (): Promise<AuthResponse> => {
+        const { error } = await supabase.auth.signOut()
+
+        if (error) {
+            console.error("Error signing out", error)
+            return { success: false, error }
+        }
+        return { success: true }
     }
 
 
     return (
-        <AuthContext.Provider value={{ signUp, userData, setUserData, signIn, getUser }}>
+        <AuthContext.Provider value={{ signUp, userData, setUserData, signIn, getUser, signOut }}>
             {children}
         </AuthContext.Provider>
     );
