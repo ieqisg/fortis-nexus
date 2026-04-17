@@ -1,27 +1,12 @@
 // lib/actions/menteeActions.ts
 "use server"
 
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
 import { createClient } from "@supabase/supabase-js"
 import { MenteeGroupInsert } from "@/app/types/modelTypes"
+import { getSupabaseClient } from "@/app/config/getSupabaseClient"
 
 export async function createMenteeProfile(payload: MenteeGroupInsert) {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        cookieStore.set(name, value, options)
-                    )
-                },
-            },
-        }
-    )
+    const supabase = await getSupabaseClient()
 
     const adminSupabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,3 +24,40 @@ export async function createMenteeProfile(payload: MenteeGroupInsert) {
 
     return { success: true }
 }
+
+export async function getMenteeData() {
+    const supabase = await getSupabaseClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, message: "Not authenticated", data: null };
+
+    const { data: mentee, error } = await supabase
+        .from("MENTEE_GROUPS")
+        .select(`
+        *,
+        matches (
+            status,
+            matched_at,
+            compatiblity_score,
+            matched_keywords,
+            mentor:matches_mentor_id_fkey (
+                id,
+                first_name,
+                last_name,
+                technical_skills,
+                forte,
+                email,
+                self_description
+            )
+        )
+    `)
+        .eq("id", user.id)
+        .single()
+    if (error) return { success: false, message: error.message, data: null }
+
+    return { success: true, data: mentee }
+
+}
+
+
+

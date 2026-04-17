@@ -1,3 +1,4 @@
+import { Matches } from "./menteeTypes";
 import type { Database } from "@/backend/models/Model";
 
 //Mentee
@@ -8,6 +9,10 @@ export type MenteeGroupInsert =
 
 export type MenteeGroupUpdate =
     Database["public"]["Tables"]["MENTEE_GROUPS"]["Update"];
+
+export type MenteeGroupWithMatch = MenteeGroup & {
+    matches: Matches | null
+}
 
 //Mentor
 export type Mentor = Database["public"]["Tables"]["mentor"]["Row"]

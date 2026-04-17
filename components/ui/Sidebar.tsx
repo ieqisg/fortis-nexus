@@ -5,6 +5,14 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { UserAuth } from "@/app/context/authContext";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
 interface SidebarProps {
     userType: "mentor" | "mentee" | "admin";
     userName: string;
@@ -13,17 +21,21 @@ interface SidebarProps {
 export default function Sidebar({ userType, userName }: SidebarProps) {
     const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
+    const [loading, setLoading] = useState(false)
     const { signOut } = UserAuth()
 
     const handleLogout = async () => {
+        setLoading(true)
         const result = await signOut()
         if (result.success) {
             router.push("/");
+            setLoading(false)
         } else {
             alert("Error signing out")
         }
 
     };
+
 
     const bgColor = userType === "mentor" ? "bg-white" : "bg-white";
     const accentColor =
@@ -34,7 +46,9 @@ export default function Sidebar({ userType, userName }: SidebarProps) {
 
     return (
         <>
-            {/* Mobile Menu Button */}
+
+
+
             <div className="md:hidden fixed top-4 left-4 z-50">
                 <Button
                     variant="outline"

@@ -11,6 +11,7 @@ export interface MentorFormProfile {
     time_slot: string[];
     role: "mentor";
     profile_completed: boolean;
+    email: string | null;
 }
 
 export type MentorProfileUpdate = Omit<MentorFormProfile, 'profile_completed'>
