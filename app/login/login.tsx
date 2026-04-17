@@ -14,11 +14,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "../config/supabaseClient";
 
-export default function MenteeLogin() {
+export default function Login() {
     const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
-    const { userData, signInMentee, setUserData } = UserAuth()
+    const { userData, signIn, setUserData, getUser } = UserAuth()
     const { email, password } = userData
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -26,11 +27,16 @@ export default function MenteeLogin() {
         if (!email || !password) return;
 
         try {
-            const result = await signInMentee()
-            if (result.success) {
-                alert("Login success")
+            const userSignIn = await signIn()
+            if (!userSignIn.success) return;
+            if (userSignIn.data.role === "mentee") {
                 router.push("/mentee-dashboard")
+            } else if (userSignIn.data.role === "mentor") {
+                router.push("/mentor-dashboard")
+            } else {
+                alert("Unknown role")
             }
+
         } catch (err) {
             console.error(err)
         }
@@ -54,20 +60,20 @@ export default function MenteeLogin() {
                         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <UserRound className="w-10 h-10 text-green-700" />
                         </div>
-                        <CardTitle className="text-center text-2xl">Mentee Login</CardTitle>
+                        <CardTitle className="text-center text-2xl">Login</CardTitle>
                         <CardDescription className="text-center">
-                            Login your thesis group to find the perfect mentor
+                            Text
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form className="space-y-5" onSubmit={handleSubmit}>
                             <div>
-                                <Label htmlFor="email">Email (Representative) *</Label>
+                                <Label htmlFor="email">Email *</Label>
                                 <Input
                                     id="email"
                                     type="email"
                                     required
-                                    placeholder="student@fit.edu.ph"
+                                    placeholder="example@fit.edu.ph"
                                     value={email}
                                     onChange={(e) => setUserData({ ...userData, email: e.target.value })}
                                 />
