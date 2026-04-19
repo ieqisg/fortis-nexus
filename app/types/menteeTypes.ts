@@ -4,7 +4,7 @@ import { MentorFormProfile } from "./mentorTypes";
 export type Matches = {
     matched_at: string | null
     status: string | null
-    compatiblity_score: number | null
+    compatibility_score: number | null
     matched_keywords: string[] | null
     mentor: {
         id: string
@@ -15,6 +15,17 @@ export type Matches = {
         email: string
         self_description: string
     } | null
+    mentee: {
+        email: string
+        id: string
+        group_name: string
+        group_members: string[]
+        research_title: string
+        research_description: string
+        mentor_preference: string
+        time_slot: string[]
+        available_days: string[]
+    } | null
 }
 
 export type GroupMembers = {
@@ -22,7 +33,7 @@ export type GroupMembers = {
     student_number: string | "";
 }
 export interface MenteeFormProfile {
-
+    email: string
     group_name: string;
     group_members: GroupMembers[];
     role: "mentee";
@@ -31,6 +42,5 @@ export interface MenteeFormProfile {
     mentor_preferences: string;
     available_days: string[];
     time_slot: string[];
-    matches: Matches | null
 
 }

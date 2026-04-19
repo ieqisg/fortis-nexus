@@ -5,7 +5,6 @@ import type { Database } from "../../backend/models/Model"
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_KEY;
 
-console.log(SUPABASE_KEY, SUPABASE_URL)
 
 export const supabase = createClient<Database>(SUPABASE_URL!, SUPABASE_KEY!, {
     auth: {

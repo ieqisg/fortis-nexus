@@ -38,7 +38,7 @@ export async function getMenteeData() {
         matches (
             status,
             matched_at,
-            compatiblity_score,
+            compatibility_score,
             matched_keywords,
             mentor:matches_mentor_id_fkey (
                 id,

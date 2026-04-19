@@ -36,6 +36,7 @@ export default function MentorCompleteProfile() {
         time_slot: [],
         role: "mentor",
         profile_completed: true,
+        email: ""
 
     })
     const [skillInput, setSkillInput] = useState("");

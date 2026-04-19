@@ -27,15 +27,15 @@ export async function middleware(request: NextRequest) {
 
     const path = request.nextUrl.pathname;
 
-    const [{ data: menteeData }, { data: mentorData }] = await Promise.all([
+    const [{ data: menteeData }, { data: mentorData }, { data: adminData }] = await Promise.all([
         supabase.from("MENTEE_GROUPS").select("role").eq("id", user.id).maybeSingle(),
         supabase.from("mentor").select("role, profile_completed").eq("id", user.id).maybeSingle(),
+        supabase.from("admin").select("role").eq("id", user.id).maybeSingle()
     ])
 
 
 
-    const role = menteeData?.role || mentorData?.role;
-    console.log("role:", role)
+    const role = menteeData?.role || mentorData?.role || adminData?.role;
 
     if (!role) {
         return NextResponse.redirect(new URL("/unauthorized", request.url));
@@ -47,6 +47,10 @@ export async function middleware(request: NextRequest) {
 
     if (path.startsWith("/mentor") && role !== "mentor") {
         return NextResponse.redirect(new URL("/unauthorized", request.url));
+    }
+
+    if (path.startsWith("/admin") && role !== "admin") {
+        return NextResponse.redirect(new URL("/unauthorized", request.url))
     }
 
     if (role === "mentor") {
@@ -69,5 +73,6 @@ export const config = {
         "/mentee-dashboard/:path*",
         "/mentor-dashboard/:path*",
         "/mentor/:path*",
+        "/admin/:path*",
     ],
 };

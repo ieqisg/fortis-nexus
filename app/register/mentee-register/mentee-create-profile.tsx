@@ -15,10 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
-import { UserAuth } from "@/app/context/authContext";
 import { GroupMembers, MenteeFormProfile } from "@/app/types/menteeTypes";
 import { MenteeGroupInsert } from "@/app/types/modelTypes";
 import { createMenteeProfile } from "@/app/lib/actions/menteeActions";
+import { UserAuth } from "@/app/context/authContext";
 
 export default function MenteeCreateProfile({
     onBack,
@@ -26,8 +26,15 @@ export default function MenteeCreateProfile({
     onBack: () => void;
 }) {
 
+    const router = useRouter();
+    const { userData, signUp, getUser, signIn } = UserAuth();
+    const [studentNumValid, setStudentNumValid] = useState("");
+    const [disableAddMember, setDisableAddMember] = useState(true);
+    const [timeAndDayValid, setTimeAndDayValid] = useState("");
+
     // Form state
     const [formData, setFormData] = useState<MenteeFormProfile>({
+        email: "",
         group_name: "",
         group_members: [{ name: "", student_number: "" }],
         role: "mentee",
@@ -59,13 +66,10 @@ export default function MenteeCreateProfile({
 
         return true;
     };
-    const router = useRouter();
-    const { userData, signUp, getUser, signIn } = UserAuth();
-    const [studentNumValid, setStudentNumValid] = useState("");
-    const [disableAddMember, setDisableAddMember] = useState(true);
-    const [timeAndDayValid, setTimeAndDayValid] = useState("");
+
 
     useEffect(() => {
+        console.log(userData.email)
         formData.group_members.forEach((student) => {
             if (student.student_number.length !== 9) {
                 setStudentNumValid("Student Number should be exactly 9 digits");
@@ -137,6 +141,7 @@ export default function MenteeCreateProfile({
             if (!userResult.success || !userResult.data?.user) return;
 
             const payload: MenteeGroupInsert = {
+                email: userData.email,
                 id: userResult.data.user.id,
                 group_name: formData.group_name,
                 research_title: formData.thesis_title,
@@ -275,15 +280,14 @@ export default function MenteeCreateProfile({
                                     <span className="text-red-600">*</span>
                                 </Label>
                                 <Input
-                                    required
                                     type="file"
                                     id="thesis_file"
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            thesis_file: e.target.files ? e.target.files[0] : null,
-                                        })
-                                    }
+                                // onChange={(e) =>
+                                //     setFormData({
+                                //         ...formData,
+                                //         thesis_file: e.target.files ? e.target.files[0] : null,
+                                //     })
+                                // }
                                 />
                             </div>
 

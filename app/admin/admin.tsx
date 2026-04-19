@@ -49,248 +49,111 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getAllUserData } from "../lib/actions/adminActions";
+import { useEffect } from "react";
 
 // ─────────────────────────────────────────────
 // HARDCODED DATA — replace with API calls later
 // ─────────────────────────────────────────────
 
-const mentors = [
-    {
-        id: "mentor-1",
-        name: "Dr. Maria Santos",
-        staffId: "FAC-001",
-        email: "maria.santos@university.edu",
-        capacity: 5,
-        assignedMentees: 3,
-        technicalExpertise: ["Machine Learning", "Data Science", "Python"],
-        selfDescription: "Focused on applied ML research and student mentorship in AI systems.",
-    },
-    {
-        id: "mentor-2",
-        name: "Prof. Jose Reyes",
-        staffId: "FAC-002",
-        email: "jose.reyes@university.edu",
-        capacity: 4,
-        assignedMentees: 4,
-        technicalExpertise: ["Web Development", "Software Engineering", "React"],
-        selfDescription: "Passionate about full-stack development and agile methodologies.",
-    },
-    {
-        id: "mentor-3",
-        name: "Dr. Ana Cruz",
-        staffId: "FAC-003",
-        email: "ana.cruz@university.edu",
-        capacity: 6,
-        assignedMentees: 2,
-        technicalExpertise: ["Cybersecurity", "Networking", "Cloud Computing"],
-        selfDescription: "Specializes in network security and cloud infrastructure design.",
-    },
-    {
-        id: "mentor-4",
-        name: "Prof. Carlos Lim",
-        staffId: "FAC-004",
-        email: "carlos.lim@university.edu",
-        capacity: 5,
-        assignedMentees: 0,
-        technicalExpertise: ["Mobile Development", "Flutter", "iOS"],
-        selfDescription: "Mobile-first developer with industry experience in cross-platform apps.",
-    },
-];
-
-const menteeGroups = [
-    {
-        id: "group-1",
-        groupName: "Group Alpha",
-        groupMembers: ["Juan dela Cruz", "Maria Gomez", "Pedro Reyes"],
-        studentNumbers: ["2021-00001", "2021-00002", "2021-00003"],
-        email: "group.alpha@students.university.edu",
-        researchTitle: "AI-Powered Jeepney Route Optimization",
-        researchDescription:
-            "A system that uses reinforcement learning to optimize public jeepney routes in Metro Manila based on real-time traffic and passenger data.",
-        preferences: "Prefers a mentor with expertise in Machine Learning and data analytics.",
-        availability: { days: "Monday, Wednesday", timeSlots: "2:00 PM – 4:00 PM" },
-        status: "matched",
-        assignedMentor: "Dr. Maria Santos",
-    },
-    {
-        id: "group-2",
-        groupName: "Group Beta",
-        groupMembers: ["Ana Villanueva", "Luis Torres"],
-        studentNumbers: ["2021-00004", "2021-00005"],
-        email: "group.beta@students.university.edu",
-        researchTitle: "Automated Attendance System Using Facial Recognition",
-        researchDescription:
-            "A web-based attendance platform integrating computer vision to detect and log student presence in real time.",
-        preferences: "Looking for a mentor experienced in computer vision and web systems.",
-        availability: { days: "Tuesday, Thursday", timeSlots: "10:00 AM – 12:00 PM" },
-        status: "matched",
-        assignedMentor: "Prof. Jose Reyes",
-    },
-    {
-        id: "group-3",
-        groupName: "Group Gamma",
-        groupMembers: ["Sofia Tan", "Marco Bautista", "Lea Mendoza"],
-        studentNumbers: ["2021-00006", "2021-00007", "2021-00008"],
-        email: "group.gamma@students.university.edu",
-        researchTitle: "Blockchain-Based Academic Record Verification",
-        researchDescription:
-            "Decentralized system for issuing and verifying academic credentials using Ethereum smart contracts.",
-        preferences: "Interested in a mentor with blockchain or distributed systems background.",
-        availability: { days: "Friday", timeSlots: "1:00 PM – 3:00 PM" },
-        status: "pending",
-        assignedMentor: null,
-    },
-    {
-        id: "group-4",
-        groupName: "Group Delta",
-        groupMembers: ["Ryan Castillo", "Nico Flores"],
-        studentNumbers: ["2021-00009", "2021-00010"],
-        email: "group.delta@students.university.edu",
-        researchTitle: "Smart Home Energy Management via IoT",
-        researchDescription:
-            "IoT-enabled platform for monitoring and automating household energy consumption using Arduino and cloud integration.",
-        preferences: "Prefers a mentor knowledgeable in IoT, embedded systems, or cloud.",
-        availability: { days: "Monday, Friday", timeSlots: "3:00 PM – 5:00 PM" },
-        status: "unmatched",
-        assignedMentor: null,
-    },
-];
-
-const algorithmLogs = [
-    {
-        phase: 1,
-        phaseName: "Data Collection & Preprocessing",
-        timestamp: "2025-01-15 08:00 AM",
-        entries: [
-            {
-                status: "success",
-                action: "Mentor profiles loaded",
-                details: "4 mentor profiles successfully parsed and indexed.",
-            },
-            {
-                status: "success",
-                action: "Mentee group profiles loaded",
-                details: "4 mentee groups successfully parsed and indexed.",
-            },
-            {
-                status: "success",
-                action: "Keyword extraction complete",
-                details: "TF-IDF applied to research titles and descriptions.",
-            },
-        ],
-    },
-    {
-        phase: 2,
-        phaseName: "Compatibility Scoring",
-        timestamp: "2025-01-15 08:05 AM",
-        entries: [
-            {
-                status: "success",
-                action: "Cosine similarity computed",
-                details: "Similarity scores calculated for all mentor–mentee pairs.",
-            },
-            {
-                status: "success",
-                action: "Preference weights applied",
-                details: "Mentee preferences factored into final compatibility scores.",
-            },
-            {
-                status: "pending",
-                action: "Availability matching",
-                details: "2 groups still have unresolved schedule conflicts.",
-            },
-        ],
-    },
-    {
-        phase: 3,
-        phaseName: "Assignment & Output",
-        timestamp: "2025-01-15 08:10 AM",
-        entries: [
-            {
-                status: "success",
-                action: "Optimal assignments generated",
-                details: "Hungarian algorithm applied for maximum overall compatibility.",
-            },
-            {
-                status: "success",
-                action: "Matched pairs finalized",
-                details: "2 groups successfully matched to mentors.",
-            },
-            {
-                status: "error",
-                action: "Unmatched groups flagged",
-                details: "2 groups could not be matched due to capacity or preference constraints.",
-            },
-        ],
-    },
-];
-
-// ─────────────────────────────────────────────
-// STATS — replace with computed DB values later
-// ─────────────────────────────────────────────
-
-const stats = {
-    totalMentors: 4,
-    totalMenteeGroups: 4,
-    matchesCompleted: 2,
-    avgCompatibility: "72%",
-    totalAssigned: 9,
-    totalCapacity: 20,
-};
-
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
 
 export default function Admin() {
+    const [mentors, setMentors] = useState<any[]>([])
+    const [mentees, setMentees] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("");
     const [userFilter, setUserFilter] = useState("all");
-    const [selectedMentor, setSelectedMentor] = useState(null);
-    const [selectedUser, setSelectedUser] = useState(null);
+    const [selectedMentor, setSelectedMentor] = useState<any>(null);
+    const [selectedUser, setSelectedUser] = useState<any>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+    const algorithmLogs = [
+        {
+            phase: 1,
+            phaseName: "Data Collection & Preprocessing",
+            timestamp: "2026-04-14 08:00 AM",
+            entries: [
+                { status: "success", action: "Mentor profiles loaded", details: `${mentors.length} mentor profiles successfully parsed and indexed.` },
+                { status: "success", action: "Mentee group profiles loaded", details: `${mentees.length} mentee groups successfully parsed and indexed.` },
+                { status: "success", action: "Keyword extraction complete", details: "TF-IDF applied to research titles and descriptions." },
+            ],
+        },
+        {
+            phase: 2,
+            phaseName: "Compatibility Scoring",
+            timestamp: "2026-04-14 08:05 AM",
+            entries: [
+                { status: "success", action: "Cosine similarity computed", details: "Similarity scores calculated for all mentor–mentee pairs." },
+                { status: "success", action: "Preference weights applied", details: "Mentee preferences factored into final compatibility scores." },
+                { status: "pending", action: "Availability matching", details: "Some groups may have unresolved schedule conflicts." },
+            ],
+        },
+        {
+            phase: 3,
+            phaseName: "Assignment & Output",
+            timestamp: "2026-04-14 08:10 AM",
+            entries: [
+                { status: "success", action: "Optimal assignments generated", details: "Gale-Shapley algorithm applied for stable matching." },
+                { status: "success", action: "Matched pairs finalized", details: `${mentees.filter(m => m.matches?.status === "active").length} groups successfully matched to mentors.` },
+                {
+                    status: mentees.filter(m => !m.matches).length > 0 ? "error" : "success",
+                    action: "Unmatched groups flagged",
+                    details: mentees.filter(m => !m.matches).length > 0
+                        ? `${mentees.filter(m => !m.matches).length} groups could not be matched due to capacity or preference constraints.`
+                        : "All groups have been successfully matched."
+                },
+            ],
+        },
+    ]
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const result = await getAllUserData()
+            if (result.success) {
+                setMentors(result.data.mentors ?? [])
+                setMentees(result.data.mentee ?? [])
+            }
+            setLoading(false)
+        }
+        fetchData()
+    }, [])
+
+    const totalAssigned = mentors.reduce((sum, m) => sum + (m.matches?.length ?? 0), 0)
+    const totalCapacity = mentors.reduce((sum, m) => sum + (m.mentor_capacity ?? 0), 0)
+    const matchesCompleted = mentees.filter(m => m.matches).length
+    const avgCompatibility = mentees.length
+        ? Math.round(mentees.reduce((sum, m) => sum + (m.matches?.compatibility_score ?? 0), 0) / mentees.length * 100) + "%"
+        : "N/A"
 
     const allUsers = [
         ...mentors.map((m) => ({ ...m, type: "mentor" })),
-        ...menteeGroups.map((m) => ({ ...m, type: "mentee" })),
-    ];
+        ...mentees.map((m) => ({ ...m, type: "mentee" })),
+    ]
 
     const filteredUsers = allUsers.filter((user) => {
-        const matchesSearch =
-            "name" in user
-                ? user.name.toLowerCase().includes(searchTerm.toLowerCase())
-                : user.groupMembers[0].toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesFilter = userFilter === "all" || user.type === userFilter;
-        return matchesSearch && matchesFilter;
-    });
+        const name = user.type === "mentor"
+            ? `${user.first_name} ${user.last_name}`
+            : user.group_name
+        const matchesSearch = name?.toLowerCase().includes(searchTerm.toLowerCase())
+        const matchesFilter = userFilter === "all" || user.type === userFilter
+        return matchesSearch && matchesFilter
+    })
 
-    const handleEditUser = (user) => {
-        setSelectedUser(user);
-        setIsEditDialogOpen(true);
-    };
-
-    const handleToggleUserStatus = (userId) => {
-        alert(`Toggle status for user: ${userId}`);
-    };
+    if (loading) return <p>Loading...</p>
 
     return (
         <div className="flex h-screen bg-gray-50">
             <AdminSidebar />
-
             <div className="flex-1 overflow-auto">
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-8 md:pl-8 pl-16">
-                    <h1 className="text-3xl font-bold mb-2">
-                        Mentor–Mentee Matching System
-                    </h1>
+                <div className="bg-linear-to-r from-blue-600 to-indigo-600 text-white p-8 md:pl-8 pl-16">
+                    <h1 className="text-3xl font-bold mb-2">Mentor–Mentee Matching System</h1>
                     <p className="text-blue-100">Administrative Dashboard</p>
                 </div>
 
                 <div className="p-8 space-y-8">
-
-                    {/* ── OVERVIEW ── */}
+                    {/* OVERVIEW */}
                     <div id="overview">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                            Dashboard Overview
-                        </h2>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-4">Dashboard Overview</h2>
                         <div className="grid md:grid-cols-4 gap-6 mb-6">
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -298,56 +161,50 @@ export default function Admin() {
                                     <Users className="h-4 w-4 text-blue-600" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">{stats.totalMentors}</div>
+                                    <div className="text-2xl font-bold">{mentors.length}</div>
                                     <p className="text-xs text-gray-500">Active faculty</p>
                                 </CardContent>
                             </Card>
-
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Total Mentees</CardTitle>
                                     <Users className="h-4 w-4 text-green-600" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">{stats.totalMenteeGroups}</div>
+                                    <div className="text-2xl font-bold">{mentees.length}</div>
                                     <p className="text-xs text-gray-500">Student groups</p>
                                 </CardContent>
                             </Card>
-
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Matches Completed</CardTitle>
                                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">{stats.matchesCompleted}</div>
+                                    <div className="text-2xl font-bold">{matchesCompleted}</div>
                                     <p className="text-xs text-gray-500">Successful pairs</p>
                                 </CardContent>
                             </Card>
-
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Avg Compatibility</CardTitle>
                                     <TrendingUp className="h-4 w-4 text-purple-600" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">{stats.avgCompatibility}</div>
+                                    <div className="text-2xl font-bold">{avgCompatibility}</div>
                                     <p className="text-xs text-gray-500">Match quality</p>
                                 </CardContent>
                             </Card>
                         </div>
                     </div>
 
-                    {/* ── USER MANAGEMENT ── */}
+                    {/* USER MANAGEMENT */}
                     <div id="users">
                         <Card>
                             <CardHeader>
-                                <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                                    User Management
-                                </h2>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-4">User Management</h2>
                                 <CardTitle className="flex items-center">
-                                    <Users className="w-5 h-5 mr-2 text-blue-600" />
-                                    All Users
+                                    <Users className="w-5 h-5 mr-2 text-blue-600" /> All Users
                                 </CardTitle>
                                 <CardDescription>Manage mentors and mentees</CardDescription>
                                 <div className="flex items-center space-x-4 mt-4">
@@ -361,9 +218,7 @@ export default function Admin() {
                                         />
                                     </div>
                                     <Select value={userFilter} onValueChange={setUserFilter}>
-                                        <SelectTrigger className="w-40">
-                                            <SelectValue />
-                                        </SelectTrigger>
+                                        <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="all">All Users</SelectItem>
                                             <SelectItem value="mentor">Mentors Only</SelectItem>
@@ -387,32 +242,25 @@ export default function Admin() {
                                         {filteredUsers.map((user) => (
                                             <TableRow key={user.id}>
                                                 <TableCell className="font-medium">
-                                                    {"name" in user ? user.name : user.groupMembers[0]}
+                                                    {user.type === "mentor"
+                                                        ? `${user.first_name} ${user.last_name}`
+                                                        : user.group_name}
                                                 </TableCell>
                                                 <TableCell>{user.email}</TableCell>
                                                 <TableCell>
-                                                    <Badge
-                                                        variant="outline"
-                                                        className={
-                                                            user.type === "mentor"
-                                                                ? "bg-blue-100 text-blue-800"
-                                                                : "bg-green-100 text-green-800"
-                                                        }
-                                                    >
+                                                    <Badge variant="outline" className={user.type === "mentor" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}>
                                                         {user.type}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant="secondary" className="bg-green-100 text-green-800">
-                                                        Active
-                                                    </Badge>
+                                                    <Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex space-x-2">
-                                                        <Button variant="ghost" size="sm" onClick={() => handleEditUser(user)}>
+                                                        <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setIsEditDialogOpen(true); }}>
                                                             <Edit className="w-4 h-4" />
                                                         </Button>
-                                                        <Button variant="ghost" size="sm" onClick={() => handleToggleUserStatus(user.id)}>
+                                                        <Button variant="ghost" size="sm" onClick={() => alert(`Toggle status for user: ${user.id}`)}>
                                                             <XCircle className="w-4 h-4" />
                                                         </Button>
                                                     </div>
@@ -425,17 +273,14 @@ export default function Admin() {
                         </Card>
                     </div>
 
-                    {/* ── MENTOR CAPACITY ── */}
+                    {/* MENTOR CAPACITY */}
                     <div id="matches">
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
-                                    <TrendingUp className="w-5 h-5 text-purple-600" />
-                                    Mentor Capacity Tracking
+                                    <TrendingUp className="w-5 h-5 text-purple-600" /> Mentor Capacity Tracking
                                 </CardTitle>
-                                <CardDescription>
-                                    Overview of mentor capacities and remaining slots
-                                </CardDescription>
+                                <CardDescription>Overview of mentor capacities and remaining slots</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-6">
@@ -443,21 +288,16 @@ export default function Admin() {
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="font-medium">Overall Capacity Utilization</span>
                                             <span className="text-sm text-slate-600">
-                                                {stats.totalAssigned} / {stats.totalCapacity} slots filled (
-                                                {Math.round((stats.totalAssigned / stats.totalCapacity) * 100)}%)
+                                                {totalAssigned} / {totalCapacity} slots filled ({totalCapacity ? Math.round((totalAssigned / totalCapacity) * 100) : 0}%)
                                             </span>
                                         </div>
-                                        <Progress
-                                            value={(stats.totalAssigned / stats.totalCapacity) * 100}
-                                            className="h-3"
-                                        />
+                                        <Progress value={totalCapacity ? (totalAssigned / totalCapacity) * 100 : 0} className="h-3" />
                                     </div>
                                 </div>
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Mentor</TableHead>
-                                            <TableHead>Staff ID</TableHead>
                                             <TableHead>Total Capacity</TableHead>
                                             <TableHead>Assigned</TableHead>
                                             <TableHead>Remaining</TableHead>
@@ -467,28 +307,22 @@ export default function Admin() {
                                     </TableHeader>
                                     <TableBody>
                                         {mentors.map((mentor) => {
-                                            const remaining = mentor.capacity - mentor.assignedMentees;
-                                            const utilizationPercent = (mentor.assignedMentees / mentor.capacity) * 100;
+                                            const assigned = mentor.matches?.length ?? 0
+                                            const capacity = mentor.mentor_capacity ?? 0
+                                            const remaining = capacity - assigned
+                                            const utilizationPercent = capacity ? (assigned / capacity) * 100 : 0
                                             return (
                                                 <TableRow key={mentor.id}>
-                                                    <TableCell className="font-medium">{mentor.name}</TableCell>
-                                                    <TableCell>{mentor.staffId}</TableCell>
-                                                    <TableCell>{mentor.capacity}</TableCell>
-                                                    <TableCell>{mentor.assignedMentees}</TableCell>
+                                                    <TableCell className="font-medium">{mentor.first_name} {mentor.last_name}</TableCell>
+                                                    <TableCell>{capacity}</TableCell>
+                                                    <TableCell>{assigned}</TableCell>
                                                     <TableCell>
-                                                        <span className={remaining === 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-                                                            {remaining}
-                                                        </span>
+                                                        <span className={remaining === 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>{remaining}</span>
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="w-32">
-                                                            <Progress
-                                                                value={utilizationPercent}
-                                                                className={`h-2 ${utilizationPercent === 100 ? "[&>div]:bg-red-500" : "[&>div]:bg-emerald-500"}`}
-                                                            />
-                                                            <span className="text-xs text-slate-500">
-                                                                {Math.round(utilizationPercent)}% filled
-                                                            </span>
+                                                            <Progress value={utilizationPercent} className={`h-2 ${utilizationPercent === 100 ? "[&>div]:bg-red-500" : "[&>div]:bg-emerald-500"}`} />
+                                                            <span className="text-xs text-slate-500">{Math.round(utilizationPercent)}% filled</span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
@@ -500,31 +334,35 @@ export default function Admin() {
                                                             </DialogTrigger>
                                                             <DialogContent className="max-w-2xl">
                                                                 <DialogHeader>
-                                                                    <DialogTitle>{mentor.name}</DialogTitle>
+                                                                    <DialogTitle>{mentor.first_name} {mentor.last_name}</DialogTitle>
                                                                     <DialogDescription>Mentor Profile Details</DialogDescription>
                                                                 </DialogHeader>
                                                                 <ScrollArea className="max-h-[60vh]">
                                                                     <div className="space-y-4 p-4">
                                                                         <div className="grid grid-cols-2 gap-4">
                                                                             <div>
-                                                                                <p className="text-sm text-slate-500">Staff ID</p>
-                                                                                <p className="font-medium">{mentor.staffId}</p>
-                                                                            </div>
-                                                                            <div>
                                                                                 <p className="text-sm text-slate-500">Email</p>
                                                                                 <p className="font-medium">{mentor.email}</p>
                                                                             </div>
                                                                             <div>
-                                                                                <p className="text-sm text-slate-500">Technical Expertise</p>
+                                                                                <p className="text-sm text-slate-500">Technical Skills</p>
                                                                                 <div className="flex flex-wrap gap-1">
-                                                                                    {mentor.technicalExpertise.map((exp) => (
-                                                                                        <Badge key={exp} variant="secondary">{exp}</Badge>
+                                                                                    {mentor.technical_skills?.map((skill: string) => (
+                                                                                        <Badge key={skill} variant="secondary">{skill}</Badge>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-sm text-slate-500">Forte</p>
+                                                                                <div className="flex flex-wrap gap-1">
+                                                                                    {mentor.forte?.map((f: string) => (
+                                                                                        <Badge key={f} variant="secondary">{f}</Badge>
                                                                                     ))}
                                                                                 </div>
                                                                             </div>
                                                                             <div>
                                                                                 <p className="text-sm text-slate-500">Description</p>
-                                                                                <p className="font-medium">{mentor.selfDescription}</p>
+                                                                                <p className="font-medium">{mentor.self_description}</p>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -533,7 +371,7 @@ export default function Admin() {
                                                         </Dialog>
                                                     </TableCell>
                                                 </TableRow>
-                                            );
+                                            )
                                         })}
                                     </TableBody>
                                 </Table>
@@ -541,53 +379,51 @@ export default function Admin() {
                         </Card>
                     </div>
 
-                    {/* ── REGISTERED MENTORS ── */}
+                    {/* REGISTERED MENTORS */}
                     <div id="analytics">
                         <Card>
                             <CardHeader>
-                                <CardTitle className="flex items-center">Registered Mentors</CardTitle>
-                                <CardDescription>
-                                    Complete list of all registered mentors with their profiles
-                                </CardDescription>
+                                <CardTitle>Registered Mentors</CardTitle>
+                                <CardDescription>Complete list of all registered mentors with their profiles</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {mentors.map((mentor) => (
-                                        <Card key={mentor.id} className="border-slate-200">
-                                            <CardContent className="pt-6">
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <div>
-                                                        <h3 className="font-semibold text-lg">{mentor.name}</h3>
-                                                        <p className="text-sm text-slate-500">
-                                                            {mentor.staffId} · {mentor.email}
-                                                        </p>
+                                    {mentors.map((mentor) => {
+                                        const assigned = mentor.matches?.length ?? 0
+                                        const capacity = mentor.mentor_capacity ?? 0
+                                        return (
+                                            <Card key={mentor.id} className="border-slate-200">
+                                                <CardContent className="pt-6">
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div>
+                                                            <h3 className="font-semibold text-lg">{mentor.first_name} {mentor.last_name}</h3>
+                                                            <p className="text-sm text-slate-500">{mentor.email}</p>
+                                                        </div>
+                                                        <Badge variant={assigned < capacity ? "default" : "secondary"}>
+                                                            {assigned < capacity ? "Available" : "Full"}
+                                                        </Badge>
                                                     </div>
-                                                    <Badge variant={mentor.assignedMentees < mentor.capacity ? "default" : "secondary"}>
-                                                        {mentor.assignedMentees < mentor.capacity ? "Available" : "Full"}
-                                                    </Badge>
-                                                </div>
-                                                <div className="space-y-3">
-                                                    <div>
-                                                        <p className="text-xs text-slate-500 mb-1">Capacity</p>
-                                                        <Progress value={(mentor.assignedMentees / mentor.capacity) * 100} className="h-2" />
-                                                        <p className="text-xs text-slate-500 mt-1">
-                                                            {mentor.assignedMentees} / {mentor.capacity} assigned
-                                                        </p>
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <p className="text-xs text-slate-500 mb-1">Capacity</p>
+                                                            <Progress value={capacity ? (assigned / capacity) * 100 : 0} className="h-2" />
+                                                            <p className="text-xs text-slate-500 mt-1">{assigned} / {capacity} assigned</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
+                                                </CardContent>
+                                            </Card>
+                                        )
+                                    })}
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
 
-                    {/* ── REGISTERED MENTEE GROUPS ── */}
+                    {/* REGISTERED MENTEE GROUPS */}
                     <div id="adjustment">
                         <Card>
                             <CardHeader>
-                                <CardTitle className="flex items-center">Registered Mentee Groups</CardTitle>
+                                <CardTitle>Registered Mentee Groups</CardTitle>
                                 <CardDescription>Complete list of all registered mentee groups</CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -603,89 +439,91 @@ export default function Admin() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {menteeGroups.map((group) => (
-                                            <TableRow key={group.id}>
-                                                <TableCell className="font-medium">{group.groupName}</TableCell>
-                                                <TableCell>{group.groupMembers.length} students</TableCell>
-                                                <TableCell className="max-w-xs truncate">{group.researchTitle}</TableCell>
-                                                <TableCell>
-                                                    <Badge
-                                                        variant={group.status === "matched" ? "default" : group.status === "pending" ? "secondary" : "destructive"}
-                                                        className={group.status === "matched" ? "bg-green-600" : group.status === "pending" ? "bg-amber-500" : ""}
-                                                    >
-                                                        {group.status}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>{group.assignedMentor || "-"}</TableCell>
-                                                <TableCell>
-                                                    <Dialog>
-                                                        <DialogTrigger asChild>
-                                                            <Button variant="outline" size="sm">
-                                                                <Eye className="w-4 h-4 mr-1" /> View
-                                                            </Button>
-                                                        </DialogTrigger>
-                                                        <DialogContent className="max-w-2xl">
-                                                            <DialogHeader>
-                                                                <DialogTitle>{group.groupName}</DialogTitle>
-                                                                <DialogDescription>Mentee Group Profile</DialogDescription>
-                                                            </DialogHeader>
-                                                            <ScrollArea className="max-h-[60vh]">
-                                                                <div className="space-y-4 p-4">
-                                                                    <div>
-                                                                        <p className="font-bold">Members</p>
-                                                                        <div className="space-y-1">
-                                                                            {group.groupMembers.map((name, index) => (
-                                                                                <p key={group.studentNumbers[index]} className="text-sm">
-                                                                                    {name} ({group.studentNumbers[index]})
-                                                                                </p>
-                                                                            ))}
+                                        {mentees.map((group) => {
+                                            const match = group.matches
+                                            const mentor = match?.mentor
+                                            const status = match?.status ?? "unmatched"
+                                            return (
+                                                <TableRow key={group.id}>
+                                                    <TableCell className="font-medium">{group.group_name}</TableCell>
+                                                    <TableCell>{group.group_members?.length ?? 0} students</TableCell>
+                                                    <TableCell className="max-w-xs truncate">{group.research_title}</TableCell>
+                                                    <TableCell>
+                                                        <Badge
+                                                            className={status === "active" ? "bg-green-600" : status === "pending" ? "bg-amber-500" : ""}
+                                                            variant={status === "active" ? "default" : status === "pending" ? "secondary" : "destructive"}
+                                                        >
+                                                            {status}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {mentor ? `${mentor.first_name} ${mentor.last_name}` : "-"}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Dialog>
+                                                            <DialogTrigger asChild>
+                                                                <Button variant="outline" size="sm">
+                                                                    <Eye className="w-4 h-4 mr-1" /> View
+                                                                </Button>
+                                                            </DialogTrigger>
+                                                            <DialogContent className="max-w-2xl">
+                                                                <DialogHeader>
+                                                                    <DialogTitle>{group.group_name}</DialogTitle>
+                                                                    <DialogDescription>Mentee Group Profile</DialogDescription>
+                                                                </DialogHeader>
+                                                                <ScrollArea className="max-h-[60vh]">
+                                                                    <div className="space-y-4 p-4">
+                                                                        <div>
+                                                                            <p className="font-bold">Members</p>
+                                                                            <div className="space-y-1">
+                                                                                {group.group_members?.map((member: string, i: number) => {
+                                                                                    const parsed = JSON.parse(member)
+                                                                                    return (
+                                                                                        <p key={i} className="text-sm">
+                                                                                            {parsed.name} ({parsed.student_number})
+                                                                                        </p>
+                                                                                    )
+                                                                                })}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="font-bold">Thesis Title</p>
+                                                                            <p className="text-sm">{group.research_title}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="font-bold">Research Description</p>
+                                                                            <p className="text-sm">{group.research_description}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="font-bold">Mentor Preferences</p>
+                                                                            <p className="text-sm">{group.mentor_preference}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="font-bold">Availability</p>
+                                                                            <p className="text-sm">Days: {group.available_days?.join(", ")} | Time: {group.time_slot?.join(", ")}</p>
                                                                         </div>
                                                                     </div>
-                                                                    <div>
-                                                                        <p className="font-bold">Representative Email</p>
-                                                                        <p className="text-sm">{group.email}</p>
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="font-bold">Thesis Title</p>
-                                                                        <p className="text-sm">{group.researchTitle}</p>
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="font-bold">Research Description</p>
-                                                                        <p className="text-sm">{group.researchDescription}</p>
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="font-bold">Mentor Preferences</p>
-                                                                        <p className="text-sm">{group.preferences}</p>
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="font-bold">Availability</p>
-                                                                        <p className="text-sm">
-                                                                            Days: {group.availability.days} | Time: {group.availability.timeSlots}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            </ScrollArea>
-                                                        </DialogContent>
-                                                    </Dialog>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
+                                                                </ScrollArea>
+                                                            </DialogContent>
+                                                        </Dialog>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )
+                                        })}
                                     </TableBody>
                                 </Table>
                             </CardContent>
                         </Card>
                     </div>
 
-                    {/* ── ALGORITHM LOGS ── */}
+                    {/* ALGORITHM LOGS */}
                     <div id="alerts">
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <FileText className="w-5 h-5 text-purple-600" /> Algorithm Flow Logs
                                 </CardTitle>
-                                <CardDescription>
-                                    Visualization of the Matching Algorithm Phases
-                                </CardDescription>
+                                <CardDescription>Visualization of the Matching Algorithm Phases</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-6">
@@ -693,18 +531,13 @@ export default function Admin() {
                                         <div key={log.phase} className="border rounded-lg overflow-hidden">
                                             <div className={`p-4 ${log.phase === 1 ? "bg-blue-50 border-b border-blue-200" : log.phase === 2 ? "bg-emerald-50 border-b border-emerald-200" : "bg-amber-50 border-b border-amber-200"}`}>
                                                 <div className="flex justify-between items-center">
-                                                    <h3 className="font-semibold">
-                                                        Phase {log.phase}: {log.phaseName}
-                                                    </h3>
+                                                    <h3 className="font-semibold">Phase {log.phase}: {log.phaseName}</h3>
                                                     <span className="text-sm text-slate-500">{log.timestamp}</span>
                                                 </div>
                                             </div>
                                             <div className="p-4 space-y-3">
                                                 {log.entries.map((entry, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className={`flex items-start gap-3 p-3 rounded-lg ${entry.status === "success" ? "bg-green-50" : entry.status === "pending" ? "bg-amber-50" : "bg-red-50"}`}
-                                                    >
+                                                    <div key={index} className={`flex items-start gap-3 p-3 rounded-lg ${entry.status === "success" ? "bg-green-50" : entry.status === "pending" ? "bg-amber-50" : "bg-red-50"}`}>
                                                         {entry.status === "success" ? (
                                                             <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
                                                         ) : entry.status === "pending" ? (
@@ -722,28 +555,27 @@ export default function Admin() {
                                         </div>
                                     ))}
 
-                                    <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                                    <div className="p-4 bg-linear-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
                                         <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
                                             <CheckCircle className="w-5 h-5" /> Perfect Matches
                                         </h3>
                                         <div className="space-y-2">
-                                            {menteeGroups
-                                                .filter((g) => g.status === "matched")
-                                                .map((group) => (
-                                                    <div key={group.id} className="flex items-center justify-between p-2 bg-white rounded">
-                                                        <span className="font-medium">{group.groupName}</span>
-                                                        <span className="text-emerald-600">→ {group.assignedMentor}</span>
-                                                    </div>
-                                                ))}
+                                            {mentees.filter(m => m.matches?.status === "active").map((group) => (
+                                                <div key={group.id} className="flex items-center justify-between p-2 bg-white rounded">
+                                                    <span className="font-medium">{group.group_name}</span>
+                                                    <span className="text-emerald-600">
+                                                        → {group.matches?.mentor?.first_name} {group.matches?.mentor?.last_name}
+                                                    </span>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
-
                 </div>
             </div>
         </div>
-    );
+    )
 }

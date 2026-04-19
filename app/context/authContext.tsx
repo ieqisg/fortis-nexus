@@ -68,6 +68,7 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const { role } = await getUserRole(data.user.id)
+        console.log("role from getUserRole:", role)
 
         return { success: true, data: { ...data, role } }
     }

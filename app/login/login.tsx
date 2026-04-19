@@ -29,10 +29,14 @@ export default function Login() {
         try {
             const userSignIn = await signIn()
             if (!userSignIn.success) return;
-            if (userSignIn.data.role === "mentee") {
+            const role = userSignIn?.data?.role
+            console.log(role)
+            if (role === "mentee") {
                 router.push("/mentee-dashboard")
-            } else if (userSignIn.data.role === "mentor") {
+            } else if (role === "mentor") {
                 router.push("/mentor-dashboard")
+            } else if (role === "admin") {
+                router.push("/admin")
             } else {
                 alert("Unknown role")
             }
