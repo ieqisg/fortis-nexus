@@ -14,17 +14,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, Calendar } from "lucide-react";
-import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { getMenteeData } from "../lib/actions/menteeActions";
 import { MenteeGroupWithMatch } from "../types/modelTypes";
+import { UserAuth } from "../context/authContext";
 
 
 
 export default function MenteeDashboard() {
     const [mentee, setMentee] = useState<MenteeGroupWithMatch | null>(null)
     const [loading, setLoading] = useState(true)
-    /* const [hasMatch, setHasMatch] = useState<boolean>(false) */
+    const { userData } = UserAuth()
     const hasMatch = !!mentee?.matches
 
     const mentor = mentee?.matches?.mentor
@@ -34,6 +34,7 @@ export default function MenteeDashboard() {
             const result = await getMenteeData()
             if (result.success) {
                 setMentee(result.data)
+                console.log(result)
 
             } else {
                 alert("No fetched Data")
@@ -41,6 +42,7 @@ export default function MenteeDashboard() {
             setLoading(false)
         }
         fetchData()
+        console.log(userData.email)
     }, [])
 
     if (loading) return <p>Loading...</p>
@@ -83,7 +85,7 @@ export default function MenteeDashboard() {
                                                     </p>
                                                     <div className="flex flex-wrap gap-2">
                                                         <Badge variant="outline">
-                                                            {mentor?.forte ?? "Loading"}
+                                                            {mentor?.forte.join(", ") ?? "Loading"}
                                                         </Badge>
                                                     </div>
                                                 </div>
@@ -134,7 +136,7 @@ export default function MenteeDashboard() {
 
                             <div>
                                 <MatchScoreCard
-                                    score={match?.compatiblity_score ?? 0}
+                                    score={match?.compatibility_score ?? 0}
                                     keywords={match?.matched_keywords ?? []}
                                     hasMatch={hasMatch}
                                 />

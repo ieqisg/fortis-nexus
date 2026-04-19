@@ -1,4 +1,5 @@
 import { Matches } from "./menteeTypes";
+import { MentorFormProfile } from "./mentorTypes"
 import type { Database } from "@/backend/models/Model";
 
 //Mentee
@@ -20,3 +21,7 @@ export type Mentor = Database["public"]["Tables"]["mentor"]["Row"]
 export type MentorInsert = Database["public"]["Tables"]["mentor"]["Insert"]
 
 export type MentorUpdate = Database["public"]["Tables"]["mentor"]["Update"]
+
+export type MentorWithMatch = Mentor & {
+    matches: Matches[] | null
+}

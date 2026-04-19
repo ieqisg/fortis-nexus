@@ -1,50 +1,75 @@
 "use client";
 
 import {
-  Card,
-  CardHeader,
-  CardContent,
-  CardDescription,
-  CardTitle,
+    Card,
+    CardHeader,
+    CardContent,
+    CardDescription,
+    CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import MatchScoreCard from "@/components/ui/MatchScoreCard";
+import { Matches } from "../types/menteeTypes";
 
-export default function MyMentees() {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle>Fortis Programmatores</CardTitle>
-            <CardDescription className="mt-2">
-              <strong className="text-gray-600">Title: </strong> Mentor-Mentee
-              Matching System
-            </CardDescription>
-          </div>
-          <Badge className="bg-green-100 text-green-800">Active</Badge>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <MatchScoreCard
-          score={0.87}
-          keywords={["NLP", "Python", "Gale-Shapley"]}
-        />
+type Props = {
+    matches: Matches[]
+}
 
-        <div className="mt-4 pt-4 border-t">
-          <h4 className="font-semibold text-gray-900 mb-2">Group Members</h4>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="outline">John Doe</Badge>
-            <Badge variant="outline">John Smith</Badge>
-          </div>
-        </div>
 
-        <div className="mt-4">
-          <p className="text-sm text-gray-600">
-            <strong>Email:</strong> mltamayo@fit.edu.ph
-          </p>
-        </div>
-      </CardContent>
-    </Card>
-  );
+export default function MyMentees({ matches }: Props) {
+    const hasMatch = !!matches?.length
+    return (
+        <>
+            {hasMatch ? (
+                matches.map((match) => (
+                    <Card key={match.mentee?.id}>
+                        <CardHeader>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <CardTitle>{match.mentee?.group_name}</CardTitle>
+                                    <CardDescription className="mt-2">
+                                        <strong className="text-gray-600">Title: </strong>
+                                        {match.mentee?.research_title}
+                                    </CardDescription>
+                                </div>
+                                <Badge className="bg-green-100 text-green-800">{match.status}</Badge>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <MatchScoreCard
+                                hasMatch={hasMatch}
+                                score={match.compatibility_score ?? 0}
+                                keywords={match.matched_keywords ?? []}
+                            />
+                            <div className="mt-4 pt-4 border-t">
+                                <h4 className="font-semibold text-gray-900 mb-2">Group Members</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {match.mentee?.group_members?.map((member, i) => {
+                                        const parsed = JSON.parse(member)
+                                        return (
+                                            <Badge key={i} variant="outline">
+                                                {parsed.name} - {parsed.student_number}
+                                            </Badge>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))
+            ) : (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>My Mentees</CardTitle>
+                        <CardDescription>
+                            Based on Gale-Shapley algorithm and semantic similarity
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                        <p>No mentees matched yet. The matching process is in progress.</p>
+                    </CardContent>
+                </Card>
+            )}
+        </>
+    );
 }

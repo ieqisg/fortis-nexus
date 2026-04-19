@@ -14,24 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin: {
+        Row: {
+          email: string
+          id: string
+          role: string | null
+        }
+        Insert: {
+          email: string
+          id: string
+          role?: string | null
+        }
+        Update: {
+          email?: string
+          id?: string
+          role?: string | null
+        }
+        Relationships: []
+      }
       matches: {
         Row: {
+          compatibility_score: number | null
           id: string
           matched_at: string | null
+          matched_keywords: string[] | null
           mentee_group_id: string | null
           mentor_id: string | null
           status: string | null
         }
         Insert: {
+          compatibility_score?: number | null
           id?: string
           matched_at?: string | null
+          matched_keywords?: string[] | null
           mentee_group_id?: string | null
           mentor_id?: string | null
           status?: string | null
         }
         Update: {
+          compatibility_score?: number | null
           id?: string
           matched_at?: string | null
+          matched_keywords?: string[] | null
           mentee_group_id?: string | null
           mentor_id?: string | null
           status?: string | null
@@ -53,10 +77,62 @@ export type Database = {
           },
         ]
       }
+      meetings: {
+        Row: {
+          created_at: string | null
+          date: string
+          description: string | null
+          id: string
+          mentee_group_id: string | null
+          mentor_id: string | null
+          status: string | null
+          time: string
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          description?: string | null
+          id?: string
+          mentee_group_id?: string | null
+          mentor_id?: string | null
+          status?: string | null
+          time: string
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          mentee_group_id?: string | null
+          mentor_id?: string | null
+          status?: string | null
+          time?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetings_mentee_group_id_fkey"
+            columns: ["mentee_group_id"]
+            isOneToOne: false
+            referencedRelation: "MENTEE_GROUPS"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_mentor_id_fkey"
+            columns: ["mentor_id"]
+            isOneToOne: false
+            referencedRelation: "mentor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       MENTEE_GROUPS: {
         Row: {
           available_days: string[]
           created_at: string | null
+          email: string
           group_members: string[]
           group_name: string
           id: string
@@ -69,6 +145,7 @@ export type Database = {
         Insert: {
           available_days: string[]
           created_at?: string | null
+          email: string
           group_members: string[]
           group_name: string
           id: string
@@ -81,6 +158,7 @@ export type Database = {
         Update: {
           available_days?: string[]
           created_at?: string | null
+          email?: string
           group_members?: string[]
           group_name?: string
           id?: string
@@ -94,46 +172,46 @@ export type Database = {
       }
       mentor: {
         Row: {
-          available_days: string[]
-          email: string
-          first_name: string
-          forte: string[]
+          available_days: string[] | null
+          email: string | null
+          first_name: string | null
+          forte: string[] | null
           id: string
-          last_name: string
-          mentor_capacity: number
+          last_name: string | null
+          mentor_capacity: number | null
           profile_completed: boolean
           role: string
-          self_description: string
-          technical_skills: string[]
-          time_slot: string[]
+          self_description: string | null
+          technical_skills: string[] | null
+          time_slot: string[] | null
         }
         Insert: {
-          available_days: string[]
-          email: string
-          first_name: string
-          forte: string[]
+          available_days?: string[] | null
+          email?: string | null
+          first_name?: string | null
+          forte?: string[] | null
           id: string
-          last_name: string
-          mentor_capacity: number
+          last_name?: string | null
+          mentor_capacity?: number | null
           profile_completed?: boolean
           role?: string
-          self_description: string
-          technical_skills: string[]
-          time_slot: string[]
+          self_description?: string | null
+          technical_skills?: string[] | null
+          time_slot?: string[] | null
         }
         Update: {
-          available_days?: string[]
-          email?: string
-          first_name?: string
-          forte?: string[]
+          available_days?: string[] | null
+          email?: string | null
+          first_name?: string | null
+          forte?: string[] | null
           id?: string
-          last_name?: string
-          mentor_capacity?: number
+          last_name?: string | null
+          mentor_capacity?: number | null
           profile_completed?: boolean
           role?: string
-          self_description?: string
-          technical_skills?: string[]
-          time_slot?: string[]
+          self_description?: string | null
+          technical_skills?: string[] | null
+          time_slot?: string[] | null
         }
         Relationships: []
       }

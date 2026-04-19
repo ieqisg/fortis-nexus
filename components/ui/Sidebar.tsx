@@ -121,14 +121,15 @@ export default function Sidebar({ userType, userName }: SidebarProps) {
                 </nav>
 
                 {/* Logout */}
-                <div className="p-4 border-t border-gray-200">
+                <div className="p-4 border-t border-gray-200 shrink-0">
                     <Button
                         variant="outline"
                         className="w-full justify-start"
                         onClick={handleLogout}
+                        disabled={loading}
                     >
                         <LogOut className="w-4 h-4 mr-2" />
-                        Logout
+                        {loading ? "Signing out..." : "Logout"}
                     </Button>
                 </div>
             </div>

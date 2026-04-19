@@ -1,27 +1,12 @@
 // lib/actions/menteeActions.ts
 "use server"
-
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+import { getSupabaseClient } from "@/app/config/getSupabaseClient"
 import { createClient } from "@supabase/supabase-js"
 import { MentorInsert } from "@/app/types/modelTypes"
 
-export async function createMentorProfile(payload: MentorInsert) {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_KEY!,
-        {
-            cookies: {
-                getAll() { return cookieStore.getAll() },
-                setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        cookieStore.set(name, value, options)
-                    )
-                },
-            },
-        }
-    )
+export async function createMentorProfile(payload: Omit<MentorInsert, 'id' | 'profile_completed'>) {
+    const supabase = await getSupabaseClient()
+
 
     const adminSupabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,4 +29,39 @@ export async function createMentorProfile(payload: MentorInsert) {
     }
 
     return { success: true }
+}
+
+export async function getMentorData() {
+    const supabase = await getSupabaseClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, message: "Not authenticated", data: null }
+
+    const { data: mentor, error } = await supabase
+        .from("mentor")
+        .select(
+            `*,
+            matches(
+                status,
+                matched_at,
+                compatibility_score,
+                matched_keywords,
+                mentee:matches_mentee_group_id_fkey (
+                    id,
+                    email,
+                    group_name,
+                    group_members,
+                    research_title,
+                    research_description,
+                    mentor_preference,
+                    time_slot,
+                    available_days
+                )
+            )
+        `)
+        /* .select("*") */
+        .eq("id", user.id)
+        .single()
+    if (error) return { success: false, message: error.message, data: null }
+    return { success: true, data: mentor }
 }
