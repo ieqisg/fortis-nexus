@@ -52,11 +52,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { getAllUserData } from "../lib/actions/adminActions";
 import { useEffect } from "react";
 
-// ─────────────────────────────────────────────
-// HARDCODED DATA — replace with API calls later
-// ─────────────────────────────────────────────
-
-
 export default function Admin() {
     const [mentors, setMentors] = useState<any[]>([])
     const [mentees, setMentees] = useState<any[]>([])
@@ -66,6 +61,29 @@ export default function Admin() {
     const [selectedMentor, setSelectedMentor] = useState<any>(null);
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [matching, setMatching] = useState(false)
+    const [matchResult, setMatchResult] = useState<any>(null)
+
+    const handleRunMatching = async () => {
+        setMatching(true)
+        try {
+            const res = await fetch("/api/run-matching", { method: "POST" })
+            const data = await res.json()
+            setMatchResult(data)
+            if (data.success) {
+                // refresh data after matching
+                const result = await getAllUserData()
+                if (result.success) {
+                    setMentors(result.data.mentors ?? [])
+                    setMentees(result.data.mentee ?? [])
+                }
+            }
+        } catch (err) {
+            alert("Failed to run matching")
+        }
+        setMatching(false)
+    }
+
 
     const algorithmLogs = [
         {
@@ -126,11 +144,11 @@ export default function Admin() {
         : "N/A"
 
     const allUsers = [
-        ...mentors.map((m) => ({ ...m, type: "mentor" })),
-        ...mentees.map((m) => ({ ...m, type: "mentee" })),
+        ...mentors.map((m: any) => ({ ...m, type: "mentor" })),
+        ...mentees.map((m: any) => ({ ...m, type: "mentee" })),
     ]
 
-    const filteredUsers = allUsers.filter((user) => {
+    const filteredUsers = allUsers.filter((user: any) => {
         const name = user.type === "mentor"
             ? `${user.first_name} ${user.last_name}`
             : user.group_name
@@ -195,6 +213,30 @@ export default function Admin() {
                                     <p className="text-xs text-gray-500">Match quality</p>
                                 </CardContent>
                             </Card>
+                        </div>
+                        <div className="flex items-center gap-4 mt-4">
+                            <Button
+                                onClick={handleRunMatching}
+                                disabled={matching}
+                                className="bg-blue-600 hover:bg-blue-700"
+                            >
+                                {matching ? (
+                                    <>
+                                        <Clock className="w-4 h-4 mr-2 animate-spin" />
+                                        Running Matching...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                                        Run Matching Algorithm
+                                    </>
+                                )}
+                            </Button>
+                            {matchResult && (
+                                <p className={`text-sm ${matchResult.success ? "text-green-600" : "text-red-600"}`}>
+                                    {matchResult.message}
+                                </p>
+                            )}
                         </div>
                     </div>
 
