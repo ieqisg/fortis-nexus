@@ -174,6 +174,7 @@ export type Database = {
         Row: {
           available_days: string[] | null
           email: string | null
+          experience: number | null
           first_name: string | null
           forte: string[] | null
           id: string
@@ -188,6 +189,7 @@ export type Database = {
         Insert: {
           available_days?: string[] | null
           email?: string | null
+          experience?: number | null
           first_name?: string | null
           forte?: string[] | null
           id: string
@@ -202,6 +204,7 @@ export type Database = {
         Update: {
           available_days?: string[] | null
           email?: string | null
+          experience?: number | null
           first_name?: string | null
           forte?: string[] | null
           id?: string

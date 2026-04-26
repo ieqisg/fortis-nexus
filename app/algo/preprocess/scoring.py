@@ -1,86 +1,171 @@
+"""
+scoring.py
+
+Simplified keyword-based scoring pipeline:
+1. text_processing extracts technical keywords from profiles
+2. domain_expander enriches keywords with domain expansions
+3. TF-IDF vectorization on keyword strings
+4. Cosine similarity for compatibility scoring
+5. Weighted combination with availability score
+"""
+
+from __future__ import annotations
+
+import logging
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-from text_processing import (
-    build_mentor_text,
-    build_mentee_text,
-    clean_text,
-    extract_tfidf_keywords,
-    get_bert_embeddings_batched,
-    load_bert_model
-)
+from dataclasses import dataclass, field
+from typing import Optional
+
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import MinMaxScaler
+
+from text_processing import (
+    get_mentor_keywords,
+    get_mentee_keywords,
+    clean_text,
+    build_mentor_text,
+    build_mentee_text
+)
+from domain_expander import expand_pair
+
+logger = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────
-# 1. BERT COSINE SIMILARITY
+# WEIGHTS
 # ─────────────────────────────────────────────
 
-import faiss
-import numpy as np
+@dataclass
+class ScoringWeights:
+    """Pillar weights — must sum to 1.0."""
+    keyword_similarity: float = 0.70  # main signal
+    availability: float = 0.20
+    experience: float = 0.10
 
-def compute_bert_similarity_faiss(
-    mentor_embeddings: np.ndarray,
-    mentee_embeddings: np.ndarray,
-    top_k: int = None
+    def __post_init__(self):
+        total = self.keyword_similarity + self.availability + self.experience
+        if not abs(total - 1.0) < 1e-6:
+            raise ValueError(f"Weights must sum to 1.0, got {total:.4f}")
+
+# ─────────────────────────────────────────────
+# SCORE BREAKDOWN
+# ─────────────────────────────────────────────
+
+@dataclass
+class ScoreBreakdown:
+    mentor_id: str
+    mentee_id: str
+    keyword_score: float
+    availability_score: float
+    experience_score: float
+    final_score: float
+    matched_keywords: list[str] = field(default_factory=list)
+    shared_domains: list[str] = field(default_factory=list)
+    matching_hints: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {
+            "mentor_id": self.mentor_id,
+            "mentee_id": self.mentee_id,
+            "scores": {
+                "keyword_similarity": round(self.keyword_score, 4),
+                "availability": round(self.availability_score, 4),
+                "experience": round(self.experience_score, 4),
+                "final": round(self.final_score, 4),
+            },
+            "matched_keywords": self.matched_keywords,
+            "shared_domains": self.shared_domains,
+            "matching_hints": self.matching_hints,
+        }
+
+# ─────────────────────────────────────────────
+# 1. BUILD KEYWORD STRINGS
+# ─────────────────────────────────────────────
+
+def _dedup_keywords(keyword_lists: list[list[str]]) -> list[str]:
+    """
+    Merges multiple keyword lists into one deduplicated list.
+    Treats each keyword as a phrase — deduplicates on normalized form.
+    Preserves the order of first appearance.
+    """
+    seen = set()
+    result = []
+    for kw_list in keyword_lists:
+        for kw in kw_list:
+            # normalize: lowercase, collapse whitespace
+            normalized = " ".join(kw.lower().split())
+            if normalized and normalized not in seen:
+                seen.add(normalized)
+                result.append(normalized)
+    return result
+
+
+def build_mentor_keyword_string(mentor: dict) -> str:
+    keywords = get_mentor_keywords(mentor, top_n=20)
+
+    # boost technical_skills and forte by repeating 3x
+    # so they carry more weight in TF-IDF
+    skills = " ".join(mentor.get("technical_skills") or [])
+    forte = " ".join(mentor.get("forte") or [])
+    boosted = f"{skills} {skills} {skills} {forte} {forte} {forte}"
+
+    dummy_mentee = {"research_title": "", "research_description": "", "mentor_preference": ""}
+    expansion = expand_pair(mentor, dummy_mentee)
+    expanded_kw = expansion.get("mentor_expanded", {}).get("expanded_keywords", [])
+    domains = expansion.get("mentor_expanded", {}).get("domains", [])
+
+    unique = _dedup_keywords([keywords, expanded_kw, domains])
+    return clean_text(f"{boosted} {' '.join(unique)}")
+
+
+def build_mentee_keyword_string(mentee: dict) -> str:
+    keywords = get_mentee_keywords(mentee, top_n=20)
+
+    # boost research_title and mentor_preference by repeating 3x
+    title = mentee.get("research_title") or ""
+    preference = mentee.get("mentor_preference") or ""
+    boosted = f"{title} {title} {title} {preference} {preference} {preference}"
+
+    dummy_mentor = {"technical_skills": [], "forte": [], "self_description": ""}
+    expansion = expand_pair(dummy_mentor, mentee)
+    expanded_kw = expansion.get("mentee_expanded", {}).get("expanded_keywords", [])
+    domains = expansion.get("mentee_expanded", {}).get("domains", [])
+    shared = expansion.get("shared_domains", [])
+
+    unique = _dedup_keywords([keywords, expanded_kw, domains, shared])
+    return clean_text(f"{boosted} {' '.join(unique)}")
+# ─────────────────────────────────────────────
+# 2. KEYWORD COSINE SIMILARITY
+# ─────────────────────────────────────────────
+
+def compute_keyword_similarity(
+    mentor_kw_strings: list[str],
+    mentee_kw_strings: list[str],
 ) -> np.ndarray:
-    """
-    Uses FAISS approximate nearest neighbor search
-    O(n log n) instead of O(n²)
-    top_k: only compute similarity against top k mentors per mentee
-           if None, compares all (still faster than naive cosine)
-    """
-    dims = mentor_embeddings.shape[1]
-    top_k = top_k or len(mentor_embeddings)
+    all_texts = mentor_kw_strings + mentee_kw_strings
 
-    # build FAISS index
-    index = faiss.IndexFlatIP(dims)  # Inner Product = cosine sim for normalized vectors
-    index.add(mentor_embeddings.astype("float32"))
-
-    # search
-    similarities, indices = index.search(mentee_embeddings.astype("float32"), top_k)
-
-    # reconstruct full matrix
-    n_mentees = len(mentee_embeddings)
-    n_mentors = len(mentor_embeddings)
-    full_matrix = np.zeros((n_mentees, n_mentors))
-
-    for i in range(n_mentees):
-        for rank, j in enumerate(indices[i]):
-            full_matrix[i][j] = similarities[i][rank]
-
-    return full_matrix
-
-# ─────────────────────────────────────────────
-# 2. TF-IDF KEYWORD OVERLAP SCORE
-# ─────────────────────────────────────────────
-
-def compute_tfidf_similarity(mentor_texts: list[str], mentee_texts: list[str]) -> np.ndarray:
-    """
-    Fits TF-IDF on all texts combined, then computes cosine similarity
-    between mentee and mentor vectors
-    """
-    all_texts = [clean_text(t) for t in mentor_texts + mentee_texts]
-    
     vectorizer = TfidfVectorizer(
         stop_words="english",
-        max_features=200,
-        ngram_range=(1, 2)
+        ngram_range=(1, 2),
+        max_features=500,
+        sublinear_tf=True,
+        min_df=1,
+        # ← add these for better signal
+        analyzer="word",
+        strip_accents="unicode",
+        token_pattern=r"(?u)\b\w[\w\-]+\b",  # catches "gale-shapley" as one token
     )
-    tfidf_matrix = vectorizer.fit_transform(all_texts)
-    
-    mentor_vectors = tfidf_matrix[:len(mentor_texts)]
-    mentee_vectors = tfidf_matrix[len(mentor_texts):]
-    
-    similarity = cosine_similarity(mentee_vectors, mentor_vectors)
-    return similarity
 
+    tfidf_matrix = vectorizer.fit_transform(all_texts)
+    mentor_vectors = tfidf_matrix[:len(mentor_kw_strings)]
+    mentee_vectors = tfidf_matrix[len(mentor_kw_strings):]
+
+    return cosine_similarity(mentee_vectors, mentor_vectors)
 # ─────────────────────────────────────────────
 # 3. AVAILABILITY SCORE
 # ─────────────────────────────────────────────
 
-def compute_availability_score(mentor: dict, mentee: dict) -> float:
-    """
-    Returns a score between 0-1 based on overlapping days and time slots
-    """
+def _availability_score(mentor: dict, mentee: dict) -> float:
     mentor_days = set(mentor.get("available_days") or [])
     mentee_days = set(mentee.get("available_days") or [])
     mentor_slots = set(mentor.get("time_slot") or [])
@@ -89,139 +174,222 @@ def compute_availability_score(mentor: dict, mentee: dict) -> float:
     if not mentor_days or not mentee_days:
         return 0.0
 
-    day_overlap = len(mentor_days & mentee_days) / max(len(mentor_days | mentee_days), 1)
-    slot_overlap = len(mentor_slots & mentee_slots) / max(len(mentor_slots | mentee_slots), 1)
+    day_union = mentor_days | mentee_days
+    slot_union = mentor_slots | mentee_slots
 
-    return (day_overlap + slot_overlap) / 2
-
-# ─────────────────────────────────────────────
-# 4. WEIGHTED FINAL SCORE
-# ─────────────────────────────────────────────
-
-def compute_weighted_scores(
-    mentors, mentees, tokenizer, model,
-    bert_weight=0.6, tfidf_weight=0.3, availability_weight=0.1,
-    batch_size=32
-):
-    mentor_texts = [build_mentor_text(m) for m in mentors]
-    mentee_texts = [build_mentee_text(m) for m in mentees]
-
-    print("  Computing BERT embeddings in batches...")
-    all_texts = mentor_texts + mentee_texts
-    # ← batched instead of all at once
-    all_embeddings = get_bert_embeddings_batched(all_texts, tokenizer, model, batch_size)
-    mentor_embeddings = all_embeddings[:len(mentors)]
-    mentee_embeddings = all_embeddings[len(mentors):]
-    bert_scores = cosine_similarity(mentee_embeddings, mentor_embeddings)
-
-    print("  Computing TF-IDF similarity...")
-    tfidf_scores = compute_tfidf_similarity(mentor_texts, mentee_texts)
-
-    print("  Computing availability scores...")
-    availability_scores = np.zeros((len(mentees), len(mentors)))
-    for i, mentee in enumerate(mentees):
-        for j, mentor in enumerate(mentors):
-            availability_scores[i][j] = compute_availability_score(mentor, mentee)
-
-    return (
-        bert_weight * bert_scores +
-        tfidf_weight * tfidf_scores +
-        availability_weight * availability_scores
+    day_score = len(mentor_days & mentee_days) / len(day_union)
+    slot_score = (
+        len(mentor_slots & mentee_slots) / len(slot_union)
+        if slot_union else 0.0
     )
+
+    return 0.6 * day_score + 0.4 * slot_score
+
+# ─────────────────────────────────────────────
+# 4. EXPERIENCE SCORE
+# ─────────────────────────────────────────────
+
+def _experience_score(mentor: dict) -> float:
+    components = []
+
+    prior = mentor.get("prior_mentees_count")
+    if prior is not None:
+        components.append(min(prior / 10.0, 1.0))
+
+    papers = mentor.get("published_papers_count")
+    if papers is not None:
+        components.append(min(papers / 5.0, 1.0))
+
+    certs = mentor.get("certifications")
+    if certs is not None:
+        components.append(min(len(certs) / 3.0, 1.0))
+
+    return float(np.mean(components)) if components else 0.5
 
 # ─────────────────────────────────────────────
 # 5. GET MATCHED KEYWORDS
 # ─────────────────────────────────────────────
 
-def get_matched_keywords(mentor: dict, mentee: dict, top_n: int = 5) -> list[str]:
-    mentor_text = clean_text(build_mentor_text(mentor))
-    mentee_text = clean_text(build_mentee_text(mentee))
+def get_matched_keywords(
+    mentor: dict,
+    mentee: dict,
+    top_n: int = 5,
+) -> list[str]:
+    mentor_kw_str = build_mentor_keyword_string(mentor)
+    mentee_kw_str = build_mentee_keyword_string(mentee)
 
-    try:
-        vectorizer = TfidfVectorizer(stop_words="english", ngram_range=(1, 2))
-        tfidf = vectorizer.fit_transform([mentor_text, mentee_text])
-        feature_names = vectorizer.get_feature_names_out()
-        mentor_scores = dict(zip(feature_names, tfidf[0].toarray()[0]))
-        mentee_scores = dict(zip(feature_names, tfidf[1].toarray()[0]))
+    # extract both unigrams and bigrams for matching
+    def get_ngrams(text: str) -> set[str]:
+        words = text.split()
+        unigrams = {w for w in words if len(w) > 3}
+        bigrams = {f"{words[i]} {words[i+1]}" for i in range(len(words)-1)}
+        return unigrams | bigrams
 
-        common = {
-            word: (mentor_scores[word] + mentee_scores[word]) / 2
-            for word in mentor_scores
-            if word in mentee_scores
-            and mentor_scores[word] > 0
-            and mentee_scores[word] > 0
-        }
-        return sorted(common, key=common.get, reverse=True)[:top_n]
-    except:
-        return []
+    mentor_kw = get_ngrams(mentor_kw_str)
+    mentee_kw = get_ngrams(mentee_kw_str)
+    shared = mentor_kw & mentee_kw
+
+    # filter short/noisy words
+    shared = [w for w in shared if len(w) > 3]
+    return sorted(shared)[:top_n]
+
+# ─────────────────────────────────────────────
+# 6. NORMALIZE SCORES
+# ─────────────────────────────────────────────
+
+def normalize_matrix(matrix: np.ndarray) -> np.ndarray:
+    """
+    Percentile-based normalization instead of min-max.
+    Stretches the middle of the distribution more aggressively
+    so scores don't cluster near 0.
+    """
+    flat = matrix.flatten()
+    p5 = np.percentile(flat, 5)    # bottom 5% treated as 0
+    p95 = np.percentile(flat, 95)  # top 5% treated as 1
+
+    if abs(p95 - p5) < 1e-9:
+        return np.ones_like(matrix) * 0.5
+
+    normalized = (matrix - p5) / (p95 - p5)
+    return np.clip(normalized, 0.0, 1.0)
+
+
+# ─────────────────────────────────────────────
+# 7. MAIN SCORING ENTRY POINT
+# ─────────────────────────────────────────────
+
+def compute_weighted_scores(
+    mentors: list[dict],
+    mentees: list[dict],
+    weights: Optional[ScoringWeights] = None,
+    return_breakdowns: bool = False,
+) -> tuple[np.ndarray, list[list[ScoreBreakdown]] | None]:
+    """
+    Main scoring pipeline:
+    1. Extract keywords via text_processing
+    2. Expand keywords via domain_expander
+    3. TF-IDF vectorize keyword strings
+    4. Cosine similarity matrix
+    5. Combine with availability + experience weights
+    6. Normalize to [0, 1]
+    """
+    weights = weights or ScoringWeights()
+
+    print(f"  Scoring {len(mentees)} mentees x {len(mentors)} mentors")
+
+    # ── Step 1: Build keyword strings ──────────────────────────────────────
+    print("  📝 Extracting and expanding keywords...")
+    mentor_kw_strings = []
+    for mentor in mentors:
+        kw_str = build_mentor_keyword_string(mentor)
+        mentor_kw_strings.append(kw_str)
+        logger.debug("Mentor %s keywords: %s", mentor.get("id"), kw_str[:100])
+
+    mentee_kw_strings = []
+    for mentee in mentees:
+        kw_str = build_mentee_keyword_string(mentee)
+        mentee_kw_strings.append(kw_str)
+        logger.debug("Mentee %s keywords: %s", mentee.get("id"), kw_str[:100])
+
+    # ── Step 2: Keyword cosine similarity ──────────────────────────────────
+    print("  🔍 Computing keyword cosine similarity...")
+    kw_similarity = compute_keyword_similarity(mentor_kw_strings, mentee_kw_strings)
+    kw_normalized = normalize_matrix(kw_similarity)
+
+    # ── Step 3: Availability matrix ────────────────────────────────────────
+    print("  📅 Computing availability scores...")
+    avail_matrix = np.array([
+        [_availability_score(mentor, mentee) for mentor in mentors]
+        for mentee in mentees
+    ], dtype=np.float32)
+
+    # ── Step 4: Experience scores ───────────────────────────────────────────
+    print("  🎓 Computing experience scores...")
+    exp_scores = np.array([_experience_score(m) for m in mentors], dtype=np.float32)
+    exp_matrix = np.tile(exp_scores, (len(mentees), 1))
+
+    # ── Step 5: Weighted combination ───────────────────────────────────────
+    final_scores = (
+        weights.keyword_similarity * kw_normalized +
+        weights.availability * avail_matrix +
+        weights.experience * exp_matrix
+    )
+
+    # normalize final scores
+    final_scores = normalize_matrix(final_scores)
+
+    # ── Step 6: Breakdowns ─────────────────────────────────────────────────
+    breakdowns = None
+    if return_breakdowns:
+        breakdowns = []
+        for i, mentee in enumerate(mentees):
+            mentee_breakdowns = []
+            for j, mentor in enumerate(mentors):
+                pair_expansion = expand_pair(mentor, mentee)
+                keywords = get_matched_keywords(mentor, mentee)
+                breakdown = ScoreBreakdown(
+                    mentor_id=str(mentor.get("id", j)),
+                    mentee_id=str(mentee.get("id", i)),
+                    keyword_score=float(kw_normalized[i][j]),
+                    availability_score=float(avail_matrix[i][j]),
+                    experience_score=float(exp_matrix[i][j]),
+                    final_score=float(final_scores[i][j]),
+                    matched_keywords=keywords,
+                    shared_domains=pair_expansion.get("shared_domains", []),
+                    matching_hints=pair_expansion.get("matching_hints", []),
+                )
+                mentee_breakdowns.append(breakdown)
+            breakdowns.append(mentee_breakdowns)
+
+    return final_scores, breakdowns
+
+# ─────────────────────────────────────────────
+# DIAGNOSTIC
+# ─────────────────────────────────────────────
+
+def diagnose_pair(mentor: dict, mentee: dict) -> dict:
+    """Debug a single pair — shows keyword strings and scores."""
+    mentor_kw = build_mentor_keyword_string(mentor)
+    mentee_kw = build_mentee_keyword_string(mentee)
+
+    print("\n── Keyword Diagnosis ────────────────────────────────────")
+    print(f"  Mentor : {mentor.get('first_name', '')} {mentor.get('last_name', '')}")
+    print(f"  Mentee : {mentee.get('group_name', '')}")
+    print(f"\n  Mentor keywords: {mentor_kw[:200]}")
+    print(f"\n  Mentee keywords: {mentee_kw[:200]}")
+    print(f"\n  Shared keywords: {get_matched_keywords(mentor, mentee)}")
+
+    scores, breakdowns = compute_weighted_scores(
+        mentors=[mentor],
+        mentees=[mentee],
+        return_breakdowns=True,
+    )
+
+    bd = breakdowns[0][0].to_dict()
+    print(f"\n  Keyword Similarity : {bd['scores']['keyword_similarity']:.4f}")
+    print(f"  Availability       : {bd['scores']['availability']:.4f}")
+    print(f"  Experience         : {bd['scores']['experience']:.4f}")
+    print(f"  Final Score        : {bd['scores']['final']:.4f}")
+    print(f"  Shared Domains     : {bd['shared_domains']}")
+    print(f"  Matching Hints     : {bd['matching_hints']}")
+    print("─────────────────────────────────────────────────────────\n")
+    return bd
+
+
+def load_model():
+    """
+    Keyword-based pipeline needs no model.
+    Returns None for compatibility with main.py and matching.py.
+    """
+    return None
 
 # ─────────────────────────────────────────────
 # TEST
 # ─────────────────────────────────────────────
 
 if __name__ == "__main__":
-    sample_mentors = [
-        {
-            "id": "mentor-1",
-            "first_name": "Dr. Maria",
-            "last_name": "Santos",
-            "technical_skills": ["Python", "Machine Learning", "NLP"],
-            "forte": ["AI Research", "Deep Learning"],
-            "self_description": "I specialize in natural language processing and computer vision.",
-            "available_days": ["Monday", "Wednesday"],
-            "time_slot": ["9:00-10:00", "10:00-11:00"],
-            "mentor_capacity": 2
-        },
-        {
-            "id": "mentor-2",
-            "first_name": "Prof. Jose",
-            "last_name": "Reyes",
-            "technical_skills": ["Web Development", "React", "Node.js"],
-            "forte": ["Software Engineering", "Agile"],
-            "self_description": "Passionate about full-stack development and agile methodologies.",
-            "available_days": ["Tuesday", "Thursday"],
-            "time_slot": ["1:00-2:00", "2:00-3:00"],
-            "mentor_capacity": 2
-        }
-    ]
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-    sample_mentees = [
-        {
-            "id": "mentee-1",
-            "group_name": "Group Alpha",
-            "research_title": "AI-Powered Mentor Matching System",
-            "research_description": "Using NLP and machine learning to match students with mentors based on research interests.",
-            "mentor_preference": "Looking for a mentor with expertise in AI and NLP.",
-            "available_days": ["Monday", "Wednesday"],
-            "time_slot": ["9:00-10:00"]
-        },
-        {
-            "id": "mentee-2",
-            "group_name": "Group Beta",
-            "research_title": "E-Commerce Web Platform",
-            "research_description": "Building a full stack web application for e-commerce using React and Node.js.",
-            "mentor_preference": "Looking for a mentor with web development experience.",
-            "available_days": ["Tuesday"],
-            "time_slot": ["1:00-2:00"]
-        }
-    ]
+    
 
-    print("🤖 Loading BERT model...")
-    tokenizer, model = load_bert_model()
-
-    print("\n📊 Computing weighted scores...")
-    scores = compute_weighted_scores(sample_mentors, sample_mentees, tokenizer, model)
-
-    print("\n✅ Compatibility Matrix (mentees x mentors):")
-    print(f"{'':20} {'Dr. Maria':15} {'Prof. Jose':15}")
-    for i, mentee in enumerate(sample_mentees):
-        row = f"{mentee['group_name']:20}"
-        for j in range(len(sample_mentors)):
-            row += f"{scores[i][j]:.4f}{'':9}"
-        print(row)
-
-    print("\n🔑 Matched Keywords:")
-    for mentee in sample_mentees:
-        for mentor in sample_mentors:
-            keywords = get_matched_keywords(mentor, mentee)
-            print(f"  {mentee['group_name']} ↔ {mentor['first_name']}: {keywords}")
+   

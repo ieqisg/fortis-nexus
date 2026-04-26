@@ -8,6 +8,7 @@ import Sidebar from "@/components/ui/Sidebar";
 import { getMentorData } from "../lib/actions/mentorActions";
 import { MentorWithMatch } from "../types/modelTypes";
 import { useEffect, useState } from "react";
+import { Slider } from "@/components/ui/slider";
 
 export default function MentorDashboard() {
     const [mentor, setMentor] = useState<MentorWithMatch | null>(null)

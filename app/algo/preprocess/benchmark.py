@@ -1,7 +1,8 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from text_processing import load_bert_model, get_bert_embeddings_batched, clean_text, build_mentee_text, build_mentor_text
+from text_processing import build_mentee_text, build_mentor_text
+from scoring import compute_weighted_scores, build_mentor_keyword_string, build_mentee_keyword_string
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -90,43 +91,59 @@ def generate_mentees(n: int) -> list[dict]:
     return mentees
 
 # ─────────────────────────────────────────────
-# WARMUP — eliminates JIT/model loading cost
+# WARMUP — run keyword pipeline once before benchmarking
 # ─────────────────────────────────────────────
 
-def warmup_model(tokenizer, model):
-    print("🔥 Warming up BERT model (3 passes)...")
-    dummy = generate_mentees(32)
-    texts = [build_mentee_text(m) for m in dummy]
-    # run 3 times to fully warm up
+def warmup():
+    print("🔥 Warming up keyword pipeline (3 passes)...")
+    dummy_mentors = generate_mentors(10)
+    dummy_mentees = generate_mentees(32)
     for i in range(3):
-        get_bert_embeddings_batched(texts, tokenizer, model, batch_size=32)
+        compute_weighted_scores(dummy_mentors, dummy_mentees)
         print(f"  Warmup pass {i+1}/3 done")
     print("✅ Warmup complete\n")
 
 # ─────────────────────────────────────────────
-# BENCHMARK INDIVIDUAL STEPS (averaged over runs)
+# BENCHMARK INDIVIDUAL STEPS
 # ─────────────────────────────────────────────
 
-def benchmark_bert(mentees: list[dict], tokenizer, model, runs: int = 3) -> float:
-    texts = [build_mentee_text(m) for m in mentees]
+def benchmark_keyword_extraction(mentors: list[dict], mentees: list[dict], runs: int = 3) -> float:
+    """Benchmark keyword extraction + domain expansion step."""
     times = []
     for _ in range(runs):
         start = time.perf_counter()
-        get_bert_embeddings_batched(texts, tokenizer, model, batch_size=32)
+        for mentor in mentors:
+            build_mentor_keyword_string(mentor)
+        for mentee in mentees:
+            build_mentee_keyword_string(mentee)
         times.append(time.perf_counter() - start)
     return np.mean(times)
 
-def benchmark_similarity(n_mentees: int, n_mentors: int, runs: int = 3) -> float:
-    mentor_emb = np.random.randn(n_mentors, 384).astype("float32")
-    mentee_emb = np.random.randn(n_mentees, 384).astype("float32")
+def benchmark_tfidf_similarity(n_mentees: int, n_mentors: int, runs: int = 3) -> float:
+    """Benchmark TF-IDF vectorization + cosine similarity step."""
+    mentor_texts = [f"mentor keyword string {i} machine learning nlp" for i in range(n_mentors)]
+    mentee_texts = [f"mentee keyword string {i} machine learning nlp" for i in range(n_mentees)]
+    all_texts = mentor_texts + mentee_texts
+
     times = []
     for _ in range(runs):
         start = time.perf_counter()
-        cosine_similarity(mentee_emb, mentor_emb)
+        vectorizer = TfidfVectorizer(
+            stop_words="english",
+            ngram_range=(1, 2),
+            max_features=500,
+            sublinear_tf=True,
+            min_df=1,
+        )
+        tfidf_matrix = vectorizer.fit_transform(all_texts)
+        mentor_vectors = tfidf_matrix[:n_mentors]
+        mentee_vectors = tfidf_matrix[n_mentors:]
+        cosine_similarity(mentee_vectors, mentor_vectors)
         times.append(time.perf_counter() - start)
     return np.mean(times)
 
 def benchmark_gale_shapley(mentors: list[dict], mentees: list[dict], scores: np.ndarray, runs: int = 3) -> float:
+    """Benchmark Gale-Shapley matching step."""
     from matching import generate_preferences, three_phase_gale_shapley
     mentee_prefs, mentor_prefs = generate_preferences(mentors, mentees, scores)
     times = []
@@ -136,25 +153,32 @@ def benchmark_gale_shapley(mentors: list[dict], mentees: list[dict], scores: np.
         times.append(time.perf_counter() - start)
     return np.mean(times)
 
+def benchmark_full_pipeline(mentors: list[dict], mentees: list[dict], runs: int = 3) -> float:
+    """Benchmark full scoring pipeline."""
+    times = []
+    for _ in range(runs):
+        start = time.perf_counter()
+        compute_weighted_scores(mentors, mentees)
+        times.append(time.perf_counter() - start)
+    return np.mean(times)
+
 # ─────────────────────────────────────────────
 # RUN BENCHMARKS
-# — start from n=25 to skip warmup noise
 # ─────────────────────────────────────────────
 
-def run_benchmarks(tokenizer, model):
+def run_benchmarks():
     N_MENTORS = 10
-    # ← start from 25 to avoid warmup spike skewing results
     mentee_counts = [25, 50, 75, 100, 125, 150, 175, 200]
 
     results = {
         "mentee_counts": mentee_counts,
-        "bert_times": [],
-        "similarity_times": [],
+        "keyword_times": [],
+        "tfidf_times": [],
         "gale_shapley_times": [],
         "total_times": [],
     }
 
-    print(f"{'Mentees':<10} {'BERT (avg)':<14} {'Similarity':<15} {'Gale-Shapley':<15} {'Total':<12}")
+    print(f"{'Mentees':<10} {'Keywords':<14} {'TF-IDF':<14} {'Gale-Shapley':<15} {'Total':<12}")
     print("-" * 68)
 
     for n in mentee_counts:
@@ -162,20 +186,20 @@ def run_benchmarks(tokenizer, model):
         mentees = generate_mentees(n)
         scores = np.random.rand(n, N_MENTORS)
 
-        t_bert = benchmark_bert(mentees, tokenizer, model, runs=3)
-        t_sim = benchmark_similarity(n, N_MENTORS, runs=3)
+        t_kw = benchmark_keyword_extraction(mentors, mentees, runs=3)
+        t_tfidf = benchmark_tfidf_similarity(n, N_MENTORS, runs=3)
         t_gs = benchmark_gale_shapley(mentors, mentees, scores, runs=3)
-        t_total = t_bert + t_sim + t_gs
+        t_total = t_kw + t_tfidf + t_gs
 
-        results["bert_times"].append(t_bert)
-        results["similarity_times"].append(t_sim)
+        results["keyword_times"].append(t_kw)
+        results["tfidf_times"].append(t_tfidf)
         results["gale_shapley_times"].append(t_gs)
         results["total_times"].append(t_total)
 
         print(
             f"{n:<10} "
-            f"{t_bert:.4f}s{'':6} "
-            f"{t_sim:.6f}s{'':4} "
+            f"{t_kw:.4f}s{'':6} "
+            f"{t_tfidf:.6f}s{'':4} "
             f"{t_gs:.4f}s{'':4} "
             f"{t_total:.4f}s"
         )
@@ -190,31 +214,28 @@ def prove_linear(results: dict):
     counts = np.array(results["mentee_counts"], dtype=float)
     totals = np.array(results["total_times"])
 
-    # linear fit
     coeffs_linear = np.polyfit(counts, totals, 1)
     linear_fit = np.polyval(coeffs_linear, counts)
     linear_residuals = np.sum((totals - linear_fit) ** 2)
 
-    # quadratic fit
     coeffs_quad = np.polyfit(counts, totals, 2)
     quad_fit = np.polyval(coeffs_quad, counts)
     quad_residuals = np.sum((totals - quad_fit) ** 2)
 
-    # R²
     ss_tot = np.sum((totals - np.mean(totals)) ** 2)
     r_squared = 1 - (linear_residuals / ss_tot)
 
-    print(f"\n📈 Complexity Analysis (excluding warmup noise):")
+    print(f"\n📈 Complexity Analysis:")
     print(f"  Linear fit:         y = {coeffs_linear[0]:.6f}n + {coeffs_linear[1]:.6f}")
     print(f"  Linear R²:          {r_squared:.6f} (closer to 1.0 = more linear)")
     print(f"  Linear residual:    {linear_residuals:.8f}")
     print(f"  Quadratic residual: {quad_residuals:.8f}")
-    print(f"  Ratio (linear/quad):{linear_residuals / max(quad_residuals, 1e-10):.4f} (closer to 1.0 = linear is good enough)")
+    print(f"  Ratio (linear/quad):{linear_residuals / max(quad_residuals, 1e-10):.4f}")
 
     if r_squared > 0.95:
         print(f"\n  ✅ PROVEN O(n) — R² = {r_squared:.4f} confirms linear growth")
     elif r_squared > 0.85:
-        print(f"\n  ✅ LIKELY O(n) — R² = {r_squared:.4f} mostly linear, minor variance from batching")
+        print(f"\n  ✅ LIKELY O(n) — R² = {r_squared:.4f} mostly linear")
     else:
         print(f"\n  ⚠️  R² = {r_squared:.4f} — not strongly linear, investigate bottleneck")
 
@@ -230,8 +251,8 @@ def plot_results(results: dict, linear_fit: np.ndarray, r_squared: float):
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
     # Plot 1: breakdown by step
-    axes[0].plot(counts, results["bert_times"], "o-", label="BERT Embeddings", color="blue", linewidth=2)
-    axes[0].plot(counts, results["similarity_times"], "s-", label="Cosine Similarity", color="green", linewidth=2)
+    axes[0].plot(counts, results["keyword_times"], "o-", label="Keyword Extraction", color="blue", linewidth=2)
+    axes[0].plot(counts, results["tfidf_times"], "s-", label="TF-IDF Similarity", color="green", linewidth=2)
     axes[0].plot(counts, results["gale_shapley_times"], "^-", label="Gale-Shapley", color="orange", linewidth=2)
     axes[0].plot(counts, results["total_times"], "D-", label="Total", color="red", linewidth=2)
     axes[0].set_xlabel("Number of Mentees")
@@ -249,10 +270,14 @@ def plot_results(results: dict, linear_fit: np.ndarray, r_squared: float):
     axes[1].legend()
     axes[1].grid(True, alpha=0.3)
 
-    # Plot 3: time per mentee (should be flat if O(n))
+    # Plot 3: time per mentee — flat = O(n)
     time_per_mentee = np.array(results["total_times"]) / np.array(counts)
     axes[2].plot(counts, time_per_mentee, "o-", color="purple", linewidth=2)
-    axes[2].axhline(y=np.mean(time_per_mentee), color="black", linestyle="--", label=f"Mean: {np.mean(time_per_mentee):.4f}s/mentee")
+    axes[2].axhline(
+        y=np.mean(time_per_mentee),
+        color="black", linestyle="--",
+        label=f"Mean: {np.mean(time_per_mentee):.4f}s/mentee"
+    )
     axes[2].set_xlabel("Number of Mentees")
     axes[2].set_ylabel("Time per Mentee (seconds)")
     axes[2].set_title("Time per Mentee — Flat = O(n) ✅")
@@ -269,13 +294,10 @@ def plot_results(results: dict, linear_fit: np.ndarray, r_squared: float):
 # ─────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("🤖 Loading BERT model...")
-    tokenizer, model = load_bert_model()
-
-    warmup_model(tokenizer, model)
+    warmup()
 
     print(f"🔬 Running benchmarks (3 runs avg, starting from n=25)...\n")
-    results = run_benchmarks(tokenizer, model)
+    results = run_benchmarks()
 
     coeffs, r_squared, linear_fit = prove_linear(results)
     plot_results(results, linear_fit, r_squared)

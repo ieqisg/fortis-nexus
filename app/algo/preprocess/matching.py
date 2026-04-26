@@ -1,7 +1,7 @@
 import numpy as np
-from scoring import compute_weighted_scores, get_matched_keywords
-from text_processing import load_bert_model
 
+
+from scoring import compute_weighted_scores, get_matched_keywords 
 # ─────────────────────────────────────────────
 # 1. PREFERENCE GENERATION
 # ─────────────────────────────────────────────
@@ -213,15 +213,15 @@ def three_phase_gale_shapley(
 # 5. RUN FULL PIPELINE
 # ─────────────────────────────────────────────
 
-def run_matching(mentors: list[dict], mentees: list[dict], tokenizer, model) -> list[dict]:
+def run_matching(mentors: list[dict], mentees: list[dict], model=None) -> list[dict]:
     mentee_index = {m["id"]: i for i, m in enumerate(mentees)}
     mentor_index = {m["id"]: j for j, m in enumerate(mentors)}
 
     print("\n📊 Step 1: Computing compatibility scores...")
-    scores = compute_weighted_scores(mentors, mentees, tokenizer, model)
+    scores, _ = compute_weighted_scores(mentors, mentees)    
 
     print("\n📋 Step 2: Generating preferences...")
-    mentee_prefs, mentor_prefs = generate_preferences(mentors, mentees, scores, top_k=3)
+    mentee_prefs, mentor_prefs = generate_preferences(mentors, mentees, scores)
 
     print("\n🔗 Step 3: Running three-phase Gale-Shapley...")
     mentee_assignment, mentor_assignments = three_phase_gale_shapley(
@@ -250,76 +250,4 @@ def run_matching(mentors: list[dict], mentees: list[dict], tokenizer, model) -> 
 # TEST
 # ─────────────────────────────────────────────
 
-if __name__ == "__main__":
-    sample_mentors = [
-        {
-            "id": "mentor-1",
-            "first_name": "Dr. Maria",
-            "last_name": "Santos",
-            "technical_skills": ["Python", "Machine Learning", "NLP"],
-            "forte": ["AI Research", "Deep Learning"],
-            "self_description": "I specialize in natural language processing and computer vision.",
-            "available_days": ["Monday", "Wednesday"],
-            "time_slot": ["9:00-10:00", "10:00-11:00"],
-            "mentor_capacity": 2
-        },
-        {
-            "id": "mentor-2",
-            "first_name": "Prof. Jose",
-            "last_name": "Reyes",
-            "technical_skills": ["Web Development", "React", "Node.js"],
-            "forte": ["Software Engineering", "Agile"],
-            "self_description": "Passionate about full-stack development and agile methodologies.",
-            "available_days": ["Tuesday", "Thursday"],
-            "time_slot": ["1:00-2:00", "2:00-3:00"],
-            "mentor_capacity": 2
-        }
-    ]
-
-    sample_mentees = [
-        {
-            "id": "mentee-1",
-            "group_name": "Group Alpha",
-            "research_title": "AI-Powered Mentor Matching System",
-            "research_description": "Using NLP and machine learning to match students with mentors based on research interests.",
-            "mentor_preference": "Looking for a mentor with expertise in AI and NLP.",
-            "available_days": ["Monday", "Wednesday"],
-            "time_slot": ["9:00-10:00"]
-        },
-        {
-            "id": "mentee-2",
-            "group_name": "Group Beta",
-            "research_title": "E-Commerce Web Platform",
-            "research_description": "Building a full stack web application for e-commerce using React and Node.js.",
-            "mentor_preference": "Looking for a mentor with web development experience.",
-            "available_days": ["Tuesday"],
-            "time_slot": ["1:00-2:00"]
-        },
-        {
-            "id": "mentee-3",
-            "group_name": "Group Gamma",
-            "research_title": "Deep Learning for Medical Imaging",
-            "research_description": "Using convolutional neural networks to detect anomalies in medical images.",
-            "mentor_preference": "Looking for a mentor with deep learning and computer vision experience.",
-            "available_days": ["Monday"],
-            "time_slot": ["10:00-11:00"]
-        }
-    ]
-
-    print("🤖 Loading BERT model...")
-    tokenizer, model = load_bert_model()
-
-    match_records = run_matching(sample_mentors, sample_mentees, tokenizer, model)
-
-    print("\n🎯 Final Matches:")
-    print(f"{'Mentee':<20} {'Mentor':<20} {'Score':<10} {'Keywords'}")
-    print("-" * 80)
-    for record in match_records:
-        mentee = next(m for m in sample_mentees if m["id"] == record["mentee_group_id"])
-        mentor = next(m for m in sample_mentors if m["id"] == record["mentor_id"])
-        print(
-            f"{mentee['group_name']:<20} "
-            f"{mentor['first_name']} {mentor['last_name']:<12} "
-            f"{record['compatibility_score']:<10} "
-            f"{record['matched_keywords']}"
-        )
+    
