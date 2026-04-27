@@ -14,6 +14,7 @@ export type Matches = {
         forte: string[]
         email: string
         self_description: string
+        experience: number
     } | null
     mentee: {
         email: string
@@ -42,5 +43,9 @@ export interface MenteeFormProfile {
     mentor_preferences: string;
     available_days: string[];
     time_slot: string[];
+
+}
+
+export interface MenteeEditProfile {
 
 }

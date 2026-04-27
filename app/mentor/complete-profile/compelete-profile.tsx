@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -15,16 +15,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, UserRound, Plus, X, Clock } from "lucide-react";
-import { MentorFormProfile } from "@/app/types/mentorTypes";
+import { MentorFormProfile } from "@/types/mentorTypes";
 import { UserAuth } from "@/app/context/authContext";
-import { MentorInsert } from "@/app/types/modelTypes";
-import { createMentorProfile } from "@/app/lib/actions/mentorActions";
+import { MentorInsert } from "@/types/modelTypes";
+import { createMentorProfile } from "@//lib/actions/mentorActions";
 import { useRouter } from "next/navigation";
-
+import { Slider } from "@/components/ui/slider";
 
 //todo:: Copy how the mentee-create-profile can insert data into the database
 export default function MentorCompleteProfile() {
     const { signUp, getUser, signIn } = UserAuth()
+    const [value, setValue] = useState([0])
     const [formData, setFormData] = useState<MentorFormProfile>({
         first_name: "",
         last_name: "",
@@ -36,12 +37,18 @@ export default function MentorCompleteProfile() {
         time_slot: [],
         role: "mentor",
         profile_completed: true,
-        email: ""
+        email: "",
+        experience: 0
 
     })
     const [skillInput, setSkillInput] = useState("");
     const [forteInput, setForteInput] = useState("");
     const router = useRouter()
+
+    useEffect(() => {
+
+
+    })
 
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -66,6 +73,7 @@ export default function MentorCompleteProfile() {
                 available_days: formData.available_days,
                 time_slot: formData.time_slot,
                 role: "mentor",
+                experience: formData.experience
             }
             const result = await createMentorProfile(payload)
 
@@ -275,6 +283,34 @@ export default function MentorCompleteProfile() {
                                         </div>
                                     ))}
                                 </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label
+                                    htmlFor="forte"
+                                    className="flex justify-between items-center w-full"
+                                >
+                                    <span>Experience *</span>
+                                    <span className="text-gray-500">Years of Experience: <span className="text-black">{formData.experience}</span></span>
+                                </Label>
+
+                                <div className="flex gap-2">
+                                    <Slider
+                                        value={[formData.experience]}
+                                        max={30}
+                                        step={1}
+                                        onValueChange={([exp]) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                experience: exp,
+                                            }))
+                                        }
+                                    />                                </div>
+
+                                <p className="text-sm text-gray-500">
+                                    Input your years of being a research mentor
+                                </p>
+
+
                             </div>
                             <div>
                                 <Card>

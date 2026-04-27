@@ -1,9 +1,9 @@
 import os
 from dotenv import load_dotenv
 from supabase import create_client
-from text_processing import load_bert_model
 from matching import run_matching
 from datetime import datetime, timezone
+from scoring import load_model
 
 load_dotenv()
 
@@ -111,10 +111,10 @@ if __name__ == "__main__":
         exit(1)
 
     print("\n🤖 Step 3: Loading BERT model...")
-    tokenizer, model = load_bert_model()
+    model = load_model()
 
     print("\n🔗 Step 4: Running matching algorithm...")
-    match_records = run_matching(mentors, mentees, tokenizer, model)
+    match_records = run_matching(mentors, mentees, model)
 
     print_results(match_records, mentors, mentees)
 

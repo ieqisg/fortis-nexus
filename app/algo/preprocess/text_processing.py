@@ -139,39 +139,81 @@ def get_combined_embeddings(
     return tfidf_weighted, bert_weighted, vectorizer
 
 # ─────────────────────────────────────────────
+# 5. KEYWORD EXTRACTION FOR SCORING
+# ─────────────────────────────────────────────
+
+def get_profile_keywords(text: str, top_n: int = 20) -> list[str]:
+    """
+    Extract top technical keywords from a profile text using TF-IDF.
+    Bigrams are prioritized over unigrams to prevent fragmentation.
+    e.g. "deep learning" selected → "deep" and "learning" suppressed.
+    """
+    cleaned = clean_text(text)
+    if not cleaned.strip():
+        return []
+
+    vectorizer = TfidfVectorizer(
+        stop_words="english",
+        max_features=500,
+        ngram_range=(1, 2),
+        min_df=1,
+        sublinear_tf=True,
+    )
+
+    try:
+        tfidf_matrix = vectorizer.fit_transform([cleaned])
+        feature_names = vectorizer.get_feature_names_out()
+        scores = dict(zip(feature_names, tfidf_matrix.toarray()[0]))
+
+        scored_terms = [
+            (term, score) for term, score in scores.items() if score > 0
+        ]
+
+        # Split into bigrams and unigrams — bigrams take priority
+        bigrams = sorted(
+            [(t, s) for t, s in scored_terms if len(t.split()) == 2],
+            key=lambda x: x[1],
+            reverse=True,
+        )
+        unigrams = sorted(
+            [(t, s) for t, s in scored_terms if len(t.split()) == 1],
+            key=lambda x: x[1],
+            reverse=True,
+        )
+
+        selected = []
+        covered_tokens = set()
+
+        # Add bigrams first — they carry more specific signal
+        for term, _ in bigrams:
+            tokens = set(term.split())
+            if not tokens.issubset(covered_tokens):
+                selected.append(term)
+                covered_tokens.update(tokens)
+
+        # Add unigrams only if their token isn't already covered by a bigram
+        for term, _ in unigrams:
+            if term not in covered_tokens:
+                selected.append(term)
+                covered_tokens.add(term)
+
+        return selected[:top_n]
+
+    except Exception:
+        return cleaned.split()[:top_n]
+def get_mentor_keywords(mentor: dict, top_n: int = 20) -> list[str]:
+    """Extract keywords from mentor profile fields."""
+    text = build_mentor_text(mentor)
+    return get_profile_keywords(text, top_n)
+
+
+def get_mentee_keywords(mentee: dict, top_n: int = 20) -> list[str]:
+    """Extract keywords from mentee profile fields."""
+    text = build_mentee_text(mentee)
+    return get_profile_keywords(text, top_n)
+
+# ─────────────────────────────────────────────
 # TEST
 # ─────────────────────────────────────────────
 
-if __name__ == "__main__":
-    sample_mentors = [
-        {
-            "technical_skills": ["Python", "Machine Learning", "NLP"],
-            "forte": ["AI Research", "Deep Learning"],
-            "self_description": "I specialize in natural language processing and computer vision."
-        }
-    ]
-    sample_mentees = [
-        {
-            "research_title": "AI-Powered Mentor Matching System",
-            "research_description": "Using NLP and machine learning to match students with mentors based on research interests.",
-            "mentor_preference": "Looking for a mentor with expertise in AI and NLP."
-        }
-    ]
 
-    mentor_texts = [build_mentor_text(m) for m in sample_mentors]
-    mentee_texts = [build_mentee_text(m) for m in sample_mentees]
-
-    print("📝 Mentor text:", mentor_texts[0])
-    print("📝 Mentee text:", mentee_texts[0])
-
-    print("\n🔍 Extracting TF-IDF keywords...")
-    all_texts = mentor_texts + mentee_texts
-    keywords, _, _ = extract_tfidf_keywords(all_texts)
-    print("Mentor keywords:", keywords[0])
-    print("Mentee keywords:", keywords[1])
-
-    print("\n🤖 Getting BERT embeddings...")
-    tokenizer, model = load_bert_model()
-    bert_embeddings = get_bert_embeddings(all_texts, tokenizer, model)
-    print(f"Embedding shape: {bert_embeddings.shape}")
-    print("✅ Text processing complete")

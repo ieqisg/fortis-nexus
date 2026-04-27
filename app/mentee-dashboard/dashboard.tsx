@@ -15,9 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, Calendar } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getMenteeData } from "../lib/actions/menteeActions";
-import { MenteeGroupWithMatch } from "../types/modelTypes";
+import { getMenteeData } from "@/lib/actions/menteeActions";
+import { MenteeGroupWithMatch } from "@/types/modelTypes";
 import { UserAuth } from "../context/authContext";
+
 
 
 

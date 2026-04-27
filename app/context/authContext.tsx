@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useEffect, useState, useContext, ReactNode } from "react";
 import { supabase } from "../config/supabaseClient";
-import { getUserRole } from "../lib/actions/authActions";
+import { getUserRole } from "@/lib/actions/authActions";
 
 
 type AuthResponse = {

@@ -29,8 +29,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Calendar as CalendarIcon, Clock, Plus } from "lucide-react";
-import { Matches } from "@/app/types/menteeTypes";
-import { getMeetings, createMeeting } from "@/app/lib/actions/meetingActions";
+import { Matches } from "@/types/menteeTypes";
+import { getMeetings, createMeeting } from "@/lib/actions/meetingActions";
 
 interface Meeting {
     id: string;
