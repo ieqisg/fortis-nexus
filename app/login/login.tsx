@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { ArrowLeft, UserRound, Eye, EyeOff, } from "lucide-react";
+import { ArrowLeft, UserRound, Eye, EyeOff, LogOut } from "lucide-react";
 import { UserAuth } from "@/app/context/authContext";
 
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { supabase } from "../config/supabaseClient";
 export default function Login() {
     const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false)
     const { userData, signIn, setUserData, getUser } = UserAuth()
     const { email, password } = userData
 
@@ -30,7 +31,7 @@ export default function Login() {
             const userSignIn = await signIn()
             if (!userSignIn.success) return;
             const role = userSignIn?.data?.role
-            console.log(role)
+            setLoading(true)
             if (role === "mentee") {
                 router.push("/mentee-dashboard")
             } else if (role === "mentor") {
@@ -127,9 +128,10 @@ export default function Login() {
                                     </Button>
                                     <Button
                                         type="submit"
+                                        disabled={loading}
                                         className="bg-green-600 hover:bg-green-700"
                                     >
-                                        Login
+                                        {loading ? "Signing In..." : "Sign In"}
                                     </Button>
                                 </div>
                             </div>

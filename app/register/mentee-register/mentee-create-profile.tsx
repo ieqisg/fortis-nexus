@@ -15,9 +15,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
-import { GroupMembers, MenteeFormProfile } from "@/app/types/menteeTypes";
-import { MenteeGroupInsert } from "@/app/types/modelTypes";
-import { createMenteeProfile } from "@/app/lib/actions/menteeActions";
+import { GroupMembers, MenteeFormProfile } from "@/types/menteeTypes";
+import { MenteeGroupInsert } from "@/types/modelTypes";
+import { createMenteeProfile } from "@/lib/actions/menteeActions";
 import { UserAuth } from "@/app/context/authContext";
 
 export default function MenteeCreateProfile({

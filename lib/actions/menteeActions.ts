@@ -2,7 +2,7 @@
 "use server"
 
 import { createClient } from "@supabase/supabase-js"
-import { MenteeGroupInsert } from "@/app/types/modelTypes"
+import { MenteeGroupInsert } from "@/types/modelTypes"
 import { getSupabaseClient } from "@/app/config/getSupabaseClient"
 
 export async function createMenteeProfile(payload: MenteeGroupInsert) {

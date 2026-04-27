@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import MatchScoreCard from "@/components/ui/MatchScoreCard";
-import { Matches } from "../types/menteeTypes";
+import { Matches } from "@/types/menteeTypes";
 
 type Props = {
     matches: Matches[]

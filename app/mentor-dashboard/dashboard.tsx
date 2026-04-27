@@ -5,8 +5,8 @@ import SubmittedPapers from "./submitted-papers";
 import Meeting from "./meeting";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Sidebar from "@/components/ui/Sidebar";
-import { getMentorData } from "../lib/actions/mentorActions";
-import { MentorWithMatch } from "../types/modelTypes";
+import { getMentorData } from "@/lib/actions/mentorActions";
+import { MentorWithMatch } from "@/types/modelTypes";
 import { useEffect, useState } from "react";
 import { Slider } from "@/components/ui/slider";
 

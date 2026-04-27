@@ -45,3 +45,7 @@ export interface MenteeFormProfile {
     time_slot: string[];
 
 }
+
+export interface MenteeEditProfile {
+
+}

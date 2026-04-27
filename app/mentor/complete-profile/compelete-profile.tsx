@@ -15,10 +15,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, UserRound, Plus, X, Clock } from "lucide-react";
-import { MentorFormProfile } from "@/app/types/mentorTypes";
+import { MentorFormProfile } from "@/types/mentorTypes";
 import { UserAuth } from "@/app/context/authContext";
-import { MentorInsert } from "@/app/types/modelTypes";
-import { createMentorProfile } from "@/app/lib/actions/mentorActions";
+import { MentorInsert } from "@/types/modelTypes";
+import { createMentorProfile } from "@//lib/actions/mentorActions";
 import { useRouter } from "next/navigation";
 import { Slider } from "@/components/ui/slider";
 

@@ -114,7 +114,8 @@ export default function Sidebar({ userType, userName }: SidebarProps) {
                         <Home className="w-4 h-4 mr-2" />
                         Dashboard
                     </Button>
-                    <Button variant="ghost" className="w-full justify-start mb-2">
+                    <Button variant="ghost" className="w-full justify-start mb-2" onClick={() => router.push(`/${userType}/edit-profile`)}>
+
                         <User className="w-4 h-4 mr-2" />
                         Profile
                     </Button>
