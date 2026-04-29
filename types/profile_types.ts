@@ -3,7 +3,7 @@ import type { getMenteeData } from "@/lib/actions/menteeActions"
 type MenteeData = Awaited<ReturnType<typeof getMenteeData>>
 
 export type UserDataProps = {
-    userData: NonNullable<MenteeData>["data"]
+    menteeData: MenteeData["data"] | null
 };
 
 

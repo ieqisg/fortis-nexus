@@ -1,8 +1,6 @@
 import { getMenteeData } from "@/lib/actions/menteeActions";
 
-import MenteeEditProfile from "./edit-profile";
-
-
+import MenteeProfileDetails from "./profile-details"
 
 
 
@@ -10,5 +8,7 @@ import MenteeEditProfile from "./edit-profile";
 export default async function Page() {
     const menteeData = await getMenteeData()
     if (!menteeData) return;
-    return <MenteeEditProfile menteeData={menteeData.data} />
+    return (
+        <MenteeProfileDetails menteeData={menteeData.data} />
+    )
 }

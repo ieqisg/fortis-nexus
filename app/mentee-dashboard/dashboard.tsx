@@ -18,24 +18,25 @@ import { useEffect, useState } from "react";
 import { getMenteeData } from "@/lib/actions/menteeActions";
 import { MenteeGroupWithMatch } from "@/types/modelTypes";
 import { UserAuth } from "../context/authContext";
+import { UserDataProps } from "@/types/profile_types";
 
 
 
-
-export default function MenteeDashboard() {
+export default function MenteeDashboard({ menteeData }: UserDataProps) {
+    const { group_name, matches } = menteeData
     const [mentee, setMentee] = useState<MenteeGroupWithMatch | null>(null)
     const [loading, setLoading] = useState(true)
     const { userData } = UserAuth()
     const hasMatch = !!mentee?.matches
 
-    const mentor = mentee?.matches?.mentor
-    const match = mentee?.matches
+    const mentor = matches?.mentor
     useEffect(() => {
+        console.log(matches)
         const fetchData = async () => {
             const result = await getMenteeData()
             if (result.success) {
                 setMentee(result.data)
-                console.log(result)
+
 
             } else {
                 alert("No fetched Data")
@@ -56,13 +57,13 @@ export default function MenteeDashboard() {
                 <div className="flex-1 overflow-auto">
                     <div className="bg-linear-to-r from-green-600 to-emerald-600 text-white p-8">
                         <h1 className="text-3xl font-bold mb-2">Mentee Dashboard</h1>
-                        <p className="text-green-100">Welcome back, {mentee?.group_name}</p>
+                        <p className="text-green-100">Welcome back, {group_name ? group_name : "Loading..."}</p>
                     </div>
 
                     <div className="p-8">
                         <div className="grid lg:grid-cols-3 gap-6 mb-8">
                             <div className="lg:col-span-2">
-                                {match ? (
+                                {matches ? (
                                     <Card>
 
                                         <CardHeader>
@@ -137,8 +138,8 @@ export default function MenteeDashboard() {
 
                             <div>
                                 <MatchScoreCard
-                                    score={match?.compatibility_score ?? 0}
-                                    keywords={match?.matched_keywords ?? []}
+                                    score={matches?.compatibility_score ?? 0}
+                                    keywords={matches?.matched_keywords ?? []}
                                     hasMatch={hasMatch}
                                 />
                             </div>
