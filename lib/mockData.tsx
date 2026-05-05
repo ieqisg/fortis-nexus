@@ -1,4 +1,5 @@
 export const timeSlotOptions = [
+    "7:00-8:00",
     "8:00-9:00",
     "9:00-10:00",
     "10:00-11:00",
@@ -7,6 +8,9 @@ export const timeSlotOptions = [
     "13:00-14:00",
     "14:00-15:00",
     "15:00-16:00",
+    "16:00-17:00",
+    "17:00-18:00",
+    "18:00-19:00",
 ];
 
 
@@ -17,5 +21,4 @@ export const daysOfWeek = [
     "Thursday",
     "Friday",
     "Saturday",
-    "Sunday",
 ];

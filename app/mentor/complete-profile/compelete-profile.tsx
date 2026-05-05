@@ -26,7 +26,7 @@ export default function MentorCompleteProfile() {
     const router = useRouter()
 
     const { signUp, getUser, signIn } = UserAuth()
-    const [value, setValue] = useState([0])
+    const [loading, setLoading] = useState(false)
     const [formData, setFormData] = useState<MentorFormProfile>({
         first_name: "",
         last_name: "",
@@ -87,8 +87,7 @@ export default function MentorCompleteProfile() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-
-
+            setLoading(true)
             const signInResult = await signIn()
             if (!signInResult) return;
 
@@ -121,6 +120,8 @@ export default function MentorCompleteProfile() {
         } catch (err) {
             console.error(err)
 
+        } finally {
+            setLoading(false)
         }
 
     };
@@ -487,10 +488,11 @@ export default function MentorCompleteProfile() {
                                     Back
                                 </Button>
                                 <Button
+                                    disabled={loading}
                                     type="submit"
                                     className=" bg-blue-600 hover:bg-blue-700"
                                 >
-                                    Create Mentor Account
+                                    {loading ? "Submitting Mentor Profile" : "Complete Mentor Profile"}
                                 </Button>
                             </div>
                         </form>

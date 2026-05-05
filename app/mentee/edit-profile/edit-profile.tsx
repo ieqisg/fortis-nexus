@@ -222,23 +222,22 @@ export default function MenteeEditProfile() {
                                 {/* Avatar */}
                                 <div className="flex items-center gap-4">
                                     <Avatar className="h-16 w-16 border border-slate-200">
-                                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-base font-semibold text-white">
+                                        <AvatarFallback className="bg-linear-to-br from-blue-500 to-indigo-600 text-base font-semibold text-white">
 
                                         </AvatarFallback>
                                     </Avatar>
                                     <p className="text-sm font-medium text-slate-900">{mentee?.group_name}</p>
                                 </div>
 
-                                {/* Full name */}
                                 <div className="space-y-2">
                                     <Label htmlFor="fullName">
-                                        Full name <span className="text-red-500">*</span>
+                                        Group name <span className="text-red-500">*</span>
                                     </Label>
                                     <Input
                                         id="fullName"
                                         name="fullName"
                                         autoComplete="name"
-                                        placeholder="Enter your full name"
+                                        placeholder="Enter your new group name"
                                         value={values.fullName}
                                         onChange={handleChange("fullName")}
                                         onBlur={handleBlur("fullName")}
@@ -255,15 +254,15 @@ export default function MenteeEditProfile() {
                                 {/* Username */}
                                 <div className="space-y-2">
                                     <Label htmlFor="username">
-                                        Username <span className="text-red-500">*</span>
+                                        Research Title <span className="text-red-500">*</span>
                                     </Label>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm text-slate-500">@</span>
+
                                         <Input
                                             id="username"
                                             name="username"
                                             autoComplete="username"
-                                            placeholder="your_handle"
+                                            placeholder="Enter your new Thesis Title"
                                             value={values.username}
                                             onChange={handleChange("username")}
                                             onBlur={handleBlur("username")}
@@ -282,48 +281,58 @@ export default function MenteeEditProfile() {
                                     )}
                                 </div>
 
-                                {/* Email */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="email">
-                                        Email <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Input
-                                        id="email"
-                                        name="email"
-                                        type="email"
-                                        autoComplete="email"
-                                        placeholder="you@example.com"
-                                        value={values.email}
-                                        onChange={handleChange("email")}
-                                        onBlur={handleBlur("email")}
-                                        aria-invalid={Boolean(errors.email)}
-                                        aria-describedby={errors.email ? "email-error" : undefined}
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="bio">Research Description</Label>
+                                        <span
+                                            className={`text-xs ${bioCount > MAX_BIO_LENGTH ? "text-red-500" : "text-slate-400"
+                                                }`}
+                                        >
+                                            {bioCount}/{MAX_BIO_LENGTH}
+                                        </span>
+                                    </div>
+                                    <Textarea
+                                        id="bio"
+                                        name="bio"
+                                        rows={4}
+                                        placeholder="Enter your new Research Description"
+                                        value={values.bio}
+                                        onChange={handleChange("bio")}
+                                        onBlur={handleBlur("bio")}
+                                        aria-invalid={Boolean(errors.bio)}
+                                        aria-describedby={errors.bio ? "bio-error" : undefined}
                                     />
-                                    {errors.email && (
-                                        <p id="email-error" className="text-xs text-red-500">
-                                            {errors.email}
+                                    {errors.bio && (
+                                        <p id="bio-error" className="text-xs text-red-500">
+                                            {errors.bio}
                                         </p>
                                     )}
                                 </div>
 
-                                {/* Phone */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="phone">Phone number</Label>
-                                    <Input
-                                        id="phone"
-                                        name="phone"
-                                        type="tel"
-                                        autoComplete="tel"
-                                        placeholder="+1 555 000 1234"
-                                        value={values.phone}
-                                        onChange={handleChange("phone")}
-                                        onBlur={handleBlur("phone")}
-                                        aria-invalid={Boolean(errors.phone)}
-                                        aria-describedby={errors.phone ? "phone-error" : undefined}
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="bio">Mentor Preferences</Label>
+                                        <span
+                                            className={`text-xs ${bioCount > MAX_BIO_LENGTH ? "text-red-500" : "text-slate-400"
+                                                }`}
+                                        >
+                                            {bioCount}/{MAX_BIO_LENGTH}
+                                        </span>
+                                    </div>
+                                    <Textarea
+                                        id="bio"
+                                        name="bio"
+                                        rows={4}
+                                        placeholder="Enter your new Mentor Preferences"
+                                        value={values.bio}
+                                        onChange={handleChange("bio")}
+                                        onBlur={handleBlur("bio")}
+                                        aria-invalid={Boolean(errors.bio)}
+                                        aria-describedby={errors.bio ? "bio-error" : undefined}
                                     />
-                                    {errors.phone && (
-                                        <p id="phone-error" className="text-xs text-red-500">
-                                            {errors.phone}
+                                    {errors.bio && (
+                                        <p id="bio-error" className="text-xs text-red-500">
+                                            {errors.bio}
                                         </p>
                                     )}
                                 </div>

@@ -15,6 +15,7 @@ import { DetailRow } from "@/components/ui/DetailRow";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useMentor } from "@/app/context/mentorContext";
+import { parseSlot } from "@/components/ui/AvailabilitySelector";
 export default function MentorProfileDetails() {
 
     const router = useRouter()
@@ -52,9 +53,9 @@ export default function MentorProfileDetails() {
                             <CardTitle className="text-xl text-slate-900 sm:text-2xl">
                                 {`${mentor?.first_name} ${mentor?.last_name}`}
                             </CardTitle>
-                            <CardDescription className="text-sm text-slate-500">
+                            <p className="text-sm text-slate-500">
                                 {mentor?.email}
-                            </CardDescription>
+                            </p>
                         </CardHeader>
 
                         <div className="h-px w-full bg-slate-100" />
@@ -89,7 +90,14 @@ export default function MentorProfileDetails() {
                                 <ProfileField
                                     icon={<Clock className="h-4 w-4" />}
                                     label="Time Slot"
-                                    value={mentor?.time_slot ? mentor?.time_slot.join(", ") : "Loading..."}
+                                    value={mentor?.time_slot?.map((encoded: string) => {
+                                        const { day, slot } = parseSlot(encoded)
+                                        return (
+                                            <span key={encoded} className="text-sm block">
+                                                <span className="font-medium">{day}:</span> {slot}
+                                            </span>
+                                        )
+                                    })}
                                 />
                             </section>
 
