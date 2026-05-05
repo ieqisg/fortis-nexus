@@ -17,47 +17,34 @@ import { Upload, FileText, Calendar } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getMenteeData } from "@/lib/actions/menteeActions";
 import { MenteeGroupWithMatch } from "@/types/modelTypes";
-import { UserAuth } from "../context/authContext";
-import { UserDataProps } from "@/types/profile_types";
+import { UserAuth } from "@/app/context/authContext";
+import { useMentee } from "@/app/context/menteeContext";
 
 
 
-export default function MenteeDashboard({ menteeData }: UserDataProps) {
-    const { group_name, matches } = menteeData
-    const [mentee, setMentee] = useState<MenteeGroupWithMatch | null>(null)
-    const [loading, setLoading] = useState(true)
+export default function MenteeDashboard() {
+    const { mentee, loading } = useMentee()
+    /* const [mentee, setMentee] = useState<MenteeGroupWithMatch | null>(null) */
+    /* const [loading, setLoading] = useState(true) */
     const { userData } = UserAuth()
     const hasMatch = !!mentee?.matches
+    const matches = mentee?.matches
 
-    const mentor = matches?.mentor
     useEffect(() => {
-        console.log(matches)
-        const fetchData = async () => {
-            const result = await getMenteeData()
-            if (result.success) {
-                setMentee(result.data)
-
-
-            } else {
-                alert("No fetched Data")
-            }
-            setLoading(false)
-        }
-        fetchData()
-        console.log(userData.email)
     }, [])
 
     if (loading) return <p>Loading...</p>
 
     return (
         <>
+
             <div className="flex h-screen bg-gray-50">
                 <Sidebar userType="mentee" userName={mentee?.group_name ?? "Loading..."} />
 
                 <div className="flex-1 overflow-auto">
                     <div className="bg-linear-to-r from-green-600 to-emerald-600 text-white p-8">
                         <h1 className="text-3xl font-bold mb-2">Mentee Dashboard</h1>
-                        <p className="text-green-100">Welcome back, {group_name ? group_name : "Loading..."}</p>
+                        <p className="text-green-100">Welcome back, {mentee?.group_name ? mentee?.group_name : "Loading..."}</p>
                     </div>
 
                     <div className="p-8">
@@ -76,9 +63,9 @@ export default function MenteeDashboard({ menteeData }: UserDataProps) {
                                             <div className="space-y-4">
                                                 <div>
                                                     <h3 className="text-xl font-bold text-gray-900">
-                                                        {mentor?.first_name ?? "Loading"} {mentor?.last_name ?? "Loading"}
+                                                        {matches?.mentor?.first_name ?? "Loading"} {matches?.mentor?.last_name ?? "Loading"}
                                                     </h3>
-                                                    <p className="text-gray-600">{mentor?.email ?? "Loading"}</p>
+                                                    <p className="text-gray-600">{matches?.mentor?.email ?? "Loading"}</p>
                                                 </div>
 
                                                 <div>
@@ -87,7 +74,7 @@ export default function MenteeDashboard({ menteeData }: UserDataProps) {
                                                     </p>
                                                     <div className="flex flex-wrap gap-2">
                                                         <Badge variant="outline">
-                                                            {mentor?.forte.join(", ") ?? "Loading"}
+                                                            {matches?.mentor?.forte.join(", ") ?? "Loading"}
                                                         </Badge>
                                                     </div>
                                                 </div>
@@ -98,7 +85,7 @@ export default function MenteeDashboard({ menteeData }: UserDataProps) {
                                                     </p>
                                                     <div className="flex flex-wrap gap-2">
                                                         <Badge variant="outline">
-                                                            {mentor?.technical_skills.join(", ") ?? "Loading"}
+                                                            {matches?.mentor?.technical_skills.join(", ") ?? "Loading"}
                                                         </Badge>
                                                     </div>
                                                 </div>
@@ -108,7 +95,7 @@ export default function MenteeDashboard({ menteeData }: UserDataProps) {
                                                         About:
                                                     </p>
                                                     <p className="text-gray-800">
-                                                        {mentor?.self_description}
+                                                        {matches?.mentor?.self_description}
                                                     </p>
                                                 </div>
                                             </div>
@@ -194,12 +181,7 @@ export default function MenteeDashboard({ menteeData }: UserDataProps) {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="space-y-4">
-                                        {/* For logic later 
-                  {papers.length === 0 ? (
-                    <p className="text-gray-500 text-sm">
-                      No papers submitted yet
-                    </p>
-                */}
+
 
                                         <div className="border border-gray-200 rounded-lg p-4">
                                             <h4 className="font-semibold text-gray-900">Chapter 1</h4>

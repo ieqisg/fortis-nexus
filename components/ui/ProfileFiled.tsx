@@ -1,3 +1,5 @@
+import { Badge } from "lucide-react";
+
 export function ProfileField({
     icon,
     label,
@@ -15,7 +17,10 @@ export function ProfileField({
             {/* Text column */}
             <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-slate-500">{label}</p>
+
                 <p className="mt-0.5 break-words text-sm text-slate-900">{value}</p>
+
+
             </div>
         </div>
     );

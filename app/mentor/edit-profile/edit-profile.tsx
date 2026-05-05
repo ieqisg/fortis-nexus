@@ -40,12 +40,14 @@ import {
 
 import { getInitials, getPasswordStrength } from "@/lib/profile_utils";
 import Sidebar from "@/components/ui/Sidebar";
-import { useMentee } from "@/app/context/menteeContext";
+import { useMentor } from "@/app/context/mentorContext";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function MenteeEditProfile() {
-    const { mentee, loading } = useMentee()
+export default function MentorEditProfile() {
+
+    const { mentor, loading } = useMentor()
+
     // ── Profile form state ──────────────────────────────────────────────────────
     const [initialValues, setInitialValues] = useState<ProfileFormValues>(EMPTY_PROFILE);
     const [values, setValues] = useState<ProfileFormValues>(EMPTY_PROFILE);
@@ -198,7 +200,7 @@ export default function MenteeEditProfile() {
     // ── Render ──────────────────────────────────────────────────────────────────
     return (
         <div className="flex h-screen bg-slate-50">
-            <Sidebar userName={mentee?.group_name} userType="mentee" />
+            <Sidebar userName={`${mentor?.first_name} ${mentor?.last_name}`} userType="mentor" />
             <main className="flex-1 overflow-y-auto">
                 <div className="py-8 px-4 sm:py-12">
                     <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
@@ -226,7 +228,7 @@ export default function MenteeEditProfile() {
 
                                         </AvatarFallback>
                                     </Avatar>
-                                    <p className="text-sm font-medium text-slate-900">{mentee?.group_name}</p>
+                                    <p className="text-sm font-medium text-slate-900">{`${mentor?.first_name} ${mentor?.last_name}`}</p>
                                 </div>
 
                                 {/* Full name */}

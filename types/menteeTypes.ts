@@ -1,5 +1,4 @@
-import { MentorFormProfile } from "./mentorTypes";
-
+import type { MenteeData } from "./profile_types"
 // menteeTypes.ts
 export type Matches = {
     matched_at: string | null
@@ -48,4 +47,10 @@ export interface MenteeFormProfile {
 
 export interface MenteeEditProfile {
 
+}
+
+export type MenteeContextType = {
+    mentee: MenteeData | null
+    loading: boolean
+    refetch: () => Promise<void>
 }

@@ -5,10 +5,9 @@ import MenteeProfileDetails from "./profile-details"
 
 
 
-export default async function Page() {
-    const menteeData = await getMenteeData()
-    if (!menteeData) return;
+export default function Page() {
+
     return (
-        <MenteeProfileDetails menteeData={menteeData.data} />
+        <MenteeProfileDetails />
     )
 }

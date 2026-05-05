@@ -1,4 +1,4 @@
-"use client";
+"use client"
 import { ProfileField } from "@/components/ui/ProfileFiled";
 import Sidebar from "@/components/ui/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -13,20 +13,24 @@ import {
 import { UserRound, BookText, Clock, Calendar, Star, Pencil } from "lucide-react";
 import { DetailRow } from "@/components/ui/DetailRow";
 import { useRouter } from "next/navigation";
-import { useMentee } from "@/app/context/menteeContext";
-
-export default function MenteeProfileDetails() {
+import { useEffect } from "react";
+import { useMentor } from "@/app/context/mentorContext";
+export default function MentorProfileDetails() {
 
     const router = useRouter()
-    const { mentee, loading } = useMentee()
+    const { mentor, loading } = useMentor()
     const goEditProfile = () => {
         router.push("./edit-profile/")
     }
-    if (loading) return (<div>Loading...</div>)
+
+
+    useEffect(() => {
+    })
+
 
     return (
         <div className="flex h-screen bg-slate-50">
-            <Sidebar userType="mentee" userName={mentee?.group_name} />
+            <Sidebar userType="mentor" userName={`${mentor?.first_name} ${mentor?.last_name}`} />
 
             <main className="flex-1 overflow-y-auto">
                 <div className="mx-auto w-full px-6 py-8 sm:py-12">
@@ -46,10 +50,10 @@ export default function MenteeProfileDetails() {
                         {/* Identity block */}
                         <CardHeader className="pb-4 pt-6">
                             <CardTitle className="text-xl text-slate-900 sm:text-2xl">
-                                {mentee?.group_name}
+                                {`${mentor?.first_name} ${mentor?.last_name}`}
                             </CardTitle>
                             <CardDescription className="text-sm text-slate-500">
-                                Thesis Group
+                                {mentor?.email}
                             </CardDescription>
                         </CardHeader>
 
@@ -59,33 +63,33 @@ export default function MenteeProfileDetails() {
                             {/* Research details */}
                             <section className="space-y-4">
                                 <h2 className="text-sm font-semibold text-slate-900">
-                                    Research Details
+                                    Profile Details
                                 </h2>
 
                                 <ProfileField
                                     icon={<BookText className="h-4 w-4" />}
-                                    label="Research Title"
-                                    value={mentee?.research_title ? mentee?.research_title : "Loading..."}
+                                    label="Technical Skills"
+                                    value={mentor?.technical_skills ? mentor?.technical_skills.join(", ") : "Loading..."}
                                 />
                                 <ProfileField
                                     icon={<BookText className="h-4 w-4" />}
-                                    label="Research Description"
-                                    value={mentee?.research_description ? mentee?.research_description : "Loading..."}
+                                    label="Forte"
+                                    value={mentor?.forte ? mentor?.forte.join(", ") : "Loading..."}
                                 />
                                 <ProfileField
                                     icon={<Star className="h-4 w-4" />}
-                                    label="Mentor Preference"
-                                    value={mentee?.mentor_preference ? mentee?.mentor_preference : "Loading..."}
+                                    label="Self Description"
+                                    value={mentor?.self_description ? mentor?.self_description : "Loading..."}
                                 />
                                 <ProfileField
                                     icon={<Calendar className="h-4 w-4" />}
                                     label="Available Days"
-                                    value={mentee?.available_days ? mentee?.available_days.join(", ") : "Loading..."}
+                                    value={mentor?.available_days ? mentor?.available_days.join(", ") : "Loading..."}
                                 />
                                 <ProfileField
                                     icon={<Clock className="h-4 w-4" />}
                                     label="Time Slot"
-                                    value={mentee?.time_slot ? mentee?.time_slot.join(", ") : "Loading..."}
+                                    value={mentor?.time_slot ? mentor?.time_slot.join(", ") : "Loading..."}
                                 />
                             </section>
 
@@ -94,18 +98,19 @@ export default function MenteeProfileDetails() {
                             {/* Group members */}
                             <section className="space-y-3">
                                 <h2 className="text-sm font-semibold text-slate-900">
-                                    Group Members
+                                    Past Mentored Theses
                                 </h2>
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                    {mentee?.group_members.map((member: string, i: number) => {
-                                        const parsed = JSON.parse(member)
-                                        return (
-                                            <DetailRow icon={<UserRound className="h-4 w-4" />} key={i} stud_no={parsed.student_number} label={`Member ${i + 1}`} value={parsed.name} href="" />
-                                        )
-                                    })}
-
-
-                                </div>
+                                {/* For previously mentored papers */}
+                                {/* <div className="grid gap-3 sm:grid-cols-2"> */}
+                                {/*     {mentor?.group_members.map((member: string, i: number) => { */}
+                                {/*         const parsed = JSON.parse(member) */}
+                                {/*         return ( */}
+                                {/*             <DetailRow icon={<UserRound className="h-4 w-4" />} key={i} stud_no={parsed.student_number} label={`Member ${i + 1}`} value={parsed.name} href="" /> */}
+                                {/*         ) */}
+                                {/*     })} */}
+                                {/**/}
+                                {/**/}
+                                {/* </div> */}
 
                             </section>
                         </CardContent>

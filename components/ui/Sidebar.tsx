@@ -109,7 +109,7 @@ export default function Sidebar({ userType, userName }: SidebarProps) {
                     <Button
                         variant="ghost"
                         className="w-full justify-start mb-2"
-                        onClick={() => router.push(`/${userType}-dashboard`)}
+                        onClick={() => router.push(`/${userType}/${userType}-dashboard`)}
                     >
                         <Home className="w-4 h-4 mr-2" />
                         Dashboard

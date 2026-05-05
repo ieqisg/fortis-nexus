@@ -7,8 +7,7 @@ import MenteeEditProfile from "./edit-profile";
 
 
 
-export default async function Page() {
-    const menteeData = await getMenteeData()
-    if (!menteeData) return;
-    return <MenteeEditProfile menteeData={menteeData.data} />
+export default function Page() {
+
+    return <MenteeEditProfile />
 }

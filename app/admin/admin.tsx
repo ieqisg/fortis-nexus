@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AdminSidebar from "@/components/ui/AdminSidebar";
 import {
     Card,
@@ -50,19 +50,19 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getAllUserData } from "@/lib/actions/adminActions";
-import { useEffect } from "react";
 
 export default function Admin() {
     const [mentors, setMentors] = useState<any[]>([])
     const [mentees, setMentees] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
-    const [searchTerm, setSearchTerm] = useState("");
-    const [userFilter, setUserFilter] = useState("all");
-    const [selectedMentor, setSelectedMentor] = useState<any>(null);
-    const [selectedUser, setSelectedUser] = useState<any>(null);
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("")
+    const [userFilter, setUserFilter] = useState("all")
+    const [selectedMentor, setSelectedMentor] = useState<any>(null)
+    const [selectedUser, setSelectedUser] = useState<any>(null)
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
     const [matching, setMatching] = useState(false)
     const [matchResult, setMatchResult] = useState<any>(null)
+    const [matchLog, setMatchLog] = useState<any>(null)
 
     const handleRunMatching = async () => {
         setMatching(true)
@@ -70,8 +70,10 @@ export default function Admin() {
             const res = await fetch("/api/run-matching", { method: "POST" })
             const data = await res.json()
             setMatchResult(data)
+            if (data.log) {
+                setMatchLog(data.log)
+            }
             if (data.success) {
-                // refresh data after matching
                 const result = await getAllUserData()
                 if (result.success) {
                     setMentors(result.data.mentors ?? [])
@@ -83,46 +85,6 @@ export default function Admin() {
         }
         setMatching(false)
     }
-
-
-    const algorithmLogs = [
-        {
-            phase: 1,
-            phaseName: "Data Collection & Preprocessing",
-            timestamp: "2026-04-14 08:00 AM",
-            entries: [
-                { status: "success", action: "Mentor profiles loaded", details: `${mentors.length} mentor profiles successfully parsed and indexed.` },
-                { status: "success", action: "Mentee group profiles loaded", details: `${mentees.length} mentee groups successfully parsed and indexed.` },
-                { status: "success", action: "Keyword extraction complete", details: "TF-IDF applied to research titles and descriptions." },
-            ],
-        },
-        {
-            phase: 2,
-            phaseName: "Compatibility Scoring",
-            timestamp: "2026-04-14 08:05 AM",
-            entries: [
-                { status: "success", action: "Cosine similarity computed", details: "Similarity scores calculated for all mentor–mentee pairs." },
-                { status: "success", action: "Preference weights applied", details: "Mentee preferences factored into final compatibility scores." },
-                { status: "pending", action: "Availability matching", details: "Some groups may have unresolved schedule conflicts." },
-            ],
-        },
-        {
-            phase: 3,
-            phaseName: "Assignment & Output",
-            timestamp: "2026-04-14 08:10 AM",
-            entries: [
-                { status: "success", action: "Optimal assignments generated", details: "Gale-Shapley algorithm applied for stable matching." },
-                { status: "success", action: "Matched pairs finalized", details: `${mentees.filter(m => m.matches?.status === "active").length} groups successfully matched to mentors.` },
-                {
-                    status: mentees.filter(m => !m.matches).length > 0 ? "error" : "success",
-                    action: "Unmatched groups flagged",
-                    details: mentees.filter(m => !m.matches).length > 0
-                        ? `${mentees.filter(m => !m.matches).length} groups could not be matched due to capacity or preference constraints.`
-                        : "All groups have been successfully matched."
-                },
-            ],
-        },
-    ]
 
     useEffect(() => {
         const fetchData = async () => {
@@ -169,7 +131,8 @@ export default function Admin() {
                 </div>
 
                 <div className="p-8 space-y-8">
-                    {/* OVERVIEW */}
+
+                    {/* ── OVERVIEW ── */}
                     <div id="overview">
                         <h2 className="text-2xl font-bold text-gray-900 mb-4">Dashboard Overview</h2>
                         <div className="grid md:grid-cols-4 gap-6 mb-6">
@@ -214,6 +177,8 @@ export default function Admin() {
                                 </CardContent>
                             </Card>
                         </div>
+
+                        {/* Run Matching Button */}
                         <div className="flex items-center gap-4 mt-4">
                             <Button
                                 onClick={handleRunMatching}
@@ -240,7 +205,7 @@ export default function Admin() {
                         </div>
                     </div>
 
-                    {/* USER MANAGEMENT */}
+                    {/* ── USER MANAGEMENT ── */}
                     <div id="users">
                         <Card>
                             <CardHeader>
@@ -315,7 +280,7 @@ export default function Admin() {
                         </Card>
                     </div>
 
-                    {/* MENTOR CAPACITY */}
+                    {/* ── MENTOR CAPACITY ── */}
                     <div id="matches">
                         <Card>
                             <CardHeader>
@@ -421,7 +386,7 @@ export default function Admin() {
                         </Card>
                     </div>
 
-                    {/* REGISTERED MENTORS */}
+                    {/* ── REGISTERED MENTORS ── */}
                     <div id="analytics">
                         <Card>
                             <CardHeader>
@@ -461,7 +426,7 @@ export default function Admin() {
                         </Card>
                     </div>
 
-                    {/* REGISTERED MENTEE GROUPS */}
+                    {/* ── REGISTERED MENTEE GROUPS ── */}
                     <div id="adjustment">
                         <Card>
                             <CardHeader>
@@ -558,64 +523,228 @@ export default function Admin() {
                         </Card>
                     </div>
 
-                    {/* ALGORITHM LOGS */}
+                    {/* ── ALGORITHM LOGS ── */}
                     <div id="alerts">
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <FileText className="w-5 h-5 text-purple-600" /> Algorithm Flow Logs
                                 </CardTitle>
-                                <CardDescription>Visualization of the Matching Algorithm Phases</CardDescription>
+                                <CardDescription>
+                                    {matchLog
+                                        ? `Last run: ${new Date(matchLog.timestamp).toLocaleString()}`
+                                        : "Run the matching algorithm to see real-time logs"}
+                                </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="space-y-6">
-                                    {algorithmLogs.map((log) => (
-                                        <div key={log.phase} className="border rounded-lg overflow-hidden">
-                                            <div className={`p-4 ${log.phase === 1 ? "bg-blue-50 border-b border-blue-200" : log.phase === 2 ? "bg-emerald-50 border-b border-emerald-200" : "bg-amber-50 border-b border-amber-200"}`}>
+                                {!matchLog ? (
+                                    <div className="text-center py-12 text-gray-500">
+                                        <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                                        <p className="font-medium">No logs yet</p>
+                                        <p className="text-sm mt-1">Click "Run Matching Algorithm" above to generate logs.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+
+                                        {/* Phase 1: Data Collection */}
+                                        <div className="border rounded-lg overflow-hidden">
+                                            <div className="p-4 bg-blue-50 border-b border-blue-200">
                                                 <div className="flex justify-between items-center">
-                                                    <h3 className="font-semibold">Phase {log.phase}: {log.phaseName}</h3>
-                                                    <span className="text-sm text-slate-500">{log.timestamp}</span>
+                                                    <h3 className="font-semibold">Phase 1: Data Collection & Preprocessing</h3>
+                                                    <span className="text-sm text-slate-500">{new Date(matchLog.timestamp).toLocaleString()}</span>
                                                 </div>
                                             </div>
                                             <div className="p-4 space-y-3">
-                                                {log.entries.map((entry, index) => (
-                                                    <div key={index} className={`flex items-start gap-3 p-3 rounded-lg ${entry.status === "success" ? "bg-green-50" : entry.status === "pending" ? "bg-amber-50" : "bg-red-50"}`}>
-                                                        {entry.status === "success" ? (
-                                                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-                                                        ) : entry.status === "pending" ? (
-                                                            <Clock className="w-5 h-5 text-amber-600 mt-0.5" />
-                                                        ) : (
-                                                            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                                                        )}
-                                                        <div>
-                                                            <p className="font-medium text-sm">{entry.action}</p>
-                                                            <p className="text-xs text-slate-500">{entry.details}</p>
+                                                <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                                                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                                                    <div>
+                                                        <p className="font-medium text-sm">Mentor profiles loaded</p>
+                                                        <p className="text-xs text-slate-500">{matchLog.phase1.mentors_count} mentor profiles successfully parsed and indexed.</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                                                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                                                    <div>
+                                                        <p className="font-medium text-sm">Mentee group profiles loaded</p>
+                                                        <p className="text-xs text-slate-500">{matchLog.phase1.mentees_count} mentee groups successfully parsed and indexed.</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                                                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                                                    <div>
+                                                        <p className="font-medium text-sm">Keyword extraction complete</p>
+                                                        <p className="text-xs text-slate-500">TF-IDF with bigram prioritization and domain expansion applied to all profiles.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Phase 2: Compatibility Scoring */}
+                                        <div className="border rounded-lg overflow-hidden">
+                                            <div className="p-4 bg-emerald-50 border-b border-emerald-200">
+                                                <h3 className="font-semibold">Phase 2: Compatibility Scoring</h3>
+                                            </div>
+                                            <div className="p-4 space-y-3">
+                                                <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                                                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                                                    <div>
+                                                        <p className="font-medium text-sm">Cosine similarity computed</p>
+                                                        <p className="text-xs text-slate-500">TF-IDF keyword vectors compared across all mentor-mentee pairs.</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                                                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                                                    <div>
+                                                        <p className="font-medium text-sm">Weighted scores applied</p>
+                                                        <p className="text-xs text-slate-500">Keyword similarity (70%), availability (20%), experience (10%)</p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Score table per mentee */}
+                                                {matchLog.phase2.scores?.length > 0 && (
+                                                    <div className="mt-4">
+                                                        <p className="font-medium text-sm mb-3">Top compatibility scores per mentee group:</p>
+                                                        <div className="space-y-3">
+                                                            {matchLog.phase2.scores.map((entry: any) => (
+                                                                <div key={entry.mentee_id} className="border rounded-lg p-3 bg-white">
+                                                                    <p className="font-semibold text-sm text-gray-800 mb-2">{entry.mentee_name}</p>
+                                                                    <div className="space-y-1">
+                                                                        {entry.top_matches.map((match: any, idx: number) => (
+                                                                            <div key={idx} className="flex flex-wrap items-center justify-between text-xs bg-gray-50 rounded px-3 py-2 gap-2">
+                                                                                <span className="font-medium w-32 shrink-0">{match.mentor_name}</span>
+                                                                                <div className="flex gap-3 text-slate-500">
+                                                                                    <span>keyword: <strong>{match.keyword_score}</strong></span>
+                                                                                    <span>avail: <strong>{match.availability_score}</strong></span>
+                                                                                    <span>exp: <strong>{match.experience_score}</strong></span>
+                                                                                    <span className="text-blue-600 font-semibold">final: {match.final_score}</span>
+                                                                                </div>
+                                                                                <div className="flex gap-1 flex-wrap">
+                                                                                    {match.matched_keywords?.slice(0, 3).map((kw: string) => (
+                                                                                        <Badge key={kw} variant="outline" className="text-xs">{kw}</Badge>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Phase 3: Matching */}
+                                        <div className="border rounded-lg overflow-hidden">
+                                            <div className="p-4 bg-amber-50 border-b border-amber-200">
+                                                <h3 className="font-semibold">Phase 3: Hospital-Resident Matching (Gale-Shapley)</h3>
+                                            </div>
+                                            <div className="p-4 space-y-3">
+
+                                                {/* Preferences */}
+                                                <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                                                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                                                    <div className="w-full">
+                                                        <p className="font-medium text-sm mb-2">Preference lists generated</p>
+                                                        <div className="grid md:grid-cols-2 gap-4">
+                                                            <div>
+                                                                <p className="text-xs font-semibold text-gray-600 mb-2">Mentee Preferences (top 3 mentors):</p>
+                                                                <div className="space-y-1">
+                                                                    {matchLog.phase3.preferences?.mentee_preferences?.map((pref: any) => (
+                                                                        <div key={pref.mentee_name} className="text-xs text-slate-600 bg-white rounded px-2 py-1">
+                                                                            <span className="font-medium text-gray-800">{pref.mentee_name}:</span>{" "}
+                                                                            <span>{pref.ranked_mentors.slice(0, 3).join(" → ")}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs font-semibold text-gray-600 mb-2">Mentor Preferences (top 3 mentees):</p>
+                                                                <div className="space-y-1">
+                                                                    {matchLog.phase3.preferences?.mentor_preferences?.map((pref: any) => (
+                                                                        <div key={pref.mentor_name} className="text-xs text-slate-600 bg-white rounded px-2 py-1">
+                                                                            <span className="font-medium text-gray-800">{pref.mentor_name}:</span>{" "}
+                                                                            <span>{pref.ranked_mentees.slice(0, 3).join(" → ")}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                                                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                                                    <div>
+                                                        <p className="font-medium text-sm">Mentee-optimal HR completed</p>
+                                                        <p className="text-xs text-slate-500">{matchLog.phase3.mentee_optimal_matches} pairs matched (best outcome for mentees)</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                                                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                                                    <div>
+                                                        <p className="font-medium text-sm">Mentor-optimal HR completed</p>
+                                                        <p className="text-xs text-slate-500">{matchLog.phase3.mentor_optimal_matches} pairs matched (best outcome for mentors)</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                                                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                                                    <div>
+                                                        <p className="font-medium text-sm">Fairer matching selected</p>
+                                                        <p className="text-xs text-slate-500">
+                                                            Selected: <strong>{matchLog.phase3.selected_algorithm}</strong> — minimizes combined dissatisfaction from both sides
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className={`flex items-start gap-3 p-3 rounded-lg ${matchLog.phase3.is_stable ? "bg-green-50" : "bg-red-50"}`}>
+                                                    {matchLog.phase3.is_stable
+                                                        ? <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                                                        : <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                                                    }
+                                                    <div>
+                                                        <p className="font-medium text-sm">Stability verification</p>
+                                                        <p className="text-xs text-slate-500">
+                                                            {matchLog.phase3.is_stable
+                                                                ? "✅ Matching is stable — no blocking pairs found"
+                                                                : "⚠️ Blocking pairs detected — matching may be unstable"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Final Matches */}
+                                        <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                                            <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                                                <CheckCircle className="w-5 h-5" />
+                                                Final Matches ({matchLog.matched} matched
+                                                {matchLog.unmatched > 0 && `, ${matchLog.unmatched} unmatched`})
+                                            </h3>
+                                            <div className="space-y-2">
+                                                {matchLog.phase3.matches?.map((match: any, idx: number) => (
+                                                    <div key={idx} className="flex flex-wrap items-center justify-between p-2 bg-white rounded gap-2">
+                                                        <span className="font-medium text-sm w-36 shrink-0">{match.mentee_name}</span>
+                                                        <span className="text-emerald-600 text-sm">→ {match.mentor_name}</span>
+                                                        <span className="text-slate-500 text-xs bg-slate-100 px-2 py-0.5 rounded">score: {match.score}</span>
+                                                        <div className="flex gap-1 flex-wrap">
+                                                            {match.keywords?.slice(0, 3).map((kw: string) => (
+                                                                <Badge key={kw} variant="outline" className="text-xs">{kw}</Badge>
+                                                            ))}
                                                         </div>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
-                                    ))}
 
-                                    <div className="p-4 bg-linear-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                                        <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
-                                            <CheckCircle className="w-5 h-5" /> Perfect Matches
-                                        </h3>
-                                        <div className="space-y-2">
-                                            {mentees.filter(m => m.matches?.status === "active").map((group) => (
-                                                <div key={group.id} className="flex items-center justify-between p-2 bg-white rounded">
-                                                    <span className="font-medium">{group.group_name}</span>
-                                                    <span className="text-emerald-600">
-                                                        → {group.matches?.mentor?.first_name} {group.matches?.mentor?.last_name}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
+
                 </div>
             </div>
         </div>
