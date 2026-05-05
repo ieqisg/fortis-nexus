@@ -2,7 +2,7 @@
 "use server"
 import { getSupabaseClient } from "@/app/config/getSupabaseClient"
 import { createClient } from "@supabase/supabase-js"
-import { MentorInsert } from "@/app/types/modelTypes"
+import { MentorInsert } from "@/types/modelTypes"
 
 export async function createMentorProfile(payload: Omit<MentorInsert, 'id' | 'profile_completed'>) {
     const supabase = await getSupabaseClient()
@@ -24,7 +24,7 @@ export async function createMentorProfile(payload: Omit<MentorInsert, 'id' | 'pr
         .eq("id", user.id)
 
     if (error) {
-        /* await adminSupabase.auth.admin.deleteUser(payload.id) */
+
         return { success: false, message: "Failed to create profile, signup has been rolled back." }
     }
 
@@ -64,4 +64,16 @@ export async function getMentorData() {
         .single()
     if (error) return { success: false, message: error.message, data: null }
     return { success: true, data: mentor }
+}
+
+export async function changeDefaultPassword(newPassword: string) {
+    const supabase = await getSupabaseClient()
+
+    const { error } = await supabase.auth.updateUser({
+        password: newPassword
+    })
+    if (error) {
+        return { success: false, error: error.message }
+    }
+    return { success: true }
 }

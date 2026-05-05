@@ -13,17 +13,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, UserRound, Plus, X, Clock } from "lucide-react";
+import { ArrowLeft, UserRound, Plus, X, Clock, Check, Eye, EyeOff } from "lucide-react";
 import { MentorFormProfile } from "@/types/mentorTypes";
 import { UserAuth } from "@/app/context/authContext";
 import { MentorInsert } from "@/types/modelTypes";
 import { createMentorProfile } from "@//lib/actions/mentorActions";
 import { useRouter } from "next/navigation";
+import { changeDefaultPassword } from "@//lib/actions/mentorActions";
 import { Slider } from "@/components/ui/slider";
 
-//todo:: Copy how the mentee-create-profile can insert data into the database
 export default function MentorCompleteProfile() {
+    const router = useRouter()
+
     const { signUp, getUser, signIn } = UserAuth()
     const [value, setValue] = useState([0])
     const [formData, setFormData] = useState<MentorFormProfile>({
@@ -43,25 +44,59 @@ export default function MentorCompleteProfile() {
     })
     const [skillInput, setSkillInput] = useState("");
     const [forteInput, setForteInput] = useState("");
-    const router = useRouter()
+    const [passwordData, setPasswordData] = useState({
+        newPassword: "",
+        confirmPassword: "",
+    })
+    const [passwordError, setPasswordError] = useState("")
+
+    const [showpasswordData, setShowpasswordData] = useState(false)
+    const [showConfirmpasswordData, setShowConfirmpasswordData] = useState(false)
+
+    const isLengthValid = passwordData.newPassword.length >= 8;
+    const hasUppercase = /[A-Z]/.test(passwordData.newPassword);
+    const hasNumber = /\d/.test(passwordData.newPassword);
+    const hasSpecialChar = /[!@#$%^&*\-_]/.test(passwordData.newPassword);
+    const isPasswordStrong =
+        isLengthValid && hasUppercase && hasNumber && hasSpecialChar;
 
     useEffect(() => {
+        if (passwordData.newPassword === "" && passwordData.confirmPassword === "") {
+            setPasswordError("");
+        } else if (!isPasswordStrong) {
+            setPasswordError(
+                "Password must be at least 8 characters, include uppercase, number, and special character (_ or - included).",
+            );
+        } else if (passwordData.newPassword !== passwordData.confirmPassword) {
+            setPasswordError("Passwords do not match.");
+        } else {
+            setPasswordError("");
+        }
+    }, [passwordData, passwordData.confirmPassword, isPasswordStrong]);
 
-
-    })
+    const renderCheck = (valid: boolean) => (
+        <span
+            className={`flex items-center gap-1 ${valid ? "text-green-600" : "text-gray-400"
+                }`}
+        >
+            {valid && <Check className="w-4 h-4" />}
+        </span>
+    );
 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const signUpResult = await signUp()
-            if (!signUpResult) return;
+
 
             const signInResult = await signIn()
             if (!signInResult) return;
 
             const userResult = await getUser()
             if (!userResult.success || !userResult.data?.user) return;
+
+            const passwordChange = await changeDefaultPassword(passwordData.newPassword)
+            if (!passwordChange) return;
 
             const payload: Omit<MentorInsert, 'id' | 'profile_completed'> = {
                 first_name: formData.first_name,
@@ -175,7 +210,7 @@ export default function MentorCompleteProfile() {
                                 <div className="flex gap-2">
                                     <Input
                                         id="technical-skills"
-                                        placeholder="e.g. Python, Machine Learning, Image Processing etc."
+                                        placeholder="e.g. Python, Javascript, Java, C++ etc..."
                                         value={skillInput}
                                         onChange={(e) => setSkillInput(e.target.value)}
                                         onKeyDown={handleSkillKeyDown}
@@ -241,7 +276,7 @@ export default function MentorCompleteProfile() {
                                 <div className="flex gap-2">
                                     <Input
                                         id="Forte"
-                                        placeholder="e.g., Coding, System Design, Theory, Research etc."
+                                        placeholder="e.g. Image Processing, Machine Learning, Computer Vision etc..."
                                         value={forteInput}
                                         onChange={(e) => setForteInput(e.target.value)}
                                         onKeyDown={handleSkillKeyDown}
@@ -312,6 +347,85 @@ export default function MentorCompleteProfile() {
 
 
                             </div>
+                            <div className="space-y-2 relative">
+                                <Label htmlFor="description">
+                                    Change your password *
+                                </Label>
+
+                                <div className="relative">
+                                    <Input
+                                        type={showpasswordData ? "text" : "password"}
+                                        required
+                                        placeholder="Change your password"
+                                        value={passwordData.newPassword}
+                                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                                        className="pr-10"
+                                    />
+
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2"
+                                        onClick={() => setShowpasswordData(!showpasswordData)}
+                                    >
+                                        {showpasswordData ? (
+                                            <EyeOff className="w-5 h-5" />
+                                        ) : (
+                                            <Eye className="w-5 h-5" />
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+                            <ul className="mt-2 text-sm space-y-1">
+                                <li className="flex items-center gap-1">
+                                    {renderCheck(isLengthValid)} At least 8 characters
+                                </li>
+                                <li className="flex items-center gap-1">
+                                    {renderCheck(hasUppercase)} Contains uppercase letter
+                                </li>
+                                <li className="flex items-center gap-1">
+                                    {renderCheck(hasNumber)} Contains number
+                                </li>
+                                <li className="flex items-center gap-1">
+                                    {renderCheck(hasSpecialChar)} Contains special character
+                                    (!@#$%^&*-_)
+                                </li>
+                            </ul>
+                            <div className="space-y-2 relative">
+                                <Label htmlFor="description">
+                                    Confirm password *
+                                </Label>
+
+                                <div className="relative">
+                                    <Input
+                                        type={showConfirmpasswordData ? "text" : "password"}
+                                        required
+                                        placeholder="Confirm your password"
+                                        value={passwordData.confirmPassword}
+                                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                        className="pr-10" // add padding so text doesn't overlap the icon
+                                    />
+
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2"
+                                        onClick={() => setShowConfirmpasswordData(!showConfirmpasswordData)}
+                                    >
+                                        {showConfirmpasswordData ? (
+                                            <EyeOff className="w-5 h-5" />
+                                        ) : (
+                                            <Eye className="w-5 h-5" />
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+                            {passwordError && (
+                                <p className="text-red-600 text-sm">{passwordError}</p>
+                            )}
+
                             <div>
                                 <Card>
                                     <CardHeader>
@@ -362,6 +476,7 @@ export default function MentorCompleteProfile() {
                                     </CardContent>
                                 </Card>
                             </div>
+
 
                             <div className="flex gap-2 justify-end">
                                 <Button

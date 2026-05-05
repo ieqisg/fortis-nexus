@@ -33,9 +33,9 @@ export default function Login() {
             const role = userSignIn?.data?.role
             setLoading(true)
             if (role === "mentee") {
-                router.push("/mentee-dashboard")
+                router.push("/mentee/mentee-dashboard")
             } else if (role === "mentor") {
-                router.push("/mentor-dashboard")
+                router.push("/mentor/mentor-dashboard")
             } else if (role === "admin") {
                 router.push("/admin")
             } else {

@@ -1,4 +1,4 @@
-
+import type { MentorData } from "./profile_types";
 
 export interface MentorFormProfile {
     first_name: string;
@@ -16,3 +16,9 @@ export interface MentorFormProfile {
 }
 
 export type MentorProfileUpdate = Omit<MentorFormProfile, 'profile_completed'>
+
+export type MentorContextType = {
+    mentor: MentorData | null
+    loading: boolean
+    refetch: () => Promise<void>
+}

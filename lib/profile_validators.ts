@@ -3,7 +3,7 @@ import type {
     ProfileFormErrors,
     PasswordFormValues,
     PasswordFormErrors,
-} from "@/types/profile.types";
+} from "@/types/profile_types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

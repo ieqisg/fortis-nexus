@@ -273,23 +273,7 @@ export default function MenteeCreateProfile({
                                 />
                             </div>
 
-                            {/* Thesis File */}
-                            <div>
-                                <Label htmlFor="thesisFile">
-                                    Thesis 1 Document (Proposal){" "}
-                                    <span className="text-red-600">*</span>
-                                </Label>
-                                <Input
-                                    type="file"
-                                    id="thesis_file"
-                                // onChange={(e) =>
-                                //     setFormData({
-                                //         ...formData,
-                                //         thesis_file: e.target.files ? e.target.files[0] : null,
-                                //     })
-                                // }
-                                />
-                            </div>
+
 
                             {/* Research Description */}
                             <div>
