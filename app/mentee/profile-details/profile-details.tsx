@@ -14,6 +14,7 @@ import { UserRound, BookText, Clock, Calendar, Star, Pencil } from "lucide-react
 import { DetailRow } from "@/components/ui/DetailRow";
 import { useRouter } from "next/navigation";
 import { useMentee } from "@/app/context/menteeContext";
+import { parseSlot } from "@/components/ui/AvailabilitySelector";
 
 export default function MenteeProfileDetails() {
 
@@ -85,7 +86,14 @@ export default function MenteeProfileDetails() {
                                 <ProfileField
                                     icon={<Clock className="h-4 w-4" />}
                                     label="Time Slot"
-                                    value={mentee?.time_slot ? mentee?.time_slot.join(", ") : "Loading..."}
+                                    value={mentee?.time_slot?.map((encoded: string) => {
+                                        const { day, slot } = parseSlot(encoded)
+                                        return (
+                                            <span key={encoded} className="text-sm block">
+                                                <span className="font-medium">{day}:</span> {slot}
+                                            </span>
+                                        )
+                                    })}
                                 />
                             </section>
 

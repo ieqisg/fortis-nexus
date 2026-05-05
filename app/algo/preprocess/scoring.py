@@ -168,22 +168,47 @@ def compute_keyword_similarity(
 def _availability_score(mentor: dict, mentee: dict) -> float:
     mentor_days = set(mentor.get("available_days") or [])
     mentee_days = set(mentee.get("available_days") or [])
-    mentor_slots = set(mentor.get("time_slot") or [])
-    mentee_slots = set(mentee.get("time_slot") or [])
 
     if not mentor_days or not mentee_days:
         return 0.0
 
-    day_union = mentor_days | mentee_days
-    slot_union = mentor_slots | mentee_slots
+    day_overlap = len(mentor_days & mentee_days) / len(mentor_days | mentee_days)
 
-    day_score = len(mentor_days & mentee_days) / len(day_union)
-    slot_score = (
-        len(mentor_slots & mentee_slots) / len(slot_union)
-        if slot_union else 0.0
-    )
+    # parse "Monday:9:00-10:00" → extract slot per day
+    def parse_slots(time_slots: list, days_overlap: set) -> dict:
+        """Returns { day: [slots] } only for overlapping days"""
+        result = {}
+        for entry in (time_slots or []):
+            if ":" in entry:
+                parts = entry.split(":")
+                day = parts[0]
+                slot = ":".join(parts[1:])
+            else:
+                # legacy format — just a slot with no day prefix
+                continue
+            if day in days_overlap:
+                result.setdefault(day, []).append(slot)
+        return result
 
-    return 0.6 * day_score + 0.4 * slot_score
+    overlapping_days = mentor_days & mentee_days
+
+    mentor_slots_by_day = parse_slots(mentor.get("time_slot") or [], overlapping_days)
+    mentee_slots_by_day = parse_slots(mentee.get("time_slot") or [], overlapping_days)
+
+    # compute slot overlap per shared day
+    slot_scores = []
+    for day in overlapping_days:
+        m_slots = set(mentor_slots_by_day.get(day, []))
+        e_slots = set(mentee_slots_by_day.get(day, []))
+        union = m_slots | e_slots
+        if union:
+            slot_scores.append(len(m_slots & e_slots) / len(union))
+        else:
+            slot_scores.append(0.0)
+
+    slot_overlap = sum(slot_scores) / len(slot_scores) if slot_scores else 0.0
+
+    return 0.6 * day_overlap + 0.4 * slot_overlap
 
 # ─────────────────────────────────────────────
 # 4. EXPERIENCE SCORE

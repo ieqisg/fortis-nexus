@@ -1,5 +1,5 @@
 todo mentee-side:
-edit profile mentee side
+allow edit profile mentee/mentor side
 allow mentee to login using group name
 display the meeting of mentor and mentee on mentee dashboard
 
@@ -15,4 +15,5 @@ client side error handling
 enable storage/bucket to store file uploads
 use the available time slot and available days for meeting of mentors and mentee as much as possible, if cant allow the mentor to edit the meeting with their mentee
 if there's an active session, users shouldnt be able to access login pages
-
+in meeting, recommend a schedule for all the mentees of a mentor but also allow the mentor to override that scedule
+change Availability to select preferred time slots per selected days

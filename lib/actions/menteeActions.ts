@@ -3,6 +3,7 @@
 
 import { createClient } from "@supabase/supabase-js"
 import { MenteeGroupInsert } from "@/types/modelTypes"
+import { MenteeGroupUpdate } from "@/types/modelTypes"
 import { getSupabaseClient } from "@/app/config/getSupabaseClient"
 
 export async function createMenteeProfile(payload: MenteeGroupInsert) {
@@ -19,6 +20,23 @@ export async function createMenteeProfile(payload: MenteeGroupInsert) {
 
     if (error) {
         await adminSupabase.auth.admin.deleteUser(payload.id)
+        return { success: false, message: "Failed to create profile, signup has been rolled back." }
+    }
+
+    return { success: true }
+}
+
+export async function editMenteeProfile(payload: MenteeGroupUpdate) {
+    const supabase = await getSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Not authenticated", data: null }
+
+    const { error } = await supabase
+        .from("MENTEE_GROUPS")
+        .update(payload)
+        .eq("id", user.id)
+
+    if (error) {
         return { success: false, message: "Failed to create profile, signup has been rolled back." }
     }
 

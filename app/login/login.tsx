@@ -28,10 +28,10 @@ export default function Login() {
         if (!email || !password) return;
 
         try {
+            setLoading(true)
             const userSignIn = await signIn()
             if (!userSignIn.success) return;
             const role = userSignIn?.data?.role
-            setLoading(true)
             if (role === "mentee") {
                 router.push("/mentee/mentee-dashboard")
             } else if (role === "mentor") {
@@ -44,7 +44,11 @@ export default function Login() {
 
         } catch (err) {
             console.error(err)
+
+        } finally {
+            setLoading(false)
         }
+
     }
 
 

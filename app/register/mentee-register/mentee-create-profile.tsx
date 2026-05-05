@@ -30,7 +30,7 @@ export default function MenteeCreateProfile({
     const { userData, signUp, getUser, signIn } = UserAuth();
     const [studentNumValid, setStudentNumValid] = useState("");
     const [disableAddMember, setDisableAddMember] = useState(true);
-    const [timeAndDayValid, setTimeAndDayValid] = useState("");
+    const [timeAndDayValid, setTimeAndDayValid] = useState("")
 
     // Form state
     const [formData, setFormData] = useState<MenteeFormProfile>({
@@ -45,10 +45,12 @@ export default function MenteeCreateProfile({
         time_slot: [],
 
     });
+    const studentNumbers = formData.group_members.map((m) => m.student_number).join(",")
+    const availableDays = formData.available_days.join(",")
+    const timeSlots = formData.time_slot.join(",")
 
     // Validation
     const isFormValid = () => {
-        if (!formData) return false;
 
         if (
             !formData.group_name ||
@@ -60,37 +62,30 @@ export default function MenteeCreateProfile({
             !formData.time_slot
         )
             return false;
-
-        if (formData.time_slot.length > 2 || formData.available_days.length > 2)
-            return false;
-
         return true;
     };
 
 
     useEffect(() => {
-        console.log(userData.email)
         formData.group_members.forEach((student) => {
             if (student.student_number.length !== 9) {
-                setStudentNumValid("Student Number should be exactly 9 digits");
-                setDisableAddMember(false);
+                setStudentNumValid("Student Number should be exactly 9 digits")
+                setDisableAddMember(false)
             } else {
-                setStudentNumValid("");
-                setDisableAddMember(true);
+                setStudentNumValid("")
+                setDisableAddMember(true)
             }
-        });
-        if (formData.time_slot.length > 2 || formData.available_days.length > 2) {
-            setTimeAndDayValid(
-                "Selected Available Days or Time slots should not be longer than 2",
-            );
+        })
+
+        const allDaysHaveSlots = formData.available_days.every(day =>
+            formData.time_slot.some(s => s.startsWith(`${day}:`))
+        )
+        if (formData.available_days.length > 0 && !allDaysHaveSlots) {
+            setTimeAndDayValid("Please select at least one time slot for each selected day")
         } else {
-            setTimeAndDayValid("");
+            setTimeAndDayValid("")
         }
-    }, [
-        formData.group_members.map((member) => member.student_number).join(","),
-        formData.available_days.join(","),
-        formData.time_slot.join(","),
-    ]);
+    }, [studentNumbers, availableDays, timeSlots])
 
     // Handle dynamic member changes
     const updateMember = (
@@ -161,7 +156,7 @@ export default function MenteeCreateProfile({
             }
 
             alert("Mentee profile created successfully!");
-            router.push("/mentee-dashboard");
+            router.push("/mentee/mentee-dashboard");
 
         } catch (err) {
             console.error(err);
@@ -262,14 +257,18 @@ export default function MenteeCreateProfile({
                                 <Label htmlFor="thesisTitle">
                                     Research/Thesis Title <span className="text-red-600">*</span>
                                 </Label>
-                                <Input
+                                <Textarea
                                     required
-                                    id="thesisTitle"
-                                    placeholder="Enter your thesis title"
+                                    id="ThesisTItle"
+                                    placeholder="Enter your Research Title"
                                     value={formData.thesis_title}
                                     onChange={(e) =>
-                                        setFormData({ ...formData, thesis_title: e.target.value })
+                                        setFormData({
+                                            ...formData,
+                                            thesis_title: e.target.value,
+                                        })
                                     }
+                                    rows={5}
                                 />
                             </div>
 
@@ -349,11 +348,7 @@ export default function MenteeCreateProfile({
                                             }
 
                                         />
-                                        {timeAndDayValid && (
-                                            <p className="text-red-600 text-sm mt-1">
-                                                {timeAndDayValid}
-                                            </p>
-                                        )}
+
                                     </CardContent>
                                 </Card>
                             </div>
