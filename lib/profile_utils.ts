@@ -1,4 +1,4 @@
-import type { PasswordStrength } from "@/types/profile.types";
+import type { PasswordStrength } from "@/types/profile_types";
 
 /**
  * Derives display initials from a full name, falling back to username.
