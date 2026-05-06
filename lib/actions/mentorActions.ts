@@ -48,7 +48,6 @@ export async function getMentorData() {
                 matched_keywords,
                 mentee:matches_mentee_group_id_fkey (
                     id,
-                    email,
                     group_name,
                     group_members,
                     research_title,
@@ -59,7 +58,6 @@ export async function getMentorData() {
                 )
             )
         `)
-        /* .select("*") */
         .eq("id", user.id)
         .single()
     if (error) return { success: false, message: error.message, data: null }

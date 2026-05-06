@@ -156,7 +156,7 @@ export default function MenteeCreateProfile({
             }
 
             alert("Mentee profile created successfully!");
-            router.push("/mentee/mentee-dashboard");
+            router.push("/mentee-dashboard");
 
         } catch (err) {
             console.error(err);
@@ -260,12 +260,12 @@ export default function MenteeCreateProfile({
                                 <Textarea
                                     required
                                     id="ThesisTItle"
-                                    placeholder="Enter your Research Title"
-                                    value={formData.thesis_title}
+                                    placeholder="Enter your resarch title"
+                                    value={formData.research_description}
                                     onChange={(e) =>
                                         setFormData({
                                             ...formData,
-                                            thesis_title: e.target.value,
+                                            research_description: e.target.value,
                                         })
                                     }
                                     rows={5}

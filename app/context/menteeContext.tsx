@@ -16,7 +16,6 @@ export function MenteeProvider({ children }: { children: ReactNode }) {
         if (result.success) {
             setMentee(result.data)
             setLoading(false)
-            console.log(result.data)
         }
 
     }
