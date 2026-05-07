@@ -1,5 +1,4 @@
 todo mentee-side:
-allow edit profile mentee/mentor side
 instead of setting meeting everytime, set a meeting for all mentees for mentors 
 
 display the meeting of mentor and mentee on mentee dashboard
