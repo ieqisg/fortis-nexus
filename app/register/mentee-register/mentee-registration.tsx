@@ -18,6 +18,7 @@ import { UserAuth } from "../../context/authContext";
 export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
     const router = useRouter();
     const { setUserData } = UserAuth();
+
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -25,15 +26,13 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [passwordError, setPasswordError] = useState("");
 
-    // Real-time password validation flags
     const isLengthValid = password.length >= 8;
     const hasUppercase = /[A-Z]/.test(password);
     const hasNumber = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*\-_]/.test(password); // added _ and -
+    const hasSpecialChar = /[!@#$%^&*\-_]/.test(password);
     const isPasswordStrong =
         isLengthValid && hasUppercase && hasNumber && hasSpecialChar;
 
-    // Form valid if password is strong AND matches confirm password
     const isFormValid = isPasswordStrong && password === confirmPassword;
     // Real-time password error messages
     useEffect(() => {

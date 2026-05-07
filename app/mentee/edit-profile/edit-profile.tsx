@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Clock } from "lucide-react";
 
 import type {
     ProfileFormValues,
@@ -25,9 +25,7 @@ import type {
     PasswordFormErrors,
     PasswordTouchedFields,
 } from "@/types/profile_types";
-
-
-
+import { MenteeGroupUpdate } from "@/types/modelTypes";
 import {
     EMPTY_PROFILE,
     EMPTY_PASSWORD,
@@ -36,21 +34,30 @@ import {
     validateProfileForm,
     validatePasswordField,
     validatePasswordForm,
+
 } from "@/lib/profile_validators";
+import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
 
 import { getInitials, getPasswordStrength } from "@/lib/profile_utils";
 import Sidebar from "@/components/ui/Sidebar";
 import { useMentee } from "@/app/context/menteeContext";
+import { UserAuth } from "@/app/context/authContext";
+import { changeDefaultPassword, editMenteeProfile } from "@/lib/actions/menteeActions";
+import { MenteeEditForm } from "@/types/menteeTypes";
+import { useRouter } from "next/navigation";
+import { verifyCurrentPassword } from "@/lib/actions/menteeActions";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function MenteeEditProfile() {
-    const { mentee, loading } = useMentee()
+    const router = useRouter()
+    const { signOut } = UserAuth()
+    const { mentee, loading, refetch } = useMentee()
+    const { getUser } = UserAuth()
     // ── Profile form state ──────────────────────────────────────────────────────
     const [initialValues, setInitialValues] = useState<ProfileFormValues>(EMPTY_PROFILE);
     const [values, setValues] = useState<ProfileFormValues>(EMPTY_PROFILE);
     const [errors, setErrors] = useState<ProfileFormErrors>({});
-    const [touched, setTouched] = useState<ProfileTouchedFields>({});
     const [isSaving, setIsSaving] = useState(false);
 
     // ── Password form state ─────────────────────────────────────────────────────
@@ -62,75 +69,81 @@ export default function MenteeEditProfile() {
     const [showNew, setShowNew] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
 
-    // ── Derived values ──────────────────────────────────────────────────────────
-    const isDirty = useMemo(
-        () =>
-            (Object.keys(values) as (keyof ProfileFormValues)[]).some(
-                (key) => values[key] !== initialValues[key]
-            ),
-        [values, initialValues]
-    );
+    const [formData, setFormData] = useState<MenteeEditForm>({
+        group_name: "",
+        research_title: "",
+        research_description: "",
+        mentor_preference: "",
+        available_days: [],
+        time_slot: [],
+    });
 
+
+    const handleCancel = () => {
+        toast("Changes in the profile were cancelled")
+    }
+
+    const hasChanges =
+        !!formData.group_name ||
+        !!formData.research_title ||
+        !!formData.research_description ||
+        formData.mentor_preference ||
+        formData.available_days.length > 0 ||
+        formData.time_slot.length > 0;
+
+
+
+    const handleChanges = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            setIsSaving(true);
+
+            const payload: MenteeGroupUpdate = {};
+
+            if (formData.group_name && formData.group_name !== mentee?.group_name)
+                payload.group_name = formData.group_name;
+            if (formData.research_title && formData.research_title !== mentee?.research_title)
+                payload.research_title = formData.research_title;
+            if (formData.research_description && formData.research_description !== mentee?.research_description)
+                payload.research_description = formData.research_description;
+            if (formData.mentor_preference && formData.mentor_preference !== mentee?.mentor_preference)
+                payload.mentor_preference = formData.mentor_preference;
+            if (formData.available_days?.length)
+                payload.available_days = formData.available_days;
+            if (formData.time_slot?.length)
+                payload.time_slot = formData.time_slot;
+
+            // Nothing changed
+            if (Object.keys(payload).length === 0) {
+                toast.info("No changes to save.");
+                return;
+            }
+
+            console.log("Payload from client side", payload);
+            const result = await editMenteeProfile(payload);
+
+            if (result.success) {
+                toast.success("Profile updated successfully.");
+                window.location.reload()
+
+            } else {
+                toast.error(result.message ?? "Failed to update profile.");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("An unexpected error occurred.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
     const isPasswordDirty =
         passwordValues.currentPassword !== "" ||
         passwordValues.newPassword !== "" ||
         passwordValues.confirmPassword !== "";
 
-    const initials = getInitials(values.fullName, values.username);
-    const bioCount = values.bio.length;
     const strength = getPasswordStrength(passwordValues.newPassword);
-    const canSave = isDirty && !isSaving;
     const canUpdatePassword = isPasswordDirty && !isChangingPassword;
 
-    // ── Profile handlers ────────────────────────────────────────────────────────
-    const handleChange =
-        (name: keyof ProfileFormValues) =>
-            (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-                const nextValue = event.target.value;
-                setValues((prev) => ({ ...prev, [name]: nextValue }));
-                if (touched[name]) {
-                    setErrors((prev) => ({ ...prev, [name]: validateProfileField(name, nextValue) }));
-                }
-            };
-
-    const handleBlur = (name: keyof ProfileFormValues) => () => {
-        setTouched((prev) => ({ ...prev, [name]: true }));
-        setErrors((prev) => ({ ...prev, [name]: validateProfileField(name, values[name]) }));
-    };
-
-    const handleCancel = () => {
-        setValues(initialValues);
-        setErrors({});
-        setTouched({});
-        toast("Changes discarded");
-    };
-
-    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-
-        const nextErrors = validateProfileForm(values);
-        setErrors(nextErrors);
-        setTouched({ fullName: true, username: true, email: true, bio: true, phone: true, location: true });
-
-        if (Object.keys(nextErrors).length > 0) {
-            toast.error("Please fix the highlighted fields before saving.");
-            return;
-        }
-
-        try {
-            setIsSaving(true);
-            await new Promise((resolve) => setTimeout(resolve, 900));
-            setInitialValues(values);
-            setTouched({});
-            toast.success("Profile updated successfully.");
-        } catch {
-            toast.error("Something went wrong. Please try again.");
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    // ── Password handlers ───────────────────────────────────────────────────────
     const handlePasswordChange =
         (name: keyof PasswordFormValues) =>
             (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -145,11 +158,14 @@ export default function MenteeEditProfile() {
                     }));
                 }
 
-                // Re-validate confirm when new password changes so match error clears live
                 if (name === "newPassword" && passwordTouched.confirmPassword) {
                     setPasswordErrors((prev) => ({
                         ...prev,
-                        confirmPassword: validatePasswordField("confirmPassword", nextValues.confirmPassword, nextValues),
+                        confirmPassword: validatePasswordField(
+                            "confirmPassword",
+                            nextValues.confirmPassword,
+                            nextValues
+                        ),
                     }));
                 }
             };
@@ -168,36 +184,93 @@ export default function MenteeEditProfile() {
         setPasswordTouched({});
     };
 
-    const handlePasswordSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    const handlePasswordSubmit = async (
+        event: React.FormEvent<HTMLFormElement>
+    ) => {
         event.preventDefault();
 
         const nextErrors = validatePasswordForm(passwordValues);
+
         setPasswordErrors(nextErrors);
-        setPasswordTouched({ currentPassword: true, newPassword: true, confirmPassword: true });
+
+        setPasswordTouched({
+            currentPassword: true,
+            newPassword: true,
+            confirmPassword: true,
+        });
 
         if (Object.keys(nextErrors).length > 0) {
             toast.error("Please fix the highlighted fields before updating.");
             return;
         }
 
+        setIsChangingPassword(true);
+
         try {
-            setIsChangingPassword(true);
-            await new Promise((resolve) => setTimeout(resolve, 900));
+            const verify = await verifyCurrentPassword(
+                passwordValues.currentPassword
+            );
+
+            if (!verify.success) {
+                setPasswordErrors({
+                    currentPassword:
+                        verify.message ?? "Incorrect password.",
+                });
+
+                toast.error(
+                    verify.message ?? "Incorrect password."
+                );
+
+                return;
+            }
+
+            const result = await changeDefaultPassword(
+                passwordValues.newPassword
+            );
+
+            if (!result.success) {
+                toast.error(
+                    result.error ?? "Failed to update password."
+                );
+
+                return;
+            }
+
             handlePasswordClear();
+
             setShowCurrent(false);
             setShowNew(false);
             setShowConfirm(false);
-            toast.success("Password updated successfully.");
+
+            // success toast
+            toast.success(
+                "Password updated successfully. Redirecting to homepage in 3 seconds..."
+            );
+
+            // wait AFTER toast is shown
+            await new Promise((resolve) =>
+                setTimeout(resolve, 3000)
+            );
+
+            await signOut();
+
+            router.push("/");
         } catch {
-            toast.error("Could not update password. Please try again.");
+            toast.error(
+                "Could not update password. Please try again."
+            );
         } finally {
             setIsChangingPassword(false);
         }
     };
 
+
+
+
+
     // ── Render ──────────────────────────────────────────────────────────────────
     return (
-        <div className="flex h-screen bg-slate-50">
+        <div className="flex h-screen overflow-hidden bg-slate-50">
             <Sidebar userName={mentee?.group_name} userType="mentee" />
             <main className="flex-1 overflow-y-auto">
                 <div className="py-8 px-4 sm:py-12">
@@ -210,7 +283,7 @@ export default function MenteeEditProfile() {
 
                     {/* ── Profile form ── */}
                     <Card className="border-slate-200 shadow-sm">
-                        <form onSubmit={handleSubmit} noValidate>
+                        <form onSubmit={handleChanges} noValidate>
                             <CardHeader>
                                 <CardTitle className="text-lg">Profile details</CardTitle>
                                 <CardDescription>
@@ -236,12 +309,11 @@ export default function MenteeEditProfile() {
                                     <Input
                                         id="fullName"
                                         name="fullName"
-                                        autoComplete="name"
                                         placeholder="Enter your new group name"
-                                        value={values.fullName}
-                                        onChange={handleChange("fullName")}
-                                        onBlur={handleBlur("fullName")}
-                                        aria-invalid={Boolean(errors.fullName)}
+                                        value={formData.group_name}
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, group_name: e.target.value })
+                                        }
                                         aria-describedby={errors.fullName ? "fullName-error" : undefined}
                                     />
                                     {errors.fullName && (
@@ -259,14 +331,12 @@ export default function MenteeEditProfile() {
                                     <div className="flex items-center gap-2">
 
                                         <Input
-                                            id="username"
-                                            name="username"
-                                            autoComplete="username"
+                                            id="ResTitle"
                                             placeholder="Enter your new Thesis Title"
-                                            value={values.username}
-                                            onChange={handleChange("username")}
-                                            onBlur={handleBlur("username")}
-                                            aria-invalid={Boolean(errors.username)}
+                                            value={formData.research_title}
+                                            onChange={(e) =>
+                                                setFormData({ ...formData, research_title: e.target.value })
+                                            }
                                             aria-describedby={errors.username ? "username-error" : "username-hint"}
                                         />
                                     </div>
@@ -284,108 +354,69 @@ export default function MenteeEditProfile() {
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <Label htmlFor="bio">Research Description</Label>
-                                        <span
-                                            className={`text-xs ${bioCount > MAX_BIO_LENGTH ? "text-red-500" : "text-slate-400"
-                                                }`}
-                                        >
-                                            {bioCount}/{MAX_BIO_LENGTH}
-                                        </span>
+
                                     </div>
                                     <Textarea
-                                        id="bio"
-                                        name="bio"
+                                        id="resdesc"
                                         rows={4}
                                         placeholder="Enter your new Research Description"
-                                        value={values.bio}
-                                        onChange={handleChange("bio")}
-                                        onBlur={handleBlur("bio")}
-                                        aria-invalid={Boolean(errors.bio)}
+                                        value={formData.research_description}
+                                        onChange={(e) => setFormData({ ...formData, research_description: e.target.value })}
                                         aria-describedby={errors.bio ? "bio-error" : undefined}
                                     />
-                                    {errors.bio && (
-                                        <p id="bio-error" className="text-xs text-red-500">
-                                            {errors.bio}
-                                        </p>
-                                    )}
+
                                 </div>
 
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <Label htmlFor="bio">Mentor Preferences</Label>
-                                        <span
-                                            className={`text-xs ${bioCount > MAX_BIO_LENGTH ? "text-red-500" : "text-slate-400"
-                                                }`}
-                                        >
-                                            {bioCount}/{MAX_BIO_LENGTH}
-                                        </span>
+
                                     </div>
                                     <Textarea
-                                        id="bio"
-                                        name="bio"
+                                        id="mentorpref"
                                         rows={4}
                                         placeholder="Enter your new Mentor Preferences"
-                                        value={values.bio}
-                                        onChange={handleChange("bio")}
-                                        onBlur={handleBlur("bio")}
-                                        aria-invalid={Boolean(errors.bio)}
-                                        aria-describedby={errors.bio ? "bio-error" : undefined}
+                                        value={formData.mentor_preference}
+                                        onChange={(e) => setFormData({ ...formData, mentor_preference: e.target.value })}
                                     />
-                                    {errors.bio && (
-                                        <p id="bio-error" className="text-xs text-red-500">
-                                            {errors.bio}
-                                        </p>
-                                    )}
+
                                 </div>
 
-                                {/* Location */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="location">Location</Label>
-                                    <Input
-                                        id="location"
-                                        name="location"
-                                        autoComplete="address-level2"
-                                        placeholder="City, Country"
-                                        value={values.location}
-                                        onChange={handleChange("location")}
-                                        onBlur={handleBlur("location")}
-                                        aria-invalid={Boolean(errors.location)}
-                                        aria-describedby={errors.location ? "location-error" : undefined}
-                                    />
-                                    {errors.location && (
-                                        <p id="location-error" className="text-xs text-red-500">
-                                            {errors.location}
-                                        </p>
-                                    )}
+                                <div>
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle className="text-lg flex items-center gap-2">
+                                                <Clock className="w-5 h-5 text-blue-600" /> Availability
+                                            </CardTitle>
+                                            <CardDescription>
+                                                When is your group available for mentoring sessions?
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <AvailabilitySelector
+                                                selectedDays={formData.available_days ?? []}
+                                                selectedTimeSlots={formData.time_slot ?? []}
+
+                                                onDaysChange={(days) =>
+                                                    setFormData((prev) => ({
+                                                        ...prev,
+                                                        available_days: days,
+                                                    }))
+                                                }
+                                                onTimeSlotsChange={(time) =>
+                                                    setFormData((prev) => ({
+                                                        ...prev,
+                                                        time_slot: time,
+                                                    }))
+                                                }
+
+                                            />
+
+                                        </CardContent>
+                                    </Card>
                                 </div>
 
-                                {/* Bio */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <Label htmlFor="bio">Bio</Label>
-                                        <span
-                                            className={`text-xs ${bioCount > MAX_BIO_LENGTH ? "text-red-500" : "text-slate-400"
-                                                }`}
-                                        >
-                                            {bioCount}/{MAX_BIO_LENGTH}
-                                        </span>
-                                    </div>
-                                    <Textarea
-                                        id="bio"
-                                        name="bio"
-                                        rows={4}
-                                        placeholder="Tell us a little about yourself…"
-                                        value={values.bio}
-                                        onChange={handleChange("bio")}
-                                        onBlur={handleBlur("bio")}
-                                        aria-invalid={Boolean(errors.bio)}
-                                        aria-describedby={errors.bio ? "bio-error" : undefined}
-                                    />
-                                    {errors.bio && (
-                                        <p id="bio-error" className="text-xs text-red-500">
-                                            {errors.bio}
-                                        </p>
-                                    )}
-                                </div>
+
                             </CardContent>
 
                             <CardFooter className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-end">
@@ -393,12 +424,12 @@ export default function MenteeEditProfile() {
                                     type="button"
                                     variant="outline"
                                     onClick={handleCancel}
-                                    disabled={!isDirty || isSaving}
+                                    disabled={isSaving}
                                     className="w-full sm:w-auto"
                                 >
                                     Cancel
                                 </Button>
-                                <Button type="submit" disabled={!canSave} className="w-full sm:w-auto">
+                                <Button type="submit" className="w-full sm:w-auto" disabled={!hasChanges}>
                                     {isSaving ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -595,7 +626,7 @@ export default function MenteeEditProfile() {
                         </form>
                     </Card>
                 </div>
-            </ main>
+            </main>
         </div>
     );
 }

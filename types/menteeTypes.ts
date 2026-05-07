@@ -45,12 +45,18 @@ export interface MenteeFormProfile {
 
 }
 
-export interface MenteeEditProfile {
-
-}
 
 export type MenteeContextType = {
     mentee: MenteeData | null
     loading: boolean
     refetch: () => Promise<void>
 }
+
+export type MenteeEditForm = {
+    group_name: string
+    research_title: string,
+    research_description: string,
+    mentor_preference: string,
+    available_days: string[],
+    time_slot: string[],
+};

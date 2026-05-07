@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { ArrowLeft, UserRound, Eye, EyeOff, LogOut } from "lucide-react";
+import { ArrowLeft, UserRound, Eye, EyeOff, Check } from "lucide-react";
 import { UserAuth } from "@/app/context/authContext";
 
 import { Button } from "@/components/ui/button";
@@ -77,7 +77,7 @@ export default function Login() {
                     <CardContent>
                         <form className="space-y-5" onSubmit={handleSubmit}>
                             <div>
-                                <Label htmlFor="email">Email *</Label>
+                                <Label htmlFor="email">Email or Group Name*</Label>
                                 <Input
                                     id="email"
                                     type="email"

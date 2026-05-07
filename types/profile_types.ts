@@ -1,4 +1,4 @@
-import type { getMenteeData } from "@/lib/actions/menteeActions"
+import { getMenteeData } from "@/lib/actions/menteeActions"
 import { getMentorData } from "@/lib/actions/mentorActions";
 
 export type MenteeData = Awaited<ReturnType<typeof getMenteeData>>["data"]

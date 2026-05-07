@@ -11,15 +11,23 @@ export function MentorProvider({ children }: { children: ReactNode }) {
     const [mentor, setMentor] = useState<MentorData | null>(null)
     const [loading, setLoading] = useState(true)
 
+    // mentorContext.tsx
     const fetchData = async () => {
-        const result = await getMentorData()
-        if (result.success) {
-            setMentor(result.data)
+        console.log("fetchData called")
+        try {
+            const result = await getMentorData()
+            console.log("result:", result)          // ← what does this show?
+            console.log("result.data:", result.data) // ← is data null?
+            if (result.success && result.data) {
+                setMentor(result.data)
+            }
+        } catch (error) {
+            console.error("fetchData error:", error)  // ← any error?
+        } finally {
             setLoading(false)
-            console.log(result.data)
         }
-
     }
+
     useEffect(() => {
         fetchData()
 
