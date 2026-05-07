@@ -25,12 +25,7 @@ import type {
     PasswordFormErrors,
     PasswordTouchedFields,
 } from "@/types/profile_types";
-
 import { MenteeGroupUpdate } from "@/types/modelTypes";
-
-
-
-
 import {
     EMPTY_PROFILE,
     EMPTY_PASSWORD,
@@ -39,6 +34,7 @@ import {
     validateProfileForm,
     validatePasswordField,
     validatePasswordForm,
+
 } from "@/lib/profile_validators";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
 
@@ -46,18 +42,22 @@ import { getInitials, getPasswordStrength } from "@/lib/profile_utils";
 import Sidebar from "@/components/ui/Sidebar";
 import { useMentee } from "@/app/context/menteeContext";
 import { UserAuth } from "@/app/context/authContext";
-import { editMenteeProfile } from "@/lib/actions/menteeActions";
+import { changeDefaultPassword, editMenteeProfile } from "@/lib/actions/menteeActions";
+import { MenteeEditForm } from "@/types/menteeTypes";
+import { useRouter } from "next/navigation";
+import { verifyCurrentPassword } from "@/lib/actions/menteeActions";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function MenteeEditProfile() {
+    const router = useRouter()
+    const { signOut } = UserAuth()
     const { mentee, loading, refetch } = useMentee()
     const { getUser } = UserAuth()
     // ── Profile form state ──────────────────────────────────────────────────────
     const [initialValues, setInitialValues] = useState<ProfileFormValues>(EMPTY_PROFILE);
     const [values, setValues] = useState<ProfileFormValues>(EMPTY_PROFILE);
     const [errors, setErrors] = useState<ProfileFormErrors>({});
-    const [touched, setTouched] = useState<ProfileTouchedFields>({});
     const [isSaving, setIsSaving] = useState(false);
 
     // ── Password form state ─────────────────────────────────────────────────────
@@ -68,117 +68,30 @@ export default function MenteeEditProfile() {
     const [showCurrent, setShowCurrent] = useState(false);
     const [showNew, setShowNew] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
-    const [formData, setFormData] = useState<MenteeGroupUpdate>({
+
+    const [formData, setFormData] = useState<MenteeEditForm>({
         group_name: "",
         research_title: "",
         research_description: "",
         mentor_preference: "",
         available_days: [],
         time_slot: [],
-
     });
 
 
-
-
     const handleCancel = () => {
-        alert("Changes in the profile were cancelled")
+        toast("Changes in the profile were cancelled")
     }
 
+    const hasChanges =
+        !!formData.group_name ||
+        !!formData.research_title ||
+        !!formData.research_description ||
+        formData.mentor_preference ||
+        formData.available_days.length > 0 ||
+        formData.time_slot.length > 0;
 
 
-
-
-    // ── Derived values ──────────────────────────────────────────────────────────
-    const isDirty = useMemo(
-        () =>
-            (Object.keys(values) as (keyof ProfileFormValues)[]).some(
-                (key) => values[key] !== initialValues[key]
-            ),
-        [values, initialValues]
-    );
-
-    const isPasswordDirty =
-        passwordValues.currentPassword !== "" ||
-        passwordValues.newPassword !== "" ||
-        passwordValues.confirmPassword !== "";
-
-    const initials = getInitials(values.fullName, values.username);
-    const bioCount = values.bio.length;
-    const strength = getPasswordStrength(passwordValues.newPassword);
-    const canUpdatePassword = isPasswordDirty && !isChangingPassword;
-
-    // ── Profile handlers ────────────────────────────────────────────────────────
-
-
-
-
-
-
-    // ── Password handlers ───────────────────────────────────────────────────────
-    const handlePasswordChange =
-        (name: keyof PasswordFormValues) =>
-            (event: React.ChangeEvent<HTMLInputElement>) => {
-                const nextValue = event.target.value;
-                const nextValues = { ...passwordValues, [name]: nextValue };
-                setPasswordValues(nextValues);
-
-                if (passwordTouched[name]) {
-                    setPasswordErrors((prev) => ({
-                        ...prev,
-                        [name]: validatePasswordField(name, nextValue, nextValues),
-                    }));
-                }
-
-                // Re-validate confirm when new password changes so match error clears live
-                if (name === "newPassword" && passwordTouched.confirmPassword) {
-                    setPasswordErrors((prev) => ({
-                        ...prev,
-                        confirmPassword: validatePasswordField("confirmPassword", nextValues.confirmPassword, nextValues),
-                    }));
-                }
-            };
-
-    const handlePasswordBlur = (name: keyof PasswordFormValues) => () => {
-        setPasswordTouched((prev) => ({ ...prev, [name]: true }));
-        setPasswordErrors((prev) => ({
-            ...prev,
-            [name]: validatePasswordField(name, passwordValues[name], passwordValues),
-        }));
-    };
-
-    const handlePasswordClear = () => {
-        setPasswordValues(EMPTY_PASSWORD);
-        setPasswordErrors({});
-        setPasswordTouched({});
-    };
-
-    const handlePasswordSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-
-        const nextErrors = validatePasswordForm(passwordValues);
-        setPasswordErrors(nextErrors);
-        setPasswordTouched({ currentPassword: true, newPassword: true, confirmPassword: true });
-
-        if (Object.keys(nextErrors).length > 0) {
-            toast.error("Please fix the highlighted fields before updating.");
-            return;
-        }
-
-        try {
-            setIsChangingPassword(true);
-            await new Promise((resolve) => setTimeout(resolve, 900));
-            handlePasswordClear();
-            setShowCurrent(false);
-            setShowNew(false);
-            setShowConfirm(false);
-            toast.success("Password updated successfully.");
-        } catch {
-            toast.error("Could not update password. Please try again.");
-        } finally {
-            setIsChangingPassword(false);
-        }
-    };
 
     const handleChanges = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -212,6 +125,7 @@ export default function MenteeEditProfile() {
             if (result.success) {
                 toast.success("Profile updated successfully.");
                 window.location.reload()
+
             } else {
                 toast.error(result.message ?? "Failed to update profile.");
             }
@@ -222,10 +136,141 @@ export default function MenteeEditProfile() {
             setIsSaving(false);
         }
     };
+    const isPasswordDirty =
+        passwordValues.currentPassword !== "" ||
+        passwordValues.newPassword !== "" ||
+        passwordValues.confirmPassword !== "";
+
+    const strength = getPasswordStrength(passwordValues.newPassword);
+    const canUpdatePassword = isPasswordDirty && !isChangingPassword;
+
+    const handlePasswordChange =
+        (name: keyof PasswordFormValues) =>
+            (event: React.ChangeEvent<HTMLInputElement>) => {
+                const nextValue = event.target.value;
+                const nextValues = { ...passwordValues, [name]: nextValue };
+                setPasswordValues(nextValues);
+
+                if (passwordTouched[name]) {
+                    setPasswordErrors((prev) => ({
+                        ...prev,
+                        [name]: validatePasswordField(name, nextValue, nextValues),
+                    }));
+                }
+
+                if (name === "newPassword" && passwordTouched.confirmPassword) {
+                    setPasswordErrors((prev) => ({
+                        ...prev,
+                        confirmPassword: validatePasswordField(
+                            "confirmPassword",
+                            nextValues.confirmPassword,
+                            nextValues
+                        ),
+                    }));
+                }
+            };
+
+    const handlePasswordBlur = (name: keyof PasswordFormValues) => () => {
+        setPasswordTouched((prev) => ({ ...prev, [name]: true }));
+        setPasswordErrors((prev) => ({
+            ...prev,
+            [name]: validatePasswordField(name, passwordValues[name], passwordValues),
+        }));
+    };
+
+    const handlePasswordClear = () => {
+        setPasswordValues(EMPTY_PASSWORD);
+        setPasswordErrors({});
+        setPasswordTouched({});
+    };
+
+    const handlePasswordSubmit = async (
+        event: React.FormEvent<HTMLFormElement>
+    ) => {
+        event.preventDefault();
+
+        const nextErrors = validatePasswordForm(passwordValues);
+
+        setPasswordErrors(nextErrors);
+
+        setPasswordTouched({
+            currentPassword: true,
+            newPassword: true,
+            confirmPassword: true,
+        });
+
+        if (Object.keys(nextErrors).length > 0) {
+            toast.error("Please fix the highlighted fields before updating.");
+            return;
+        }
+
+        setIsChangingPassword(true);
+
+        try {
+            const verify = await verifyCurrentPassword(
+                passwordValues.currentPassword
+            );
+
+            if (!verify.success) {
+                setPasswordErrors({
+                    currentPassword:
+                        verify.message ?? "Incorrect password.",
+                });
+
+                toast.error(
+                    verify.message ?? "Incorrect password."
+                );
+
+                return;
+            }
+
+            const result = await changeDefaultPassword(
+                passwordValues.newPassword
+            );
+
+            if (!result.success) {
+                toast.error(
+                    result.error ?? "Failed to update password."
+                );
+
+                return;
+            }
+
+            handlePasswordClear();
+
+            setShowCurrent(false);
+            setShowNew(false);
+            setShowConfirm(false);
+
+            // success toast
+            toast.success(
+                "Password updated successfully. Redirecting to homepage in 3 seconds..."
+            );
+
+            // wait AFTER toast is shown
+            await new Promise((resolve) =>
+                setTimeout(resolve, 3000)
+            );
+
+            await signOut();
+
+            router.push("/");
+        } catch {
+            toast.error(
+                "Could not update password. Please try again."
+            );
+        } finally {
+            setIsChangingPassword(false);
+        }
+    };
+
+
+
+
 
     // ── Render ──────────────────────────────────────────────────────────────────
     return (
-        <div className="flex h-screen bg-slate-50">
+        <div className="flex h-screen overflow-hidden bg-slate-50">
             <Sidebar userName={mentee?.group_name} userType="mentee" />
             <main className="flex-1 overflow-y-auto">
                 <div className="py-8 px-4 sm:py-12">
@@ -309,12 +354,7 @@ export default function MenteeEditProfile() {
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <Label htmlFor="bio">Research Description</Label>
-                                        <span
-                                            className={`text-xs ${bioCount > MAX_BIO_LENGTH ? "text-red-500" : "text-slate-400"
-                                                }`}
-                                        >
-                                            {bioCount}/{MAX_BIO_LENGTH}
-                                        </span>
+
                                     </div>
                                     <Textarea
                                         id="resdesc"
@@ -324,22 +364,13 @@ export default function MenteeEditProfile() {
                                         onChange={(e) => setFormData({ ...formData, research_description: e.target.value })}
                                         aria-describedby={errors.bio ? "bio-error" : undefined}
                                     />
-                                    {errors.bio && (
-                                        <p id="bio-error" className="text-xs text-red-500">
-                                            {errors.bio}
-                                        </p>
-                                    )}
+
                                 </div>
 
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <Label htmlFor="bio">Mentor Preferences</Label>
-                                        <span
-                                            className={`text-xs ${bioCount > MAX_BIO_LENGTH ? "text-red-500" : "text-slate-400"
-                                                }`}
-                                        >
-                                            {bioCount}/{MAX_BIO_LENGTH}
-                                        </span>
+
                                     </div>
                                     <Textarea
                                         id="mentorpref"
@@ -347,13 +378,8 @@ export default function MenteeEditProfile() {
                                         placeholder="Enter your new Mentor Preferences"
                                         value={formData.mentor_preference}
                                         onChange={(e) => setFormData({ ...formData, mentor_preference: e.target.value })}
-                                        aria-describedby={errors.bio ? "bio-error" : undefined}
                                     />
-                                    {errors.bio && (
-                                        <p id="bio-error" className="text-xs text-red-500">
-                                            {errors.bio}
-                                        </p>
-                                    )}
+
                                 </div>
 
                                 <div>
@@ -398,12 +424,12 @@ export default function MenteeEditProfile() {
                                     type="button"
                                     variant="outline"
                                     onClick={handleCancel}
-                                    disabled={!isDirty || isSaving}
+                                    disabled={isSaving}
                                     className="w-full sm:w-auto"
                                 >
                                     Cancel
                                 </Button>
-                                <Button type="submit" className="w-full sm:w-auto">
+                                <Button type="submit" className="w-full sm:w-auto" disabled={!hasChanges}>
                                     {isSaving ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -600,7 +626,7 @@ export default function MenteeEditProfile() {
                         </form>
                     </Card>
                 </div>
-            </ main>
+            </main>
         </div>
     );
 }

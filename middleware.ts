@@ -42,8 +42,8 @@ export async function middleware(request: NextRequest) {
     }
 
     if (!user && (
-        path.startsWith("/mentee-dashboard") ||
-        path.startsWith("/mentor-dashboard") ||
+        path.startsWith("/mentee/") ||
+        path.startsWith("/mentor/") ||
         path.startsWith("/mentor/") ||
         path.startsWith("/admin")
     )) {
@@ -96,7 +96,7 @@ export const config = {
         "/register",
         "/mentee-dashboard/:path*",
         "/mentor-dashboard/:path*",
-        "/mentee/:path",
+        "/mentee/:path*",
         "/mentor/:path*",
         "/admin/:path*",
     ],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Clock, Plus, X } from "lucide-react";
 
 import type {
     ProfileFormValues,
@@ -26,8 +26,7 @@ import type {
     PasswordTouchedFields,
 } from "@/types/profile_types";
 
-
-
+import { MentorUpdate } from "@/types/modelTypes";
 import {
     EMPTY_PROFILE,
     EMPTY_PASSWORD,
@@ -37,25 +36,25 @@ import {
     validatePasswordField,
     validatePasswordForm,
 } from "@/lib/profile_validators";
+import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
 
 import { getInitials, getPasswordStrength } from "@/lib/profile_utils";
 import Sidebar from "@/components/ui/Sidebar";
+import { UserAuth } from "@/app/context/authContext";
+import { editMentorProfile, verifyCurrentPassword, changeDefaultPassword } from "@/lib/actions/mentorActions";
 import { useMentor } from "@/app/context/mentorContext";
+import { MentorEditForm } from "@/types/mentorTypes";
+import { useRouter } from "next/navigation";
 
-// ─── Component ────────────────────────────────────────────────────────────────
 
-export default function MentorEditProfile() {
-
-    const { mentor, loading } = useMentor()
-
-    // ── Profile form state ──────────────────────────────────────────────────────
+export default function mentorEditProfile() {
+    const router = useRouter()
+    const { mentor, loading, refetch } = useMentor();
+    const { signOut } = UserAuth();
     const [initialValues, setInitialValues] = useState<ProfileFormValues>(EMPTY_PROFILE);
     const [values, setValues] = useState<ProfileFormValues>(EMPTY_PROFILE);
-    const [errors, setErrors] = useState<ProfileFormErrors>({});
-    const [touched, setTouched] = useState<ProfileTouchedFields>({});
     const [isSaving, setIsSaving] = useState(false);
 
-    // ── Password form state ─────────────────────────────────────────────────────
     const [passwordValues, setPasswordValues] = useState<PasswordFormValues>(EMPTY_PASSWORD);
     const [passwordErrors, setPasswordErrors] = useState<PasswordFormErrors>({});
     const [passwordTouched, setPasswordTouched] = useState<PasswordTouchedFields>({});
@@ -64,75 +63,90 @@ export default function MentorEditProfile() {
     const [showNew, setShowNew] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
 
+    const [formData, setFormData] = useState<MentorEditForm>({
+        available_days: [],
+        email: "",
+        experience: 1,
+        first_name: "",
+        forte: [],
+        last_name: "",
+        mentor_capacity: 1,
+        self_description: "",
+        technical_skills: [],
+        time_slot: [],
+    });
+
+    const [skillInput, setSkillInput] = useState("");
+    const [forteInput, setForteInput] = useState("");
+
+
+    // ── Handlers ────────────────────────────────────────────────────────────────
+
+    const handleCancel = () => {
+        alert("Changes in the profile were cancelled");
+    };
+
+    const addSkill = () => {
+        const value = skillInput.trim();
+        if (!value) return;
+        if ((formData.technical_skills).includes(value)) return;
+        setFormData((prev) => ({
+            ...prev,
+            technical_skills: [...prev.technical_skills, value],
+        }));
+        setSkillInput("");
+    };
+
+    const addForte = () => {
+        const value = forteInput.trim();
+        if (!value) return;
+        if (formData.forte.includes(value)) return;
+        setFormData((prev) => ({
+            ...prev,
+            forte: [...prev.forte, value],
+        }));
+        setForteInput("");
+    };
+
+    const handleSkillKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            addSkill();
+        }
+    };
+
+    const handleForteKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            addForte();
+        }
+    };
+
     // ── Derived values ──────────────────────────────────────────────────────────
-    const isDirty = useMemo(
-        () =>
-            (Object.keys(values) as (keyof ProfileFormValues)[]).some(
-                (key) => values[key] !== initialValues[key]
-            ),
-        [values, initialValues]
-    );
+
+
 
     const isPasswordDirty =
         passwordValues.currentPassword !== "" ||
         passwordValues.newPassword !== "" ||
         passwordValues.confirmPassword !== "";
 
-    const initials = getInitials(values.fullName, values.username);
-    const bioCount = values.bio.length;
+
     const strength = getPasswordStrength(passwordValues.newPassword);
-    const canSave = isDirty && !isSaving;
     const canUpdatePassword = isPasswordDirty && !isChangingPassword;
 
-    // ── Profile handlers ────────────────────────────────────────────────────────
-    const handleChange =
-        (name: keyof ProfileFormValues) =>
-            (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-                const nextValue = event.target.value;
-                setValues((prev) => ({ ...prev, [name]: nextValue }));
-                if (touched[name]) {
-                    setErrors((prev) => ({ ...prev, [name]: validateProfileField(name, nextValue) }));
-                }
-            };
+    const hasChanges =
+        !!formData.first_name ||
+        !!formData.last_name ||
+        !!formData.self_description ||
+        formData.technical_skills.length > 0 ||
+        formData.forte.length > 0 ||
+        formData.available_days.length > 0 ||
+        formData.time_slot.length > 0;
 
-    const handleBlur = (name: keyof ProfileFormValues) => () => {
-        setTouched((prev) => ({ ...prev, [name]: true }));
-        setErrors((prev) => ({ ...prev, [name]: validateProfileField(name, values[name]) }));
-    };
-
-    const handleCancel = () => {
-        setValues(initialValues);
-        setErrors({});
-        setTouched({});
-        toast("Changes discarded");
-    };
-
-    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-
-        const nextErrors = validateProfileForm(values);
-        setErrors(nextErrors);
-        setTouched({ fullName: true, username: true, email: true, bio: true, phone: true, location: true });
-
-        if (Object.keys(nextErrors).length > 0) {
-            toast.error("Please fix the highlighted fields before saving.");
-            return;
-        }
-
-        try {
-            setIsSaving(true);
-            await new Promise((resolve) => setTimeout(resolve, 900));
-            setInitialValues(values);
-            setTouched({});
-            toast.success("Profile updated successfully.");
-        } catch {
-            toast.error("Something went wrong. Please try again.");
-        } finally {
-            setIsSaving(false);
-        }
-    };
 
     // ── Password handlers ───────────────────────────────────────────────────────
+
     const handlePasswordChange =
         (name: keyof PasswordFormValues) =>
             (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,11 +161,14 @@ export default function MentorEditProfile() {
                     }));
                 }
 
-                // Re-validate confirm when new password changes so match error clears live
                 if (name === "newPassword" && passwordTouched.confirmPassword) {
                     setPasswordErrors((prev) => ({
                         ...prev,
-                        confirmPassword: validatePasswordField("confirmPassword", nextValues.confirmPassword, nextValues),
+                        confirmPassword: validatePasswordField(
+                            "confirmPassword",
+                            nextValues.confirmPassword,
+                            nextValues
+                        ),
                     }));
                 }
             };
@@ -170,36 +187,131 @@ export default function MentorEditProfile() {
         setPasswordTouched({});
     };
 
-    const handlePasswordSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    const handlePasswordSubmit = async (
+        event: React.FormEvent<HTMLFormElement>
+    ) => {
         event.preventDefault();
 
         const nextErrors = validatePasswordForm(passwordValues);
+
         setPasswordErrors(nextErrors);
-        setPasswordTouched({ currentPassword: true, newPassword: true, confirmPassword: true });
+
+        setPasswordTouched({
+            currentPassword: true,
+            newPassword: true,
+            confirmPassword: true,
+        });
 
         if (Object.keys(nextErrors).length > 0) {
             toast.error("Please fix the highlighted fields before updating.");
             return;
         }
 
+        setIsChangingPassword(true);
+
         try {
-            setIsChangingPassword(true);
-            await new Promise((resolve) => setTimeout(resolve, 900));
+            const verify = await verifyCurrentPassword(
+                passwordValues.currentPassword
+            );
+
+            if (!verify.success) {
+                setPasswordErrors({
+                    currentPassword:
+                        verify.message ?? "Incorrect password.",
+                });
+
+                toast.error(
+                    verify.message ?? "Incorrect password."
+                );
+
+                return;
+            }
+
+            const result = await changeDefaultPassword(
+                passwordValues.newPassword
+            );
+
+            if (!result.success) {
+                toast.error(
+                    result.error ?? "Failed to update password."
+                );
+
+                return;
+            }
+
             handlePasswordClear();
+
             setShowCurrent(false);
             setShowNew(false);
             setShowConfirm(false);
-            toast.success("Password updated successfully.");
+
+            // success toast
+            toast.success(
+                "Password updated successfully. Redirecting to homepage in 3 seconds..."
+            );
+
+            // wait AFTER toast is shown
+            await new Promise((resolve) =>
+                setTimeout(resolve, 3000)
+            );
+
+            await signOut();
+
+            router.push("/");
         } catch {
-            toast.error("Could not update password. Please try again.");
+            toast.error(
+                "Could not update password. Please try again."
+            );
         } finally {
             setIsChangingPassword(false);
+        }
+    };
+    const handleChanges = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            setIsSaving(true);
+
+            const payload: MentorUpdate = {};
+
+            if (formData.first_name && formData.first_name !== mentor?.first_name)
+                payload.first_name = formData.first_name;
+            if (formData.last_name && formData.last_name !== mentor?.last_name)
+                payload.last_name = formData.last_name;
+            if (formData.self_description && formData.self_description !== mentor?.self_description)
+                payload.self_description = formData.self_description;
+            if (formData.technical_skills?.length)
+                payload.technical_skills = formData.technical_skills;
+            if (formData.forte?.length)
+                payload.forte = formData.forte;
+            if (formData.available_days?.length)
+                payload.available_days = formData.available_days;
+            if (formData.time_slot?.length)
+                payload.time_slot = formData.time_slot;
+
+            if (Object.keys(payload).length === 0) {
+                toast.info("No changes to save.");
+                return;
+            }
+
+            const result = await editMentorProfile(payload);
+
+            if (result.success) {
+                toast.success("Profile updated successfully.");
+                window.location.reload();
+            } else {
+                toast.error(result.message ?? "Failed to update profile.");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("An unexpected error occurred.");
+        } finally {
+            setIsSaving(false);
         }
     };
 
     // ── Render ──────────────────────────────────────────────────────────────────
     return (
-        <div className="flex h-screen bg-slate-50">
+        <div className="flex h-screen bg-slate-50 overflow-y-hidden">
             <Sidebar userName={`${mentor?.first_name} ${mentor?.last_name}`} userType="mentor" />
             <main className="flex-1 overflow-y-auto">
                 <div className="py-8 px-4 sm:py-12">
@@ -212,7 +324,7 @@ export default function MentorEditProfile() {
 
                     {/* ── Profile form ── */}
                     <Card className="border-slate-200 shadow-sm">
-                        <form onSubmit={handleSubmit} noValidate>
+                        <form onSubmit={handleChanges} noValidate>
                             <CardHeader>
                                 <CardTitle className="text-lg">Profile details</CardTitle>
                                 <CardDescription>
@@ -224,161 +336,183 @@ export default function MentorEditProfile() {
                                 {/* Avatar */}
                                 <div className="flex items-center gap-4">
                                     <Avatar className="h-16 w-16 border border-slate-200">
-                                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-base font-semibold text-white">
-
+                                        <AvatarFallback className="bg-linear-to-br from-blue-500 to-indigo-600 text-base font-semibold text-white">
                                         </AvatarFallback>
                                     </Avatar>
-                                    <p className="text-sm font-medium text-slate-900">{`${mentor?.first_name} ${mentor?.last_name}`}</p>
+                                    <p className="text-sm font-medium text-slate-900">
+                                        {`${mentor?.first_name} ${mentor?.last_name}`}
+                                    </p>
                                 </div>
 
-                                {/* Full name */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="fullName">
-                                        Full name <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Input
-                                        id="fullName"
-                                        name="fullName"
-                                        autoComplete="name"
-                                        placeholder="Enter your full name"
-                                        value={values.fullName}
-                                        onChange={handleChange("fullName")}
-                                        onBlur={handleBlur("fullName")}
-                                        aria-invalid={Boolean(errors.fullName)}
-                                        aria-describedby={errors.fullName ? "fullName-error" : undefined}
-                                    />
-                                    {errors.fullName && (
-                                        <p id="fullName-error" className="text-xs text-red-500">
-                                            {errors.fullName}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Username */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="username">
-                                        Username <span className="text-red-500">*</span>
-                                    </Label>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm text-slate-500">@</span>
+                                {/* First & Last Name */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="firstName">
+                                            First name <span className="text-red-500">*</span>
+                                        </Label>
                                         <Input
-                                            id="username"
-                                            name="username"
-                                            autoComplete="username"
-                                            placeholder="your_handle"
-                                            value={values.username}
-                                            onChange={handleChange("username")}
-                                            onBlur={handleBlur("username")}
-                                            aria-invalid={Boolean(errors.username)}
-                                            aria-describedby={errors.username ? "username-error" : "username-hint"}
+                                            id="firstName"
+                                            placeholder="Enter your new first name"
+                                            value={formData.first_name ?? ""}
+                                            onChange={(e) =>
+                                                setFormData({ ...formData, first_name: e.target.value })
+                                            }
                                         />
                                     </div>
-                                    {errors.username ? (
-                                        <p id="username-error" className="text-xs text-red-500">
-                                            {errors.username}
-                                        </p>
-                                    ) : (
-                                        <p id="username-hint" className="text-xs text-slate-500">
-                                            3–20 characters. Letters, numbers, and underscores only.
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Email */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">
-                                        Email <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Input
-                                        id="email"
-                                        name="email"
-                                        type="email"
-                                        autoComplete="email"
-                                        placeholder="you@example.com"
-                                        value={values.email}
-                                        onChange={handleChange("email")}
-                                        onBlur={handleBlur("email")}
-                                        aria-invalid={Boolean(errors.email)}
-                                        aria-describedby={errors.email ? "email-error" : undefined}
-                                    />
-                                    {errors.email && (
-                                        <p id="email-error" className="text-xs text-red-500">
-                                            {errors.email}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Phone */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="phone">Phone number</Label>
-                                    <Input
-                                        id="phone"
-                                        name="phone"
-                                        type="tel"
-                                        autoComplete="tel"
-                                        placeholder="+1 555 000 1234"
-                                        value={values.phone}
-                                        onChange={handleChange("phone")}
-                                        onBlur={handleBlur("phone")}
-                                        aria-invalid={Boolean(errors.phone)}
-                                        aria-describedby={errors.phone ? "phone-error" : undefined}
-                                    />
-                                    {errors.phone && (
-                                        <p id="phone-error" className="text-xs text-red-500">
-                                            {errors.phone}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Location */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="location">Location</Label>
-                                    <Input
-                                        id="location"
-                                        name="location"
-                                        autoComplete="address-level2"
-                                        placeholder="City, Country"
-                                        value={values.location}
-                                        onChange={handleChange("location")}
-                                        onBlur={handleBlur("location")}
-                                        aria-invalid={Boolean(errors.location)}
-                                        aria-describedby={errors.location ? "location-error" : undefined}
-                                    />
-                                    {errors.location && (
-                                        <p id="location-error" className="text-xs text-red-500">
-                                            {errors.location}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Bio */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <Label htmlFor="bio">Bio</Label>
-                                        <span
-                                            className={`text-xs ${bioCount > MAX_BIO_LENGTH ? "text-red-500" : "text-slate-400"
-                                                }`}
-                                        >
-                                            {bioCount}/{MAX_BIO_LENGTH}
-                                        </span>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="lastName">
+                                            Last name <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Input
+                                            id="lastName"
+                                            placeholder="Enter your new last name"
+                                            value={formData.last_name ?? ""}
+                                            onChange={(e) =>
+                                                setFormData({ ...formData, last_name: e.target.value })
+                                            }
+                                        />
                                     </div>
-                                    <Textarea
-                                        id="bio"
-                                        name="bio"
-                                        rows={4}
-                                        placeholder="Tell us a little about yourself…"
-                                        value={values.bio}
-                                        onChange={handleChange("bio")}
-                                        onBlur={handleBlur("bio")}
-                                        aria-invalid={Boolean(errors.bio)}
-                                        aria-describedby={errors.bio ? "bio-error" : undefined}
-                                    />
-                                    {errors.bio && (
-                                        <p id="bio-error" className="text-xs text-red-500">
-                                            {errors.bio}
-                                        </p>
-                                    )}
                                 </div>
+
+                                {/* Self Description */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="selfDescription">
+                                        Self Description <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Textarea
+                                        id="selfDescription"
+                                        rows={4}
+                                        placeholder="Enter your new self description"
+                                        value={formData.self_description ?? ""}
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, self_description: e.target.value })
+                                        }
+                                    />
+                                </div>
+
+                                {/* Technical Skills */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="technical-skills">Technical Skills *</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            id="technical-skills"
+                                            placeholder="e.g. Python, Javascript, Java, C++ etc..."
+                                            value={skillInput}
+                                            onChange={(e) => setSkillInput(e.target.value)}
+                                            onKeyDown={handleSkillKeyDown}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={addSkill}
+                                            className="bg-blue-700"
+                                        >
+                                            <Plus className="w-4 h-4 text-white" />
+                                        </Button>
+                                    </div>
+                                    <p className="text-sm text-gray-500">
+                                        Add your technical skills and press Enter or click +
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {formData.technical_skills.map((skill, index) => (
+                                            <div
+                                                key={index}
+                                                className="flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm"
+                                            >
+                                                {skill}
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setFormData((prev) => ({
+                                                            ...prev,
+                                                            technical_skills: prev.technical_skills.filter((_, i) => i !== index),
+                                                        }))
+                                                    }
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Forte / Specialization */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="forte">Forte/Specialization *</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            id="forte"
+                                            placeholder="e.g. Image Processing, Machine Learning, Computer Vision etc..."
+                                            value={forteInput}
+                                            onChange={(e) => setForteInput(e.target.value)}
+                                            onKeyDown={handleForteKeyDown}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={addForte}
+                                            className="bg-blue-700"
+                                        >
+                                            <Plus className="w-4 h-4 text-white" />
+                                        </Button>
+                                    </div>
+                                    <p className="text-sm text-gray-500">
+                                        Add your Forte/Specialization and press Enter or click +
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {formData.forte.map((item, index) => (
+                                            <div
+                                                key={index}
+                                                className="flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm"
+                                            >
+                                                {item}
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setFormData((prev) => ({
+                                                            ...prev,
+                                                            forte: prev.forte.filter((_, i) => i !== index),
+                                                        }))
+                                                    }
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Availability */}
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <Clock className="w-5 h-5 text-blue-600" /> Availability
+                                        </CardTitle>
+                                        <CardDescription>
+                                            When are you available for mentoring sessions?
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <AvailabilitySelector
+                                            selectedDays={formData.available_days ?? []}
+                                            selectedTimeSlots={formData.time_slot ?? []}
+                                            onDaysChange={(days) =>
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    available_days: days,
+                                                }))
+                                            }
+                                            onTimeSlotsChange={(time) =>
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    time_slot: time,
+                                                }))
+                                            }
+                                        />
+                                    </CardContent>
+                                </Card>
                             </CardContent>
 
                             <CardFooter className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-end">
@@ -386,12 +520,12 @@ export default function MentorEditProfile() {
                                     type="button"
                                     variant="outline"
                                     onClick={handleCancel}
-                                    disabled={!isDirty || isSaving}
+                                    disabled={isSaving}
                                     className="w-full sm:w-auto"
                                 >
                                     Cancel
                                 </Button>
-                                <Button type="submit" disabled={!canSave} className="w-full sm:w-auto">
+                                <Button type="submit" className="w-full sm:w-auto" disabled={!hasChanges}>
                                     {isSaving ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -588,7 +722,7 @@ export default function MentorEditProfile() {
                         </form>
                     </Card>
                 </div>
-            </ main>
+            </main>
         </div>
     );
 }

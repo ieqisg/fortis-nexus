@@ -2,7 +2,7 @@
 "use server"
 import { getSupabaseClient } from "@/app/config/getSupabaseClient"
 import { createClient } from "@supabase/supabase-js"
-import { MentorInsert } from "@/types/modelTypes"
+import { MentorInsert, MentorUpdate } from "@/types/modelTypes"
 
 export async function createMentorProfile(payload: Omit<MentorInsert, 'id' | 'profile_completed'>) {
     const supabase = await getSupabaseClient()
@@ -26,6 +26,32 @@ export async function createMentorProfile(payload: Omit<MentorInsert, 'id' | 'pr
     if (error) {
 
         return { success: false, message: "Failed to create profile, signup has been rolled back." }
+    }
+
+    return { success: true }
+}
+
+export async function editMentorProfile(payload: MentorUpdate) {
+    const supabase = await getSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Not authenticated", data: null }
+
+    const cleanPayload = Object.fromEntries(
+        Object.entries(payload).filter(([_, value]) => {
+            if (value === null || value === undefined || value === "") return false;
+            if (Array.isArray(value) && value.length === 0) return false;
+            return true;
+        })
+    );
+
+    const { error } = await supabase
+        .from("mentor")
+        .update(cleanPayload)
+        .eq("id", user.id)
+        .select()
+    if (error) {
+        console.error("Supabase update error:", error.message);
+        return { success: false, message: error.message };
     }
 
     return { success: true }
@@ -73,5 +99,19 @@ export async function changeDefaultPassword(newPassword: string) {
     if (error) {
         return { success: false, error: error.message }
     }
+    return { success: true }
+}
+
+export async function verifyCurrentPassword(currentPassword: string) {
+    const supabase = await getSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user?.email) return { success: false, message: "Not authenticated" }
+
+    const { error } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+    })
+
+    if (error) return { success: false, message: "Current password is incorrect." }
     return { success: true }
 }

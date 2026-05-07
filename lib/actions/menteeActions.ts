@@ -46,10 +46,8 @@ export async function editMenteeProfile(payload: MenteeGroupUpdate) {
         .eq("id", user.id)
         .select()
     if (error) {
-        console.error("Supabase update error:", error.message); // ← tells you exactly what failed
         return { success: false, message: error.message };
     }
-    console.log("Payload from mentee actions: ", cleanPayload)
 
     return { success: true }
 }
@@ -88,5 +86,30 @@ export async function getMenteeData() {
 
 }
 
+export async function changeDefaultPassword(newPassword: string) {
+    const supabase = await getSupabaseClient()
+
+    const { error } = await supabase.auth.updateUser({
+        password: newPassword
+    })
+    if (error) {
+        return { success: false, error: error.message }
+    }
+    return { success: true }
+}
+
+export async function verifyCurrentPassword(currentPassword: string) {
+    const supabase = await getSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user?.email) return { success: false, message: "Not authenticated" }
+
+    const { error } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+    })
+
+    if (error) return { success: false, message: "Current password is incorrect." }
+    return { success: true }
+}
 
 

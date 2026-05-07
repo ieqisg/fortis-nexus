@@ -22,3 +22,16 @@ export type MentorContextType = {
     loading: boolean
     refetch: () => Promise<void>
 }
+
+export type MentorEditForm = {
+    available_days: string[];
+    email: string;
+    experience: number;
+    first_name: string;
+    forte: string[];
+    last_name: string;
+    mentor_capacity: number;
+    self_description: string;
+    technical_skills: string[];
+    time_slot: string[];
+};
