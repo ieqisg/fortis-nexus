@@ -2,6 +2,7 @@
 import { createContext, useEffect, useState, useContext, ReactNode } from "react";
 import { supabase } from "../config/supabaseClient";
 import { getUserRole } from "@/lib/actions/authActions";
+import { toast, Toaster } from "sonner";
 
 
 type AuthResponse = {
@@ -42,8 +43,9 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
         if (error) {
             console.error("Error signing up", error);
             if (error.message.includes("already registered")) {
-                alert("Email/Group Name is already registered");
+                toast.error("Email is already registered")
             }
+
             return { success: false, error };
         }
 
@@ -61,8 +63,8 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
 
         if (error) {
             console.error("Error Signing in", error)
-            if (error.message.includes("Invalid")) {
-                alert(" Invalid login credentials")
+            if (error.message.includes("Invalid login credentials")) {
+                toast.error("Invalid email or password")
             }
             return { success: false, error }
         }
