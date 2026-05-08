@@ -6,7 +6,9 @@ import Meeting from "./meeting";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Sidebar from "@/components/ui/Sidebar";
 import { useMentor } from "@/app/context/mentorContext";
-import { Users, TrendingUp, FileText, CalendarDays, CheckCircle2, Clock } from "lucide-react";
+import { Users, TrendingUp, FileText, CalendarDays, CheckCircle2, Clock, Megaphone, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getAnnouncements, Announcement } from "@/lib/actions/announcementActions";
 
 export default function MentorDashboard() {
     const { mentor, loading, meetings, papers } = useMentor()
@@ -14,6 +16,15 @@ export default function MentorDashboard() {
     const matchCount = mentor?.matches?.length ?? 0
     const reviewedCount = papers.filter(p => p.status === "reviewed").length
     const pendingCount = papers.filter(p => p.status === "pending").length
+
+    const [announcements, setAnnouncements] = useState<Announcement[]>([])
+    const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
+
+    useEffect(() => {
+        getAnnouncements("mentor").then(r => { if (r.success) setAnnouncements(r.data) })
+    }, [])
+
+    const visibleAnnouncements = announcements.filter(a => !dismissedIds.has(a.id))
 
     if (loading) return (
         <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -74,6 +85,28 @@ export default function MentorDashboard() {
                         </div>
                     </div>
                 </div>
+
+                {/* Announcements */}
+                {visibleAnnouncements.length > 0 && (
+                    <div className="px-6 pt-4 space-y-2">
+                        {visibleAnnouncements.map(a => (
+                            <div key={a.id} className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+                                <Megaphone className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-blue-900">{a.title}</p>
+                                    <p className="text-sm text-blue-800 mt-0.5">{a.body}</p>
+                                </div>
+                                <button
+                                    onClick={() => setDismissedIds(prev => new Set(prev).add(a.id))}
+                                    className="text-blue-400 hover:text-blue-600 transition-colors shrink-0"
+                                    aria-label="Dismiss"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 {/* Tabs */}
                 <div className="p-6">

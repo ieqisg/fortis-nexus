@@ -48,10 +48,17 @@ import {
     FileText,
     CheckCircle,
     Clock,
+    UserPlus,
+    Plus,
+    X,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches } from "@/lib/actions/adminActions";
+import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee } from "@/lib/actions/adminActions"
+import { getAnnouncements, createAnnouncement, deleteAnnouncement, type Announcement } from "@/lib/actions/announcementActions"
+import { Textarea } from "@/components/ui/textarea"
+import { Megaphone, Trash2 } from "lucide-react";
+import { toast, Toaster } from "sonner";
 
 export default function Admin() {
     const [mentors, setMentors] = useState<any[]>([])
@@ -77,6 +84,20 @@ export default function Admin() {
     const [capacityEdits, setCapacityEdits] = useState<Record<string, number>>({})
     const [savingCapacity, setSavingCapacity] = useState<string | null>(null)
 
+    // announcements
+    const [announcements, setAnnouncements] = useState<Announcement[]>([])
+    const [annForm, setAnnForm] = useState({ title: "", body: "", target: "all" as Announcement["target"] })
+    const [postingAnn, setPostingAnn] = useState(false)
+    const [deletingAnn, setDeletingAnn] = useState<string | null>(null)
+
+    // create user
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+    const [createRole, setCreateRole] = useState<"mentor" | "mentee">("mentee")
+    const [createForm, setCreateForm] = useState({ email: "", password: "", first_name: "", last_name: "", group_name: "", research_title: "", research_description: "", mentor_preference: "" })
+    const [createMembers, setCreateMembers] = useState([{ name: "", student_number: "" }])
+    const [creatingUser, setCreatingUser] = useState(false)
+    const [showCreatePassword, setShowCreatePassword] = useState(false)
+
     const handleRunMatching = async () => {
         setMatching(true)
         try {
@@ -94,7 +115,7 @@ export default function Admin() {
                 }
             }
         } catch (err) {
-            alert("Failed to run matching")
+            toast.error("Failed to run matching")
         }
         setMatching(false)
     }
@@ -107,8 +128,9 @@ export default function Admin() {
             setMentees(prev => prev.map(m => ({ ...m, matches: null })))
             setMatchResult(null)
             setMatchLog(null)
+            toast.success("Matches rolled back successfully")
         } else {
-            alert("Failed to rollback: " + result.message)
+            toast.error(result.message ?? "Failed to rollback matches")
         }
         setRollingBack(false)
         setIsRollbackDialogOpen(false)
@@ -124,8 +146,9 @@ export default function Admin() {
                 prev.map((m) => m.id === mentorId ? { ...m, mentor_capacity: newCap } : m)
             )
             setCapacityEdits((prev) => { const n = { ...prev }; delete n[mentorId]; return n })
+            toast.success("Capacity updated")
         } else {
-            alert("Failed to update capacity.")
+            toast.error("Failed to update capacity")
         }
         setSavingCapacity(null)
     }
@@ -179,8 +202,9 @@ export default function Admin() {
                 ))
             }
             setIsEditDialogOpen(false)
+            toast.success("Changes saved")
         } else {
-            alert("Failed to save changes.")
+            toast.error(result.message ?? "Failed to save changes")
         }
         setSavingEdit(false)
     }
@@ -188,6 +212,69 @@ export default function Admin() {
     const openDeleteDialog = (user: any) => {
         setUserToDelete(user)
         setIsDeleteDialogOpen(true)
+    }
+
+    const handlePostAnnouncement = async () => {
+        if (!annForm.title.trim() || !annForm.body.trim()) return
+        setPostingAnn(true)
+        const result = await createAnnouncement(annForm.title, annForm.body, annForm.target)
+        if (result.success && result.data) {
+            setAnnouncements(prev => [result.data!, ...prev])
+            setAnnForm({ title: "", body: "", target: "all" })
+            toast.success("Announcement posted")
+        } else {
+            toast.error(result.message ?? "Failed to post announcement")
+        }
+        setPostingAnn(false)
+    }
+
+    const handleDeleteAnnouncement = async (id: string) => {
+        setDeletingAnn(id)
+        const result = await deleteAnnouncement(id)
+        if (result.success) {
+            setAnnouncements(prev => prev.filter(a => a.id !== id))
+            toast.success("Announcement deleted")
+        } else {
+            toast.error(result.message ?? "Failed to delete announcement")
+        }
+        setDeletingAnn(null)
+    }
+
+    const handleCreateUser = async () => {
+        setCreatingUser(true)
+        let result
+        if (createRole === "mentor") {
+            result = await adminCreateMentor({
+                email: createForm.email,
+                password: createForm.password,
+                first_name: createForm.first_name,
+                last_name: createForm.last_name,
+            })
+        } else {
+            result = await adminCreateMentee({
+                email: createForm.email,
+                password: createForm.password,
+                group_name: createForm.group_name,
+                research_title: createForm.research_title,
+                research_description: createForm.research_description,
+                mentor_preference: createForm.mentor_preference,
+                group_members: createMembers.map(m => JSON.stringify(m)),
+            })
+        }
+        if (result.success) {
+            const userResult = await getAllUserData()
+            if (userResult.success) {
+                setMentors(userResult.data.mentors ?? [])
+                setMentees(userResult.data.mentee ?? [])
+            }
+            setCreateForm({ email: "", password: "", first_name: "", last_name: "", group_name: "", research_title: "", research_description: "", mentor_preference: "" })
+            setCreateMembers([{ name: "", student_number: "" }])
+            setIsCreateDialogOpen(false)
+            toast.success(`${createRole === "mentor" ? "Mentor" : "Mentee"} account created`)
+        } else {
+            toast.error(result.message ?? "Failed to create user")
+        }
+        setCreatingUser(false)
     }
 
     const handleDeleteConfirm = async () => {
@@ -202,19 +289,24 @@ export default function Admin() {
             }
             setIsDeleteDialogOpen(false)
             setUserToDelete(null)
+            toast.success("User deleted")
         } else {
-            alert("Failed to delete user.")
+            toast.error(result.message ?? "Failed to delete user")
         }
         setDeletingUser(false)
     }
 
     useEffect(() => {
         const fetchData = async () => {
-            const result = await getAllUserData()
-            if (result.success) {
-                setMentors(result.data.mentors ?? [])
-                setMentees(result.data.mentee ?? [])
+            const [userResult, annResult] = await Promise.all([
+                getAllUserData(),
+                getAnnouncements("mentor"), // fetches "all" + "mentor" — admin sees everything
+            ])
+            if (userResult.success) {
+                setMentors(userResult.data.mentors ?? [])
+                setMentees(userResult.data.mentee ?? [])
             }
+            if (annResult.success) setAnnouncements(annResult.data)
             setLoading(false)
         }
         fetchData()
@@ -363,6 +455,109 @@ export default function Admin() {
                         </div>
                     </div>
 
+                    {/* ── ANNOUNCEMENTS ── */}
+                    <div id="announcements">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Megaphone className="w-5 h-5 text-blue-600" /> Announcements
+                                </CardTitle>
+                                <CardDescription>Post announcements visible on mentor and mentee dashboards</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                {/* Compose form */}
+                                <div className="border rounded-lg p-4 bg-slate-50 space-y-3">
+                                    <h3 className="text-sm font-semibold text-slate-700">New Announcement</h3>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="ann-title">Title</Label>
+                                        <Input
+                                            id="ann-title"
+                                            placeholder="Announcement title"
+                                            value={annForm.title}
+                                            onChange={e => setAnnForm(f => ({ ...f, title: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="ann-body">Message</Label>
+                                        <Textarea
+                                            id="ann-body"
+                                            placeholder="Write your announcement here…"
+                                            rows={3}
+                                            value={annForm.body}
+                                            onChange={e => setAnnForm(f => ({ ...f, body: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="space-y-1 flex-1">
+                                            <Label>Audience</Label>
+                                            <Select
+                                                value={annForm.target}
+                                                onValueChange={v => setAnnForm(f => ({ ...f, target: v as Announcement["target"] }))}
+                                            >
+                                                <SelectTrigger className="w-44">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">Everyone</SelectItem>
+                                                    <SelectItem value="mentor">Mentors only</SelectItem>
+                                                    <SelectItem value="mentee">Mentees only</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <Button
+                                            className="bg-blue-600 hover:bg-blue-700 self-end"
+                                            disabled={postingAnn || !annForm.title.trim() || !annForm.body.trim()}
+                                            onClick={handlePostAnnouncement}
+                                        >
+                                            <Megaphone className="w-4 h-4 mr-2" />
+                                            {postingAnn ? "Posting…" : "Post"}
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* Existing announcements */}
+                                {announcements.length === 0 ? (
+                                    <p className="text-sm text-slate-400 italic text-center py-4">No announcements yet.</p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {announcements.map(ann => (
+                                            <div key={ann.id} className="border rounded-lg p-4 bg-white flex gap-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <p className="font-semibold text-slate-800 text-sm">{ann.title}</p>
+                                                        <Badge
+                                                            variant="outline"
+                                                            className={
+                                                                ann.target === "mentor" ? "text-blue-700 border-blue-200 bg-blue-50 text-xs" :
+                                                                    ann.target === "mentee" ? "text-green-700 border-green-200 bg-green-50 text-xs" :
+                                                                        "text-slate-600 border-slate-200 bg-slate-50 text-xs"
+                                                            }
+                                                        >
+                                                            {ann.target === "all" ? "Everyone" : ann.target === "mentor" ? "Mentors" : "Mentees"}
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="text-sm text-slate-600 whitespace-pre-line">{ann.body}</p>
+                                                    <p className="text-xs text-slate-400 mt-1.5">
+                                                        {new Date(ann.created_at).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0"
+                                                    disabled={deletingAnn === ann.id}
+                                                    onClick={() => handleDeleteAnnouncement(ann.id)}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+
                     {/* ── USER MANAGEMENT ── */}
                     <div id="users">
                         <Card>
@@ -390,6 +585,17 @@ export default function Admin() {
                                             <SelectItem value="mentee">Mentees Only</SelectItem>
                                         </SelectContent>
                                     </Select>
+                                    <Button
+                                        className="bg-blue-600 hover:bg-blue-700"
+                                        onClick={() => {
+                                            setCreateForm({ email: "", password: "", first_name: "", last_name: "", group_name: "", research_title: "", research_description: "", mentor_preference: "" })
+                                            setCreateMembers([{ name: "", student_number: "" }])
+                                            setCreateRole("mentee")
+                                            setIsCreateDialogOpen(true)
+                                        }}
+                                    >
+                                        <UserPlus className="w-4 h-4 mr-2" /> Create User
+                                    </Button>
                                 </div>
                             </CardHeader>
                             <CardContent>
@@ -1146,6 +1352,183 @@ export default function Admin() {
                 </DialogContent>
             </Dialog>
 
+            {/* ── Create User Dialog ── */}
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Create User</DialogTitle>
+                        <DialogDescription>
+                            Create a new mentor or mentee account.
+                            {createRole === "mentor" && " The mentor will complete their full profile on first login."}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[70vh] pr-1">
+                        <div className="space-y-4 py-2 px-1">
+                            {/* Role selector */}
+                            <div className="space-y-1">
+                                <Label>Account Type</Label>
+                                <Select value={createRole} onValueChange={(v) => setCreateRole(v as "mentor" | "mentee")}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="mentee">Mentee</SelectItem>
+                                        <SelectItem value="mentor">Mentor</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Shared fields */}
+                            <div className="space-y-1">
+                                <Label>Email *</Label>
+                                <Input
+                                    type="email"
+                                    placeholder="user@fit.edu.ph"
+                                    value={createForm.email}
+                                    onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))}
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label>Temporary Password *</Label>
+                                <div className="relative">
+                                    <Input
+                                        type={showCreatePassword ? "text" : "password"}
+                                        placeholder="At least 8 characters"
+                                        value={createForm.password}
+                                        onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
+                                        className="pr-10"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                        onClick={() => setShowCreatePassword(p => !p)}
+                                    >
+                                        {showCreatePassword ? <Eye className="w-4 h-4" /> : <Eye className="w-4 h-4 text-gray-400" />}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* Mentor-specific fields */}
+                            {createRole === "mentor" && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <Label>First Name *</Label>
+                                        <Input
+                                            placeholder="Juan"
+                                            value={createForm.first_name}
+                                            onChange={e => setCreateForm(f => ({ ...f, first_name: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Last Name *</Label>
+                                        <Input
+                                            placeholder="Dela Cruz"
+                                            value={createForm.last_name}
+                                            onChange={e => setCreateForm(f => ({ ...f, last_name: e.target.value }))}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Mentee-specific fields */}
+                            {createRole === "mentee" && (
+                                <>
+                                    <div className="space-y-1">
+                                        <Label>Group Name *</Label>
+                                        <Input
+                                            placeholder="e.g. Fortis Programmatores"
+                                            value={createForm.group_name}
+                                            onChange={e => setCreateForm(f => ({ ...f, group_name: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Research / Thesis Title *</Label>
+                                        <Textarea
+                                            rows={2}
+                                            placeholder="Enter research title"
+                                            value={createForm.research_title}
+                                            onChange={e => setCreateForm(f => ({ ...f, research_title: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Research Description *</Label>
+                                        <Textarea
+                                            rows={3}
+                                            placeholder="Describe the research, tools, and algorithms"
+                                            value={createForm.research_description}
+                                            onChange={e => setCreateForm(f => ({ ...f, research_description: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Mentor Preferences *</Label>
+                                        <Textarea
+                                            rows={2}
+                                            placeholder="What the group looks for in a mentor"
+                                            value={createForm.mentor_preference}
+                                            onChange={e => setCreateForm(f => ({ ...f, mentor_preference: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Group Members *</Label>
+                                        {createMembers.map((member, idx) => (
+                                            <div key={idx} className="flex gap-2">
+                                                <Input
+                                                    placeholder="Member name"
+                                                    value={member.name}
+                                                    onChange={e => setCreateMembers(prev => prev.map((m, i) => i === idx ? { ...m, name: e.target.value } : m))}
+                                                />
+                                                <Input
+                                                    placeholder="Student no."
+                                                    type="number"
+                                                    value={member.student_number}
+                                                    onChange={e => setCreateMembers(prev => prev.map((m, i) => i === idx ? { ...m, student_number: e.target.value } : m))}
+                                                    className="w-36"
+                                                />
+                                                {idx > 0 && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="icon"
+                                                        onClick={() => setCreateMembers(prev => prev.filter((_, i) => i !== idx))}
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        ))}
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCreateMembers(prev => [...prev, { name: "", student_number: "" }])}
+                                        >
+                                            <Plus className="w-4 h-4 mr-1" /> Add Member
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </ScrollArea>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            onClick={handleCreateUser}
+                            disabled={
+                                creatingUser ||
+                                !createForm.email ||
+                                !createForm.password ||
+                                (createRole === "mentor" && (!createForm.first_name || !createForm.last_name)) ||
+                                (createRole === "mentee" && (!createForm.group_name || !createForm.research_title || !createForm.research_description || !createForm.mentor_preference || !createMembers[0]?.name))
+                            }
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
+                            {creatingUser ? "Creating..." : `Create ${createRole === "mentor" ? "Mentor" : "Mentee"}`}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Toaster richColors position="top-right" />
         </div>
     )
 }

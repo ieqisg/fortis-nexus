@@ -34,6 +34,7 @@ export default function MenteeCreateProfile({
     const [disableAddMember, setDisableAddMember] = useState(true);
     const [timeAndDayValid, setTimeAndDayValid] = useState("")
     const [loading, setLoading] = useState(false)
+    const [groupNameError, setGroupNameError] = useState("")
 
     // Form state
     const [formData, setFormData] = useState<MenteeFormProfile>({
@@ -127,6 +128,7 @@ export default function MenteeCreateProfile({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isFormValid()) return;
+        if (groupNameError) return;
         setLoading(true)
         try {
             const groupCheck = await checkGroupNameAvailable(formData.group_name)
@@ -205,10 +207,22 @@ export default function MenteeCreateProfile({
                                     id="groupName"
                                     placeholder="e.g Fortis Programmatores"
                                     value={formData.group_name}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, group_name: e.target.value })
-                                    }
+                                    onChange={(e) => {
+                                        const val = e.target.value
+                                        setFormData({ ...formData, group_name: val })
+                                        if (val && /[^a-zA-Z0-9\s]/.test(val)) {
+                                            setGroupNameError("Group name must not contain special characters")
+                                        } else {
+                                            setGroupNameError("")
+                                        }
+                                    }}
+                                    className={groupNameError ? "border-red-400 focus-visible:ring-red-400" : ""}
                                 />
+                                {groupNameError ? (
+                                    <p className="text-red-500 text-xs mt-1">{groupNameError}</p>
+                                ) : (
+                                    <p className="text-slate-400 text-xs mt-1">Letters, numbers, and spaces only — no special characters</p>
+                                )}
                             </div>
 
                             {/* Group Members */}

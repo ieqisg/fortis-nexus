@@ -7,10 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useRouter } from "next/navigation";
 import { UserAuth } from "./context/authContext";
 type Role = "mentor" | "mentee";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Mail } from "lucide-react";
 import { toast } from "sonner";
-import { getEmailByGroupName } from "@/lib/actions/authActions";
+import { getEmailByGroupName, checkLoginRateLimit, checkResetRateLimit } from "@/lib/actions/authActions";
 import { supabase } from "@/app/config/supabaseClient";
+import { createClient } from "@supabase/supabase-js"
+
+// Implicit-flow client used only for sending password reset emails.
+// Implicit flow puts the recovery token in the URL hash instead of a PKCE
+// code, so the reset link works from any browser / device.
+const resetClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_KEY!,
+    { auth: { flowType: "implicit", autoRefreshToken: false, persistSession: false } }
+)
 export default function Home() {
     const [role, setRole] = useState<Role>("mentee");
     const router = useRouter();
@@ -19,6 +29,57 @@ export default function Home() {
     const [groupName, setGroupName] = useState("")
     const { userData, signIn, setUserData, getUser } = UserAuth()
     const { email, password } = userData
+
+    // Forgot password state
+    const [forgotMode, setForgotMode] = useState(false)
+    const [forgotEmail, setForgotEmail] = useState("")
+    const [forgotGroup, setForgotGroup] = useState("")
+    const [forgotSending, setForgotSending] = useState(false)
+    const [forgotSent, setForgotSent] = useState(false)
+
+    const handleForgotSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setForgotSending(true)
+
+        const limit = await checkResetRateLimit()
+        if (!limit.allowed) {
+            toast.error(limit.message)
+            setForgotSending(false)
+            return
+        }
+
+        let targetEmail = forgotEmail.trim()
+
+        if (role === "mentee") {
+            const result = await getEmailByGroupName(forgotGroup.trim())
+            if (!result.success) {
+                toast.error(result.message ?? "Group not found.")
+                setForgotSending(false)
+                return
+            }
+            targetEmail = result.email!
+        }
+
+        const { error } = await resetClient.auth.resetPasswordForEmail(targetEmail, {
+            redirectTo: window.location.origin + "/reset-password",
+        })
+
+        setForgotSending(false)
+
+        if (error) {
+            toast.error("Could not send reset email. Try again.")
+            return
+        }
+
+        setForgotSent(true)
+    }
+
+    const exitForgot = () => {
+        setForgotMode(false)
+        setForgotSent(false)
+        setForgotEmail("")
+        setForgotGroup("")
+    }
 
     const placeholders = {
         mentor: {
@@ -64,6 +125,12 @@ export default function Home() {
 
         try {
             setLoading(true)
+
+            const limit = await checkLoginRateLimit()
+            if (!limit.allowed) {
+                toast.error(limit.message)
+                return
+            }
 
             if (role === "mentee") {
                 if (!groupName.trim() || !password) return
@@ -175,6 +242,80 @@ export default function Home() {
                 </CardHeader>
 
                 <CardContent className="pt-4">
+                    {/* ── Forgot-password view ── */}
+                    {forgotMode ? (
+                        <div className="space-y-5">
+                            {forgotSent ? (
+                                <div className="text-center space-y-3 py-4">
+                                    <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center ${isMentor ? "bg-blue-100" : "bg-green-100"}`}>
+                                        <Mail className={`w-6 h-6 ${isMentor ? "text-blue-600" : "text-green-600"}`} />
+                                    </div>
+                                    <p className="font-semibold text-slate-700">Check your email</p>
+                                    <p className="text-sm text-slate-500">
+                                        We sent a password reset link to your email. Click the link to set a new password.
+                                    </p>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        className={`${theme.link} text-sm`}
+                                        onClick={exitForgot}
+                                    >
+                                        Back to Sign In
+                                    </Button>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleForgotSubmit} className="space-y-4">
+                                    <button
+                                        type="button"
+                                        onClick={exitForgot}
+                                        className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-2"
+                                    >
+                                        <ArrowLeft className="w-3.5 h-3.5" /> Back to Sign In
+                                    </button>
+                                    <p className="text-sm text-slate-600">
+                                        {isMentor
+                                            ? "Enter your email and we'll send you a link to reset your password."
+                                            : "Enter your group name and we'll send a reset link to your registered email."}
+                                    </p>
+                                    {isMentor ? (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="forgotEmail" className="text-slate-700 font-medium">Email</Label>
+                                            <Input
+                                                id="forgotEmail"
+                                                type="email"
+                                                required
+                                                placeholder="mentor@example.com"
+                                                value={forgotEmail}
+                                                onChange={e => setForgotEmail(e.target.value)}
+                                                className={`h-11 border-slate-200 ${theme.focus}`}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="forgotGroup" className="text-slate-700 font-medium">Group Name</Label>
+                                            <Input
+                                                id="forgotGroup"
+                                                type="text"
+                                                required
+                                                placeholder="Enter your group name"
+                                                value={forgotGroup}
+                                                onChange={e => setForgotGroup(e.target.value)}
+                                                className={`h-11 border-slate-200 ${theme.focus}`}
+                                            />
+                                        </div>
+                                    )}
+                                    <Button
+                                        type="submit"
+                                        disabled={forgotSending}
+                                        className={`w-full h-11 text-white font-medium shadow-lg transition-all duration-200 hover:shadow-xl ${theme.button}`}
+                                    >
+                                        {forgotSending ? "Sending…" : "Send Reset Link"}
+                                    </Button>
+                                </form>
+                            )}
+                        </div>
+                    ) : (
+                    <>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {isMentor ? (
                             <>
@@ -288,17 +429,18 @@ export default function Home() {
                         </p>
                     </div>
 
-                    {/* Forgot password link — only for mentor */}
-                    {isMentor && (
-                        <div className="mt-4 text-center">
-                            <a
-                                href="#forgot"
-                                className="text-sm text-slate-400 hover:text-slate-600 transition-colors duration-200"
-                            >
-                                Forgot your password?
-                            </a>
-                        </div>
-                    )}
+                    {/* Forgot password link */}
+                    <div className="mt-4 text-center">
+                        <button
+                            type="button"
+                            onClick={() => setForgotMode(true)}
+                            className="text-sm text-slate-400 hover:text-slate-600 transition-colors duration-200"
+                        >
+                            Forgot your password?
+                        </button>
+                    </div>
+                    </>
+                    )} {/* end forgotMode conditional */}
                 </CardContent>
             </Card>
         </div>

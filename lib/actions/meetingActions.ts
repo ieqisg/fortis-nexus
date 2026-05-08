@@ -93,7 +93,7 @@ export async function setRecurringMeetingForAll(payload: {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, message: "Not authenticated" }
 
-    const results: { id: string; ok: boolean }[] = []
+    const results: { id: string; ok: boolean; meeting?: Record<string, unknown> | null }[] = []
 
     for (const mentee_group_id of payload.mentee_group_ids) {
         // check if a recurring meeting already exists for this mentee

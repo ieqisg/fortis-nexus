@@ -94,6 +94,7 @@ export const config = {
         "/",
         "/login",
         "/register",
+        "/reset-password",
         "/mentee-dashboard/:path*",
         "/mentor-dashboard/:path*",
         "/mentee/:path*",
