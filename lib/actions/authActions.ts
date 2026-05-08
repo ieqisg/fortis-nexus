@@ -3,7 +3,8 @@
 
 import { createServerClient } from "@supabase/ssr"
 import { createClient } from "@supabase/supabase-js"
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
+import { rateLimit } from "@/lib/rateLimit"
 
 const adminSupabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -54,6 +55,50 @@ export async function checkGroupNameAvailable(groupName: string) {
         .maybeSingle()
     if (data) return { available: false, message: "A group with this name already exists." }
     return { available: true }
+}
+
+// ─── Rate-limit helpers ───────────────────────────────────────────────────────
+
+function getClientIp(headersList: Awaited<ReturnType<typeof headers>>): string {
+    return (
+        headersList.get("x-forwarded-for")?.split(",")[0].trim() ??
+        headersList.get("x-real-ip") ??
+        "unknown"
+    )
+}
+
+/**
+ * Login: 5 attempts per 5 minutes per IP.
+ * Returns { allowed, message } — call before every sign-in attempt.
+ */
+export async function checkLoginRateLimit() {
+    const ip = getClientIp(await headers())
+    const result = rateLimit(`login:${ip}`, 5, 5 * 60 * 1000)
+    if (!result.allowed) {
+        const mins = Math.ceil(result.retryAfterMs / 60000)
+        return {
+            allowed: false,
+            message: `Too many login attempts. Try again in ${mins} minute${mins !== 1 ? "s" : ""}.`,
+        }
+    }
+    return { allowed: true, message: "" }
+}
+
+/**
+ * Forgot password: 3 requests per hour per IP.
+ * Returns { allowed, message } — call before every reset-email send.
+ */
+export async function checkResetRateLimit() {
+    const ip = getClientIp(await headers())
+    const result = rateLimit(`reset:${ip}`, 3, 60 * 60 * 1000)
+    if (!result.allowed) {
+        const mins = Math.ceil(result.retryAfterMs / 60000)
+        return {
+            allowed: false,
+            message: `Too many reset requests. Try again in ${mins} minute${mins !== 1 ? "s" : ""}.`,
+        }
+    }
+    return { allowed: true, message: "" }
 }
 
 export async function getEmailByGroupName(groupName: string) {

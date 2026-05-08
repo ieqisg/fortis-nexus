@@ -51,7 +51,11 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches } from "@/lib/actions/adminActions";
+import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches } from "@/lib/actions/adminActions"
+import { getAnnouncements, createAnnouncement, deleteAnnouncement, type Announcement } from "@/lib/actions/announcementActions"
+import { Textarea } from "@/components/ui/textarea"
+import { Megaphone, Trash2 } from "lucide-react";
+import { toast, Toaster } from "sonner";
 
 export default function Admin() {
     const [mentors, setMentors] = useState<any[]>([])
@@ -77,6 +81,12 @@ export default function Admin() {
     const [capacityEdits, setCapacityEdits] = useState<Record<string, number>>({})
     const [savingCapacity, setSavingCapacity] = useState<string | null>(null)
 
+    // announcements
+    const [announcements, setAnnouncements] = useState<Announcement[]>([])
+    const [annForm, setAnnForm] = useState({ title: "", body: "", target: "all" as Announcement["target"] })
+    const [postingAnn, setPostingAnn] = useState(false)
+    const [deletingAnn, setDeletingAnn] = useState<string | null>(null)
+
     const handleRunMatching = async () => {
         setMatching(true)
         try {
@@ -94,7 +104,7 @@ export default function Admin() {
                 }
             }
         } catch (err) {
-            alert("Failed to run matching")
+            toast.error("Failed to run matching")
         }
         setMatching(false)
     }
@@ -107,8 +117,9 @@ export default function Admin() {
             setMentees(prev => prev.map(m => ({ ...m, matches: null })))
             setMatchResult(null)
             setMatchLog(null)
+            toast.success("Matches rolled back successfully")
         } else {
-            alert("Failed to rollback: " + result.message)
+            toast.error(result.message ?? "Failed to rollback matches")
         }
         setRollingBack(false)
         setIsRollbackDialogOpen(false)
@@ -124,8 +135,9 @@ export default function Admin() {
                 prev.map((m) => m.id === mentorId ? { ...m, mentor_capacity: newCap } : m)
             )
             setCapacityEdits((prev) => { const n = { ...prev }; delete n[mentorId]; return n })
+            toast.success("Capacity updated")
         } else {
-            alert("Failed to update capacity.")
+            toast.error("Failed to update capacity")
         }
         setSavingCapacity(null)
     }
@@ -179,8 +191,9 @@ export default function Admin() {
                 ))
             }
             setIsEditDialogOpen(false)
+            toast.success("Changes saved")
         } else {
-            alert("Failed to save changes.")
+            toast.error(result.message ?? "Failed to save changes")
         }
         setSavingEdit(false)
     }
@@ -188,6 +201,32 @@ export default function Admin() {
     const openDeleteDialog = (user: any) => {
         setUserToDelete(user)
         setIsDeleteDialogOpen(true)
+    }
+
+    const handlePostAnnouncement = async () => {
+        if (!annForm.title.trim() || !annForm.body.trim()) return
+        setPostingAnn(true)
+        const result = await createAnnouncement(annForm.title, annForm.body, annForm.target)
+        if (result.success && result.data) {
+            setAnnouncements(prev => [result.data!, ...prev])
+            setAnnForm({ title: "", body: "", target: "all" })
+            toast.success("Announcement posted")
+        } else {
+            toast.error(result.message ?? "Failed to post announcement")
+        }
+        setPostingAnn(false)
+    }
+
+    const handleDeleteAnnouncement = async (id: string) => {
+        setDeletingAnn(id)
+        const result = await deleteAnnouncement(id)
+        if (result.success) {
+            setAnnouncements(prev => prev.filter(a => a.id !== id))
+            toast.success("Announcement deleted")
+        } else {
+            toast.error(result.message ?? "Failed to delete announcement")
+        }
+        setDeletingAnn(null)
     }
 
     const handleDeleteConfirm = async () => {
@@ -202,19 +241,24 @@ export default function Admin() {
             }
             setIsDeleteDialogOpen(false)
             setUserToDelete(null)
+            toast.success("User deleted")
         } else {
-            alert("Failed to delete user.")
+            toast.error(result.message ?? "Failed to delete user")
         }
         setDeletingUser(false)
     }
 
     useEffect(() => {
         const fetchData = async () => {
-            const result = await getAllUserData()
-            if (result.success) {
-                setMentors(result.data.mentors ?? [])
-                setMentees(result.data.mentee ?? [])
+            const [userResult, annResult] = await Promise.all([
+                getAllUserData(),
+                getAnnouncements("mentor"), // fetches "all" + "mentor" — admin sees everything
+            ])
+            if (userResult.success) {
+                setMentors(userResult.data.mentors ?? [])
+                setMentees(userResult.data.mentee ?? [])
             }
+            if (annResult.success) setAnnouncements(annResult.data)
             setLoading(false)
         }
         fetchData()
@@ -361,6 +405,109 @@ export default function Admin() {
                                 </p>
                             )}
                         </div>
+                    </div>
+
+                    {/* ── ANNOUNCEMENTS ── */}
+                    <div id="announcements">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Megaphone className="w-5 h-5 text-blue-600" /> Announcements
+                                </CardTitle>
+                                <CardDescription>Post announcements visible on mentor and mentee dashboards</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                {/* Compose form */}
+                                <div className="border rounded-lg p-4 bg-slate-50 space-y-3">
+                                    <h3 className="text-sm font-semibold text-slate-700">New Announcement</h3>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="ann-title">Title</Label>
+                                        <Input
+                                            id="ann-title"
+                                            placeholder="Announcement title"
+                                            value={annForm.title}
+                                            onChange={e => setAnnForm(f => ({ ...f, title: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="ann-body">Message</Label>
+                                        <Textarea
+                                            id="ann-body"
+                                            placeholder="Write your announcement here…"
+                                            rows={3}
+                                            value={annForm.body}
+                                            onChange={e => setAnnForm(f => ({ ...f, body: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="space-y-1 flex-1">
+                                            <Label>Audience</Label>
+                                            <Select
+                                                value={annForm.target}
+                                                onValueChange={v => setAnnForm(f => ({ ...f, target: v as Announcement["target"] }))}
+                                            >
+                                                <SelectTrigger className="w-44">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">Everyone</SelectItem>
+                                                    <SelectItem value="mentor">Mentors only</SelectItem>
+                                                    <SelectItem value="mentee">Mentees only</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <Button
+                                            className="bg-blue-600 hover:bg-blue-700 self-end"
+                                            disabled={postingAnn || !annForm.title.trim() || !annForm.body.trim()}
+                                            onClick={handlePostAnnouncement}
+                                        >
+                                            <Megaphone className="w-4 h-4 mr-2" />
+                                            {postingAnn ? "Posting…" : "Post"}
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* Existing announcements */}
+                                {announcements.length === 0 ? (
+                                    <p className="text-sm text-slate-400 italic text-center py-4">No announcements yet.</p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {announcements.map(ann => (
+                                            <div key={ann.id} className="border rounded-lg p-4 bg-white flex gap-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <p className="font-semibold text-slate-800 text-sm">{ann.title}</p>
+                                                        <Badge
+                                                            variant="outline"
+                                                            className={
+                                                                ann.target === "mentor" ? "text-blue-700 border-blue-200 bg-blue-50 text-xs" :
+                                                                    ann.target === "mentee" ? "text-green-700 border-green-200 bg-green-50 text-xs" :
+                                                                        "text-slate-600 border-slate-200 bg-slate-50 text-xs"
+                                                            }
+                                                        >
+                                                            {ann.target === "all" ? "Everyone" : ann.target === "mentor" ? "Mentors" : "Mentees"}
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="text-sm text-slate-600 whitespace-pre-line">{ann.body}</p>
+                                                    <p className="text-xs text-slate-400 mt-1.5">
+                                                        {new Date(ann.created_at).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0"
+                                                    disabled={deletingAnn === ann.id}
+                                                    onClick={() => handleDeleteAnnouncement(ann.id)}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
 
                     {/* ── USER MANAGEMENT ── */}
@@ -1146,6 +1293,7 @@ export default function Admin() {
                 </DialogContent>
             </Dialog>
 
+            <Toaster richColors position="top-right" />
         </div>
     )
 }

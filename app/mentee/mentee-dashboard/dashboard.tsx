@@ -16,11 +16,13 @@ import {
     Download, MessageSquare, BookOpen, TrendingUp,
     User, Zap, CheckCircle2, Circle, GraduationCap
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import type { PrevMentoredThesis } from "@/types/mentorTypes";
 import { UserAuth } from "@/app/context/authContext";
 import { useMentee } from "@/app/context/menteeContext";
 import { submitPaper, getPaperDownloadUrl } from "@/lib/actions/paperActions";
+import { getAnnouncements, type Announcement } from "@/lib/actions/announcementActions";
+import { Megaphone, X } from "lucide-react";
 import { toast } from "sonner";
 
 export default function MenteeDashboard() {
@@ -28,6 +30,14 @@ export default function MenteeDashboard() {
     const [submitting, setSubmitting] = useState(false)
     const [activeTab, setActiveTab] = useState<"submit" | "papers">("submit")
     const formRef = useRef<HTMLFormElement>(null)
+    const [announcements, setAnnouncements] = useState<Announcement[]>([])
+    const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
+
+    useEffect(() => {
+        getAnnouncements("mentee").then(r => { if (r.success) setAnnouncements(r.data) })
+    }, [])
+
+    const visibleAnnouncements = announcements.filter(a => !dismissedIds.has(a.id))
     const { userData } = UserAuth()
 
     const hasMatch = !!mentee?.matches
@@ -104,6 +114,28 @@ export default function MenteeDashboard() {
                     </div>
                 </div>
 
+                {/* Announcements */}
+                {visibleAnnouncements.length > 0 && (
+                    <div className="px-6 pt-4 space-y-2">
+                        {visibleAnnouncements.map(a => (
+                            <div key={a.id} className="flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                                <Megaphone className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-emerald-900">{a.title}</p>
+                                    <p className="text-sm text-emerald-800 mt-0.5">{a.body}</p>
+                                </div>
+                                <button
+                                    onClick={() => setDismissedIds(prev => new Set(prev).add(a.id))}
+                                    className="text-emerald-400 hover:text-emerald-600 transition-colors shrink-0"
+                                    aria-label="Dismiss"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 <div className="p-6 space-y-6">
 
                     {/* Top row: Mentor + Meeting */}
@@ -154,7 +186,7 @@ export default function MenteeDashboard() {
                                             </div>
                                             {matches.matched_keywords && matches.matched_keywords.length > 0 && (
                                                 <div className="flex flex-wrap gap-1 mt-2">
-                                                    {matches.matched_keywords.slice(0, 4).map((kw, i) => (
+                                                    {matches.matched_keywords.slice(0, 4).map((kw: string, i: number) => (
                                                         <span key={i} className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
                                                             {kw}
                                                         </span>
@@ -168,7 +200,7 @@ export default function MenteeDashboard() {
                                             <div>
                                                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Expertise</p>
                                                 <div className="flex flex-wrap gap-1">
-                                                    {matches.mentor?.forte.map((f, i) => (
+                                                    {matches.mentor?.forte.map((f: string, i: number) => (
                                                         <Badge key={i} variant="outline" className="text-xs border-blue-200 text-blue-700 bg-blue-50">
                                                             {f}
                                                         </Badge>
@@ -178,7 +210,7 @@ export default function MenteeDashboard() {
                                             <div>
                                                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Skills</p>
                                                 <div className="flex flex-wrap gap-1">
-                                                    {matches.mentor?.technical_skills.slice(0, 4).map((s, i) => (
+                                                    {matches.mentor?.technical_skills.slice(0, 4).map((s: string, i: number) => (
                                                         <Badge key={i} variant="outline" className="text-xs border-slate-200 text-slate-600">
                                                             {s}
                                                         </Badge>
