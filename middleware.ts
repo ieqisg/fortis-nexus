@@ -2,8 +2,22 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+async function getRole(supabase: ReturnType<typeof createServerClient>, userId: string) {
+    const [{ data: menteeData }, { data: mentorData }, { data: adminData }] = await Promise.all([
+        supabase.from("MENTEE_GROUPS").select("role").eq("id", userId).maybeSingle(),
+        supabase.from("mentor").select("role, profile_completed").eq("id", userId).maybeSingle(),
+        supabase.from("admin").select("role").eq("id", userId).maybeSingle(),
+    ])
+    return {
+        role: menteeData?.role || mentorData?.role || adminData?.role,
+        profileCompleted: mentorData?.profile_completed,
+    }
+}
+
 export async function middleware(request: NextRequest) {
     const response = NextResponse.next()
+    const path = request.nextUrl.pathname
+
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_KEY!,
@@ -19,71 +33,50 @@ export async function middleware(request: NextRequest) {
         }
     );
 
-    const { data: { user } } = await supabase.auth.getUser()
-    const path = request.nextUrl.pathname
+    // getSession reads from the cookie — no network call, safe in Edge Runtime.
+    // getUser() makes a live auth server request which can crash Edge middleware.
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
 
-    if (user && (path === "/" || path === "/login" || path === "/register")) {
-        const [{ data: menteeData }, { data: mentorData }, { data: adminData }] = await Promise.all([
-            supabase.from("MENTEE_GROUPS").select("role").eq("id", user.id).maybeSingle(),
-            supabase.from("mentor").select("role, profile_completed").eq("id", user.id).maybeSingle(),
-            supabase.from("admin").select("role").eq("id", user.id).maybeSingle(),
-        ])
+    if (!user) {
+        if (
+            path.startsWith("/mentee/") ||
+            path.startsWith("/mentor/") ||
+            path.startsWith("/admin")
+        ) {
+            return NextResponse.redirect(new URL("/", request.url))
+        }
+        return response
+    }
 
-        const role = menteeData?.role || mentorData?.role || adminData?.role
+    try {
+        const { role, profileCompleted } = await getRole(supabase, user.id)
 
-        if (role === "mentee") return NextResponse.redirect(new URL("/mentee/mentee-dashboard", request.url))
-        if (role === "mentor") {
-            if (!mentorData?.profile_completed) {
-                return NextResponse.redirect(new URL("/mentor/complete-profile", request.url))
+        if (path === "/" || path === "/login" || path === "/register") {
+            if (role === "mentee") return NextResponse.redirect(new URL("/mentee/mentee-dashboard", request.url))
+            if (role === "mentor") {
+                if (!profileCompleted) return NextResponse.redirect(new URL("/mentor/complete-profile", request.url))
+                return NextResponse.redirect(new URL("/mentor/mentor-dashboard", request.url))
             }
-            return NextResponse.redirect(new URL("/mentor/mentor-dashboard", request.url))
-        }
-        if (role === "admin") return NextResponse.redirect(new URL("/admin", request.url))
-    }
-
-    if (!user && (
-        path.startsWith("/mentee/") ||
-        path.startsWith("/mentor/") ||
-        path.startsWith("/mentor/") ||
-        path.startsWith("/admin")
-    )) {
-        return NextResponse.redirect(new URL("/", request.url))
-    }
-
-    if (user) {
-        const [{ data: menteeData }, { data: mentorData }, { data: adminData }] = await Promise.all([
-            supabase.from("MENTEE_GROUPS").select("role").eq("id", user.id).maybeSingle(),
-            supabase.from("mentor").select("role, profile_completed").eq("id", user.id).maybeSingle(),
-            supabase.from("admin").select("role").eq("id", user.id).maybeSingle(),
-        ])
-
-        const role = menteeData?.role || mentorData?.role || adminData?.role
-
-        if (!role) {
-            return NextResponse.redirect(new URL("/unauthorized", request.url))
+            if (role === "admin") return NextResponse.redirect(new URL("/admin", request.url))
         }
 
-        if (path.startsWith("/mentee") && role !== "mentee") {
-            return NextResponse.redirect(new URL("/unauthorized", request.url))
-        }
-        if (path.startsWith("/mentor") && role !== "mentor") {
-            return NextResponse.redirect(new URL("/unauthorized", request.url))
-        }
-        if (path.startsWith("/admin") && role !== "admin") {
-            return NextResponse.redirect(new URL("/unauthorized", request.url))
-        }
+        if (!role) return NextResponse.redirect(new URL("/unauthorized", request.url))
+
+        if (path.startsWith("/mentee") && role !== "mentee") return NextResponse.redirect(new URL("/unauthorized", request.url))
+        if (path.startsWith("/mentor") && role !== "mentor") return NextResponse.redirect(new URL("/unauthorized", request.url))
+        if (path.startsWith("/admin") && role !== "admin") return NextResponse.redirect(new URL("/unauthorized", request.url))
 
         if (role === "mentor") {
             if (path.startsWith("/mentor/complete-profile")) {
-                if (mentorData?.profile_completed) {
-                    return NextResponse.redirect(new URL("/mentor/mentor-dashboard", request.url))
-                }
+                if (profileCompleted) return NextResponse.redirect(new URL("/mentor/mentor-dashboard", request.url))
             } else {
-                if (!mentorData?.profile_completed) {
-                    return NextResponse.redirect(new URL("/mentor/complete-profile", request.url))
-                }
+                if (!profileCompleted) return NextResponse.redirect(new URL("/mentor/complete-profile", request.url))
             }
         }
+    } catch {
+        // If DB lookup fails, pass through rather than crash
+        return response
     }
 
     return response
