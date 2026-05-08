@@ -43,7 +43,7 @@ import Sidebar from "@/components/ui/Sidebar";
 import { useMentee } from "@/app/context/menteeContext";
 import { UserAuth } from "@/app/context/authContext";
 import { changeDefaultPassword, editMenteeProfile } from "@/lib/actions/menteeActions";
-import { MenteeEditForm } from "@/types/menteeTypes";
+import { CommunicationPreference, MenteeEditForm } from "@/types/menteeTypes";
 import { useRouter } from "next/navigation";
 import { verifyCurrentPassword } from "@/lib/actions/menteeActions";
 
@@ -76,6 +76,7 @@ export default function MenteeEditProfile() {
         mentor_preference: "",
         available_days: [],
         time_slot: [],
+        communication_preference: "",
     });
 
 
@@ -87,9 +88,10 @@ export default function MenteeEditProfile() {
         !!formData.group_name ||
         !!formData.research_title ||
         !!formData.research_description ||
-        formData.mentor_preference ||
+        !!formData.mentor_preference ||
         formData.available_days.length > 0 ||
-        formData.time_slot.length > 0;
+        formData.time_slot.length > 0 ||
+        !!formData.communication_preference;
 
 
 
@@ -112,6 +114,9 @@ export default function MenteeEditProfile() {
                 payload.available_days = formData.available_days;
             if (formData.time_slot?.length)
                 payload.time_slot = formData.time_slot;
+            if (formData.communication_preference &&
+                formData.communication_preference !== mentee?.communication_preference)
+                payload.communication_preference = formData.communication_preference || null;
 
             // Nothing changed
             if (Object.keys(payload).length === 0) {
@@ -270,9 +275,9 @@ export default function MenteeEditProfile() {
 
     // ── Render ──────────────────────────────────────────────────────────────────
     return (
-        <div className="flex h-screen overflow-hidden bg-slate-50">
+        <div className="flex h-screen bg-slate-50">
             <Sidebar userName={mentee?.group_name} userType="mentee" />
-            <main className="flex-1 overflow-y-auto">
+            <main className="flex-1 min-h-0 overflow-y-auto">
                 <div className="py-8 px-4 sm:py-12">
                     <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
                         Edit profile
@@ -416,6 +421,80 @@ export default function MenteeEditProfile() {
                                     </Card>
                                 </div>
 
+                                <div>
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle className="text-lg">
+                                                Communication Preference
+                                            </CardTitle>
+                                            <CardDescription>
+                                                How do you prefer to communicate with your mentor?
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-3">
+                                            <div className="flex gap-6">
+                                                {(["FACE_TO_FACE", "ONLINE"] as const).map((mode) => {
+                                                    const isOnlineGroup = mode === "ONLINE";
+                                                    const checked = isOnlineGroup
+                                                        ? formData.communication_preference === "ONLINE_CHAT" ||
+                                                          formData.communication_preference === "ONLINE_CALL"
+                                                        : formData.communication_preference === "FACE_TO_FACE";
+                                                    return (
+                                                        <label key={mode} className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                name="comm_top"
+                                                                checked={checked}
+                                                                onChange={() => {
+                                                                    if (isOnlineGroup) {
+                                                                        setFormData((prev) => ({
+                                                                            ...prev,
+                                                                            communication_preference: "ONLINE_CHAT",
+                                                                        }));
+                                                                    } else {
+                                                                        setFormData((prev) => ({
+                                                                            ...prev,
+                                                                            communication_preference: "FACE_TO_FACE",
+                                                                        }));
+                                                                    }
+                                                                }}
+                                                                className="accent-blue-600"
+                                                            />
+                                                            <span className="text-sm font-medium">
+                                                                {isOnlineGroup ? "Online" : "Face to Face"}
+                                                            </span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {(formData.communication_preference === "ONLINE_CHAT" ||
+                                              formData.communication_preference === "ONLINE_CALL") && (
+                                                <div className="ml-6 flex gap-6 border-l-2 border-blue-100 pl-4">
+                                                    {(["ONLINE_CHAT", "ONLINE_CALL"] as CommunicationPreference[]).map((sub) => (
+                                                        <label key={sub} className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                name="comm_sub"
+                                                                checked={formData.communication_preference === sub}
+                                                                onChange={() =>
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        communication_preference: sub,
+                                                                    }))
+                                                                }
+                                                                className="accent-blue-600"
+                                                            />
+                                                            <span className="text-sm">
+                                                                {sub === "ONLINE_CHAT" ? "Chat only" : "Online meeting / call"}
+                                                            </span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                </div>
 
                             </CardContent>
 

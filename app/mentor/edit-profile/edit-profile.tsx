@@ -43,7 +43,7 @@ import Sidebar from "@/components/ui/Sidebar";
 import { UserAuth } from "@/app/context/authContext";
 import { editMentorProfile, verifyCurrentPassword, changeDefaultPassword } from "@/lib/actions/mentorActions";
 import { useMentor } from "@/app/context/mentorContext";
-import { MentorEditForm } from "@/types/mentorTypes";
+import { MentorEditForm, PrevMentoredThesis } from "@/types/mentorTypes";
 import { useRouter } from "next/navigation";
 
 
@@ -74,10 +74,12 @@ export default function mentorEditProfile() {
         self_description: "",
         technical_skills: [],
         time_slot: [],
+        prev_mentored_thesis: [],
     });
 
     const [skillInput, setSkillInput] = useState("");
     const [forteInput, setForteInput] = useState("");
+    const [thesisForm, setThesisForm] = useState<PrevMentoredThesis>({ title_no: "", title: "", mentor: "", year: "" });
 
 
     // ── Handlers ────────────────────────────────────────────────────────────────
@@ -106,6 +108,15 @@ export default function mentorEditProfile() {
             forte: [...prev.forte, value],
         }));
         setForteInput("");
+    };
+
+    const addThesis = () => {
+        if (!thesisForm.title_no.trim() || !thesisForm.title.trim()) return;
+        setFormData((prev) => ({
+            ...prev,
+            prev_mentored_thesis: [...prev.prev_mentored_thesis, { ...thesisForm }],
+        }));
+        setThesisForm({ title_no: "", title: "", mentor: "", year: "" });
     };
 
     const handleSkillKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -142,7 +153,8 @@ export default function mentorEditProfile() {
         formData.technical_skills.length > 0 ||
         formData.forte.length > 0 ||
         formData.available_days.length > 0 ||
-        formData.time_slot.length > 0;
+        formData.time_slot.length > 0 ||
+        formData.prev_mentored_thesis.length > 0;
 
 
     // ── Password handlers ───────────────────────────────────────────────────────
@@ -287,6 +299,8 @@ export default function mentorEditProfile() {
                 payload.available_days = formData.available_days;
             if (formData.time_slot?.length)
                 payload.time_slot = formData.time_slot;
+            if (formData.prev_mentored_thesis?.length)
+                payload.prev_mentored_thesis = formData.prev_mentored_thesis;
 
             if (Object.keys(payload).length === 0) {
                 toast.info("No changes to save.");
@@ -311,9 +325,9 @@ export default function mentorEditProfile() {
 
     // ── Render ──────────────────────────────────────────────────────────────────
     return (
-        <div className="flex h-screen bg-slate-50 overflow-y-hidden">
+        <div className="flex h-screen bg-slate-50">
             <Sidebar userName={`${mentor?.first_name} ${mentor?.last_name}`} userType="mentor" />
-            <main className="flex-1 overflow-y-auto">
+            <main className="flex-1 min-h-0 overflow-y-auto">
                 <div className="py-8 px-4 sm:py-12">
                     <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
                         Edit profile
@@ -482,6 +496,75 @@ export default function mentorEditProfile() {
                                             </div>
                                         ))}
                                     </div>
+                                </div>
+
+                                {/* Previously Mentored Theses */}
+                                <div className="space-y-3">
+                                    <Label>Previously Mentored Theses</Label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <Label className="text-xs text-gray-500">Title No.</Label>
+                                            <Input
+                                                placeholder="e.g. 1"
+                                                value={thesisForm.title_no}
+                                                onChange={(e) => setThesisForm(prev => ({ ...prev, title_no: e.target.value }))}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs text-gray-500">Year</Label>
+                                            <Input
+                                                placeholder="e.g. 2023"
+                                                value={thesisForm.year}
+                                                onChange={(e) => setThesisForm(prev => ({ ...prev, year: e.target.value }))}
+                                            />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <Label className="text-xs text-gray-500">Thesis Title</Label>
+                                            <Input
+                                                placeholder="e.g. Deep Learning for Medical Imaging"
+                                                value={thesisForm.title}
+                                                onChange={(e) => setThesisForm(prev => ({ ...prev, title: e.target.value }))}
+                                            />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <Label className="text-xs text-gray-500">Mentor / Adviser</Label>
+                                            <Input
+                                                placeholder="e.g. Dr. Juan dela Cruz"
+                                                value={thesisForm.mentor}
+                                                onChange={(e) => setThesisForm(prev => ({ ...prev, mentor: e.target.value }))}
+                                            />
+                                        </div>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={addThesis}
+                                        disabled={!thesisForm.title_no.trim() || !thesisForm.title.trim()}
+                                        className="w-full"
+                                    >
+                                        <Plus className="w-4 h-4 mr-2" /> Add Thesis
+                                    </Button>
+
+                                    {formData.prev_mentored_thesis.length > 0 && (
+                                        <div className="space-y-2">
+                                            {formData.prev_mentored_thesis.map((thesis, index) => (
+                                                <div key={index} className="flex items-start justify-between bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-sm">
+                                                    <div>
+                                                        <p className="font-medium text-blue-900">[{thesis.title_no}] {thesis.title}</p>
+                                                        <p className="text-blue-700 text-xs">{thesis.mentor} — {thesis.year}</p>
+                                                    </div>
+                                                    <button type="button" onClick={() =>
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            prev_mentored_thesis: prev.prev_mentored_thesis.filter((_, i) => i !== index),
+                                                        }))
+                                                    }>
+                                                        <X className="w-4 h-4 text-blue-400 hover:text-red-500" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Availability */}

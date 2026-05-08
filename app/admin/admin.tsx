@@ -30,10 +30,12 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
     Users,
     AlertCircle,
@@ -49,7 +51,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getAllUserData } from "@/lib/actions/adminActions";
+import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches } from "@/lib/actions/adminActions";
 
 export default function Admin() {
     const [mentors, setMentors] = useState<any[]>([])
@@ -58,11 +60,22 @@ export default function Admin() {
     const [searchTerm, setSearchTerm] = useState("")
     const [userFilter, setUserFilter] = useState("all")
     const [selectedMentor, setSelectedMentor] = useState<any>(null)
+    const [selectedMentorCard, setSelectedMentorCard] = useState<any>(null)
     const [selectedUser, setSelectedUser] = useState<any>(null)
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+    const [editForm, setEditForm] = useState<Record<string, string | number>>({})
+    const [savingEdit, setSavingEdit] = useState(false)
+    const [userToDelete, setUserToDelete] = useState<any>(null)
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+    const [deletingUser, setDeletingUser] = useState(false)
     const [matching, setMatching] = useState(false)
     const [matchResult, setMatchResult] = useState<any>(null)
     const [matchLog, setMatchLog] = useState<any>(null)
+    const [rollingBack, setRollingBack] = useState(false)
+    const [isRollbackDialogOpen, setIsRollbackDialogOpen] = useState(false)
+    // capacity override state: mentorId → draft value while editing
+    const [capacityEdits, setCapacityEdits] = useState<Record<string, number>>({})
+    const [savingCapacity, setSavingCapacity] = useState<string | null>(null)
 
     const handleRunMatching = async () => {
         setMatching(true)
@@ -86,6 +99,115 @@ export default function Admin() {
         setMatching(false)
     }
 
+    const handleRollback = async () => {
+        setRollingBack(true)
+        const result = await rollbackMatches()
+        if (result.success) {
+            setMentors(prev => prev.map(m => ({ ...m, matches: [] })))
+            setMentees(prev => prev.map(m => ({ ...m, matches: null })))
+            setMatchResult(null)
+            setMatchLog(null)
+        } else {
+            alert("Failed to rollback: " + result.message)
+        }
+        setRollingBack(false)
+        setIsRollbackDialogOpen(false)
+    }
+
+    const handleCapacitySave = async (mentorId: string) => {
+        const newCap = capacityEdits[mentorId]
+        if (newCap === undefined || newCap < 1) return
+        setSavingCapacity(mentorId)
+        const result = await overrideMentorCapacity(mentorId, newCap)
+        if (result.success) {
+            setMentors((prev) =>
+                prev.map((m) => m.id === mentorId ? { ...m, mentor_capacity: newCap } : m)
+            )
+            setCapacityEdits((prev) => { const n = { ...prev }; delete n[mentorId]; return n })
+        } else {
+            alert("Failed to update capacity.")
+        }
+        setSavingCapacity(null)
+    }
+
+    const openEditDialog = (user: any) => {
+        setSelectedUser(user)
+        if (user.type === "mentor") {
+            setEditForm({
+                first_name: user.first_name ?? "",
+                last_name: user.last_name ?? "",
+                email: user.email ?? "",
+                mentor_capacity: user.mentor_capacity ?? 1,
+            })
+        } else {
+            setEditForm({
+                group_name: user.group_name ?? "",
+                research_title: user.research_title ?? "",
+                email: user.email ?? "",
+            })
+        }
+        setIsEditDialogOpen(true)
+    }
+
+    const handleEditSave = async () => {
+        if (!selectedUser) return
+        setSavingEdit(true)
+        let result
+        if (selectedUser.type === "mentor") {
+            result = await adminEditMentor(selectedUser.id, {
+                first_name: editForm.first_name as string,
+                last_name: editForm.last_name as string,
+                email: editForm.email as string,
+                mentor_capacity: Number(editForm.mentor_capacity),
+            })
+        } else {
+            result = await adminEditMentee(selectedUser.id, {
+                group_name: editForm.group_name as string,
+                research_title: editForm.research_title as string,
+                email: editForm.email as string,
+            })
+        }
+        if (result.success) {
+            // update local state
+            if (selectedUser.type === "mentor") {
+                setMentors(prev => prev.map(m =>
+                    m.id === selectedUser.id ? { ...m, ...editForm } : m
+                ))
+            } else {
+                setMentees(prev => prev.map(m =>
+                    m.id === selectedUser.id ? { ...m, ...editForm } : m
+                ))
+            }
+            setIsEditDialogOpen(false)
+        } else {
+            alert("Failed to save changes.")
+        }
+        setSavingEdit(false)
+    }
+
+    const openDeleteDialog = (user: any) => {
+        setUserToDelete(user)
+        setIsDeleteDialogOpen(true)
+    }
+
+    const handleDeleteConfirm = async () => {
+        if (!userToDelete) return
+        setDeletingUser(true)
+        const result = await adminDeleteUser(userToDelete.id, userToDelete.type)
+        if (result.success) {
+            if (userToDelete.type === "mentor") {
+                setMentors(prev => prev.filter(m => m.id !== userToDelete.id))
+            } else {
+                setMentees(prev => prev.filter(m => m.id !== userToDelete.id))
+            }
+            setIsDeleteDialogOpen(false)
+            setUserToDelete(null)
+        } else {
+            alert("Failed to delete user.")
+        }
+        setDeletingUser(false)
+    }
+
     useEffect(() => {
         const fetchData = async () => {
             const result = await getAllUserData()
@@ -104,6 +226,7 @@ export default function Admin() {
     const avgCompatibility = mentees.length
         ? Math.round(mentees.reduce((sum, m) => sum + (m.matches?.compatibility_score ?? 0), 0) / mentees.length * 100) + "%"
         : "N/A"
+    const capacityGap = mentees.length - totalCapacity   // negative = surplus, positive = deficit
 
     const allUsers = [
         ...mentors.map((m: any) => ({ ...m, type: "mentor" })),
@@ -178,11 +301,37 @@ export default function Admin() {
                             </Card>
                         </div>
 
+                        {/* Capacity Balance Banner */}
+                        <div className={`flex items-center gap-3 p-4 rounded-lg border mt-4 ${capacityGap > 0
+                            ? "bg-red-50 border-red-200"
+                            : capacityGap < 0
+                                ? "bg-blue-50 border-blue-200"
+                                : "bg-green-50 border-green-200"
+                            }`}>
+                            {capacityGap > 0
+                                ? <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+                                : <CheckCircle2 className={`w-5 h-5 shrink-0 ${capacityGap < 0 ? "text-blue-600" : "text-green-600"}`} />
+                            }
+                            <div className="flex-1">
+                                <p className={`font-semibold text-sm ${capacityGap > 0 ? "text-red-700" : capacityGap < 0 ? "text-blue-700" : "text-green-700"}`}>
+                                    {capacityGap > 0
+                                        ? `Capacity deficit — ${capacityGap} mentee group${capacityGap > 1 ? "s" : ""} cannot be matched`
+                                        : capacityGap < 0
+                                            ? `Capacity surplus — ${Math.abs(capacityGap)} extra slot${Math.abs(capacityGap) > 1 ? "s" : ""} available`
+                                            : "Capacity balanced — all mentee groups can be matched"}
+                                </p>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    Total mentor capacity: <strong>{totalCapacity}</strong> &nbsp;|&nbsp; Registered mentee groups: <strong>{mentees.length}</strong>
+                                    {capacityGap > 0 && " — increase mentor capacities below before running matching"}
+                                </p>
+                            </div>
+                        </div>
+
                         {/* Run Matching Button */}
                         <div className="flex items-center gap-4 mt-4">
                             <Button
                                 onClick={handleRunMatching}
-                                disabled={matching}
+                                disabled={matching || rollingBack}
                                 className="bg-blue-600 hover:bg-blue-700"
                             >
                                 {matching ? (
@@ -196,6 +345,15 @@ export default function Admin() {
                                         Run Matching Algorithm
                                     </>
                                 )}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsRollbackDialogOpen(true)}
+                                disabled={matching || rollingBack}
+                                className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            >
+                                <XCircle className="w-4 h-4 mr-2" />
+                                Rollback Matches
                             </Button>
                             {matchResult && (
                                 <p className={`text-sm ${matchResult.success ? "text-green-600" : "text-red-600"}`}>
@@ -264,10 +422,10 @@ export default function Admin() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex space-x-2">
-                                                        <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setIsEditDialogOpen(true); }}>
+                                                        <Button variant="ghost" size="sm" onClick={() => openEditDialog(user)}>
                                                             <Edit className="w-4 h-4" />
                                                         </Button>
-                                                        <Button variant="ghost" size="sm" onClick={() => alert(`Toggle status for user: ${user.id}`)}>
+                                                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => openDeleteDialog(user)}>
                                                             <XCircle className="w-4 h-4" />
                                                         </Button>
                                                     </div>
@@ -290,26 +448,46 @@ export default function Admin() {
                                 <CardDescription>Overview of mentor capacities and remaining slots</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="space-y-6">
+                                <div className="space-y-3">
+                                    {/* Balance vs mentees */}
+                                    <div className={`p-4 rounded-lg border ${capacityGap > 0 ? "bg-red-50 border-red-200"
+                                        : capacityGap < 0 ? "bg-blue-50 border-blue-200"
+                                            : "bg-green-50 border-green-200"
+                                        }`}>
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-medium text-sm">
+                                                {capacityGap > 0
+                                                    ? `⚠️ Deficit: ${capacityGap} slot${capacityGap > 1 ? "s" : ""} short`
+                                                    : capacityGap < 0
+                                                        ? `ℹ️ Surplus: ${Math.abs(capacityGap)} extra slot${Math.abs(capacityGap) > 1 ? "s" : ""}`
+                                                        : "✅ Balanced"}
+                                            </span>
+                                            <span className="text-sm text-slate-600">
+                                                Capacity <strong>{totalCapacity}</strong> / Mentees <strong>{mentees.length}</strong>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {/* Utilization bar */}
                                     <div className="p-4 bg-slate-50 rounded-lg">
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="font-medium">Overall Capacity Utilization</span>
                                             <span className="text-sm text-slate-600">
-                                                {totalAssigned} / {totalCapacity} slots filled ({totalCapacity ? Math.round((totalAssigned / totalCapacity) * 100) : 0}%)
+                                                {totalAssigned} / {mentees.length} mentees assigned ({mentees.length ? Math.round((totalAssigned / mentees.length) * 100) : 0}%)
                                             </span>
                                         </div>
-                                        <Progress value={totalCapacity ? (totalAssigned / totalCapacity) * 100 : 0} className="h-3" />
+                                        <Progress value={mentees.length ? (totalAssigned / mentees.length) * 100 : 0} className="h-3" />
                                     </div>
                                 </div>
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Mentor</TableHead>
-                                            <TableHead>Total Capacity</TableHead>
+                                            <TableHead>Capacity</TableHead>
                                             <TableHead>Assigned</TableHead>
                                             <TableHead>Remaining</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Actions</TableHead>
+                                            <TableHead>Utilization</TableHead>
+                                            <TableHead>Override Capacity</TableHead>
+                                            <TableHead>Details</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -318,6 +496,9 @@ export default function Admin() {
                                             const capacity = mentor.mentor_capacity ?? 0
                                             const remaining = capacity - assigned
                                             const utilizationPercent = capacity ? (assigned / capacity) * 100 : 0
+                                            const draftCap = capacityEdits[mentor.id] ?? capacity
+                                            const isDirty = capacityEdits[mentor.id] !== undefined && capacityEdits[mentor.id] !== capacity
+                                            const isSaving = savingCapacity === mentor.id
                                             return (
                                                 <TableRow key={mentor.id}>
                                                     <TableCell className="font-medium">{mentor.first_name} {mentor.last_name}</TableCell>
@@ -330,6 +511,31 @@ export default function Admin() {
                                                         <div className="w-32">
                                                             <Progress value={utilizationPercent} className={`h-2 ${utilizationPercent === 100 ? "[&>div]:bg-red-500" : "[&>div]:bg-emerald-500"}`} />
                                                             <span className="text-xs text-slate-500">{Math.round(utilizationPercent)}% filled</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <Input
+                                                                type="number"
+                                                                min={assigned}
+                                                                max={20}
+                                                                value={draftCap}
+                                                                onChange={(e) =>
+                                                                    setCapacityEdits((prev) => ({
+                                                                        ...prev,
+                                                                        [mentor.id]: Number(e.target.value),
+                                                                    }))
+                                                                }
+                                                                className="w-20 h-8 text-sm"
+                                                            />
+                                                            <Button
+                                                                size="sm"
+                                                                disabled={!isDirty || isSaving}
+                                                                onClick={() => handleCapacitySave(mentor.id)}
+                                                                className="h-8 bg-blue-600 hover:bg-blue-700 text-xs px-2"
+                                                            >
+                                                                {isSaving ? "Saving…" : "Save"}
+                                                            </Button>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
@@ -399,7 +605,11 @@ export default function Admin() {
                                         const assigned = mentor.matches?.length ?? 0
                                         const capacity = mentor.mentor_capacity ?? 0
                                         return (
-                                            <Card key={mentor.id} className="border-slate-200">
+                                            <Card
+                                                key={mentor.id}
+                                                className="border-slate-200 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all"
+                                                onClick={() => setSelectedMentorCard(mentor)}
+                                            >
                                                 <CardContent className="pt-6">
                                                     <div className="flex justify-between items-start mb-4">
                                                         <div>
@@ -612,12 +822,21 @@ export default function Admin() {
                                                                         {entry.top_matches.map((match: any, idx: number) => (
                                                                             <div key={idx} className="flex flex-wrap items-center justify-between text-xs bg-gray-50 rounded px-3 py-2 gap-2">
                                                                                 <span className="font-medium w-32 shrink-0">{match.mentor_name}</span>
-                                                                                <div className="flex gap-3 text-slate-500">
+                                                                                <div className="flex gap-2 text-slate-500 flex-wrap">
                                                                                     <span>keyword: <strong>{match.keyword_score}</strong></span>
-                                                                                    <span>avail: <strong>{match.availability_score}</strong></span>
                                                                                     <span>exp: <strong>{match.experience_score}</strong></span>
-                                                                                    <span className="text-blue-600 font-semibold">final: {match.final_score}</span>
+                                                                                    <span>avail: <strong>{match.availability_score}</strong></span>
+                                                                                    <span>comm: <strong>{match.communication_score}</strong></span>
+                                                                                    <span>freq: <strong>{match.meeting_frequency_score}</strong></span>
+                                                                                    <span className="text-blue-600 font-semibold">
+                                                                                        final: {(match.final_score * 100).toFixed(1)}%
+                                                                                    </span>
                                                                                 </div>
+                                                                                {match.communication_mode && (
+                                                                                    <Badge variant="outline" className="text-xs">
+                                                                                        {match.communication_mode}
+                                                                                    </Badge>
+                                                                                )}
                                                                                 <div className="flex gap-1 flex-wrap">
                                                                                     {match.matched_keywords?.slice(0, 3).map((kw: string) => (
                                                                                         <Badge key={kw} variant="outline" className="text-xs">{kw}</Badge>
@@ -708,8 +927,8 @@ export default function Admin() {
                                                         <p className="font-medium text-sm">Stability verification</p>
                                                         <p className="text-xs text-slate-500">
                                                             {matchLog.phase3.is_stable
-                                                                ? "✅ Matching is stable — no blocking pairs found"
-                                                                : "⚠️ Blocking pairs detected — matching may be unstable"}
+                                                                ? " Matching is stable — no blocking pairs found"
+                                                                : " Blocking pairs detected — matching may be unstable"}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -747,6 +966,186 @@ export default function Admin() {
 
                 </div>
             </div>
+
+            {/* ── Edit User Dialog ── */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Edit {selectedUser?.type === "mentor" ? "Mentor" : "Mentee"}</DialogTitle>
+                        <DialogDescription>
+                            Update the details for this user. Changes are saved immediately.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        {selectedUser?.type === "mentor" ? (
+                            <>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <Label>First Name</Label>
+                                        <Input
+                                            value={editForm.first_name as string ?? ""}
+                                            onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Last Name</Label>
+                                        <Input
+                                            value={editForm.last_name as string ?? ""}
+                                            onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label>Email</Label>
+                                    <Input
+                                        type="email"
+                                        value={editForm.email as string ?? ""}
+                                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label>Mentor Capacity</Label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        max={20}
+                                        value={editForm.mentor_capacity as number ?? 1}
+                                        onChange={(e) => setEditForm({ ...editForm, mentor_capacity: Number(e.target.value) })}
+                                        className="w-28"
+                                    />
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="space-y-1">
+                                    <Label>Group Name</Label>
+                                    <Input
+                                        value={editForm.group_name as string ?? ""}
+                                        onChange={(e) => setEditForm({ ...editForm, group_name: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label>Research Title</Label>
+                                    <Input
+                                        value={editForm.research_title as string ?? ""}
+                                        onChange={(e) => setEditForm({ ...editForm, research_title: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label>Email</Label>
+                                    <Input
+                                        type="email"
+                                        value={editForm.email as string ?? ""}
+                                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                    />
+                                </div>
+                            </>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleEditSave} disabled={savingEdit} className="bg-blue-600 hover:bg-blue-700">
+                            {savingEdit ? "Saving..." : "Save Changes"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Mentor Mentees Dialog ── */}
+            <Dialog open={!!selectedMentorCard} onOpenChange={(open) => !open && setSelectedMentorCard(null)}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>{selectedMentorCard?.first_name} {selectedMentorCard?.last_name}</DialogTitle>
+                        <DialogDescription>
+                            {selectedMentorCard?.matches?.length ?? 0} assigned mentee group{(selectedMentorCard?.matches?.length ?? 0) !== 1 ? "s" : ""}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[60vh]">
+                        {!selectedMentorCard?.matches?.length ? (
+                            <div className="py-8 text-center text-slate-500 text-sm">No mentees assigned yet.</div>
+                        ) : (
+                            <div className="space-y-3 p-1">
+                                {selectedMentorCard.matches.map((match: any, idx: number) => {
+                                    const mentee = match.mentee
+                                    if (!mentee) return null
+                                    return (
+                                        <div key={idx} className="border rounded-lg p-4 space-y-2 bg-slate-50">
+                                            <div className="flex justify-between items-start">
+                                                <p className="font-semibold text-sm">{mentee.group_name}</p>
+                                                <Badge className="bg-green-100 text-green-800 text-xs">
+                                                    {Math.round((match.compatibility_score ?? 0) * 100)}% match
+                                                </Badge>
+                                            </div>
+                                            <p className="text-xs text-slate-600 line-clamp-2">{mentee.research_title}</p>
+                                            {match.matched_keywords?.length > 0 && (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {match.matched_keywords.slice(0, 3).map((kw: string) => (
+                                                        <Badge key={kw} variant="outline" className="text-xs">{kw}</Badge>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </ScrollArea>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setSelectedMentorCard(null)}>Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Rollback Confirmation Dialog ── */}
+            <Dialog open={isRollbackDialogOpen} onOpenChange={setIsRollbackDialogOpen}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="text-red-600">Rollback All Matches</DialogTitle>
+                        <DialogDescription>
+                            This will delete <strong>all existing matches</strong> from the database so you can run the algorithm fresh. This cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsRollbackDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            onClick={handleRollback}
+                            disabled={rollingBack}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            {rollingBack ? "Rolling back..." : "Rollback"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Delete Confirmation Dialog ── */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="text-red-600">Delete User</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete{" "}
+                            <strong>
+                                {userToDelete?.type === "mentor"
+                                    ? `${userToDelete.first_name} ${userToDelete.last_name}`
+                                    : userToDelete?.group_name}
+                            </strong>?
+                            This action cannot be undone and will remove all associated data.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            onClick={handleDeleteConfirm}
+                            disabled={deletingUser}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            {deletingUser ? "Deleting..." : "Delete"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
         </div>
     )
 }

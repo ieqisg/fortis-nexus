@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserAuth } from "../../context/authContext";
+import { checkEmailAvailable } from "@/lib/actions/authActions";
 
 export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
     const router = useRouter();
@@ -25,6 +26,8 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [passwordError, setPasswordError] = useState("");
+    const [emailError, setEmailError] = useState("");
+    const [checkingEmail, setCheckingEmail] = useState(false);
 
     const isLengthValid = password.length >= 8;
     const hasUppercase = /[A-Z]/.test(password);
@@ -52,6 +55,14 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isFormValid) return;
+        setCheckingEmail(true)
+        const check = await checkEmailAvailable(email)
+        setCheckingEmail(false)
+        if (!check.available) {
+            setEmailError(check.message ?? "Email already in use.")
+            return
+        }
+        setEmailError("")
         setUserData({ email, password });
         onNext();
     };
@@ -95,10 +106,11 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
                                     id="email"
                                     type="email"
                                     value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
+                                    onChange={(e) => { setEmail(e.target.value); setEmailError("") }}
                                     required
                                     placeholder="student@fit.edu.ph"
                                 />
+                                {emailError && <p className="text-red-600 text-sm mt-1">{emailError}</p>}
                             </div>
 
                             {/* Password Field */}
@@ -194,13 +206,13 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
                                 </Button>
                                 <Button
                                     type="submit"
-                                    className={`bg-green-600 hover:bg-green-700 ${!isFormValid
+                                    className={`bg-green-600 hover:bg-green-700 ${!isFormValid || checkingEmail
                                         ? "opacity-50 cursor-not-allowed hover:bg-green-600"
                                         : ""
                                         }`}
-                                    disabled={!isFormValid}
+                                    disabled={!isFormValid || checkingEmail}
                                 >
-                                    Next
+                                    {checkingEmail ? "Checking..." : "Next"}
                                 </Button>
                             </div>
                         </form>

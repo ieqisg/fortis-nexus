@@ -1,0 +1,131 @@
+"use server"
+
+import { createClient } from "@supabase/supabase-js"
+import { getSupabaseClient } from "@/app/config/getSupabaseClient"
+import type { Paper, PaperComment } from "@/types/mentorTypes"
+
+const adminSupabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+export async function submitPaper(formData: FormData) {
+    const supabase = await getSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, message: "Not authenticated" }
+
+    const title = formData.get("title") as string
+    const file = formData.get("file") as File | null
+
+    if (!title?.trim()) return { success: false, message: "Title is required" }
+
+    // Get mentor_id from matches
+    const { data: match } = await supabase
+        .from("matches")
+        .select("mentor_id")
+        .eq("mentee_group_id", user.id)
+        .maybeSingle()
+
+    if (!match?.mentor_id) return { success: false, message: "No mentor assigned yet" }
+
+    let file_path: string | null = null
+    let file_name: string | null = null
+
+    if (file && file.size > 0) {
+        const ext = file.name.split(".").pop()
+        const storagePath = `${user.id}/${Date.now()}.${ext}`
+        const arrayBuffer = await file.arrayBuffer()
+        const { error: uploadError } = await adminSupabase.storage
+            .from("papers")
+            .upload(storagePath, arrayBuffer, { contentType: file.type, upsert: false })
+
+        if (uploadError) return { success: false, message: uploadError.message }
+        file_path = storagePath
+        file_name = file.name
+    }
+
+    const { data, error } = await supabase
+        .from("papers")
+        .insert({
+            mentee_group_id: user.id,
+            mentor_id: match.mentor_id,
+            title: title.trim(),
+            file_name,
+            file_path,
+            status: "pending",
+        })
+        .select()
+        .single()
+
+    if (error) return { success: false, message: error.message }
+    return { success: true, paper: data as Paper }
+}
+
+export async function getMyPapers() {
+    const supabase = await getSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, data: [] }
+
+    const { data, error } = await supabase
+        .from("papers")
+        .select("*, paper_comments(*)")
+        .eq("mentee_group_id", user.id)
+        .order("submitted_at", { ascending: false })
+
+    if (error) return { success: false, data: [] }
+    return { success: true, data: data as Paper[] }
+}
+
+export async function getMenteesPapers() {
+    const supabase = await getSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, data: [] }
+
+    const { data, error } = await supabase
+        .from("papers")
+        .select(`
+            *,
+            paper_comments(*),
+            mentee_group:mentee_group_id (group_name)
+        `)
+        .eq("mentor_id", user.id)
+        .order("submitted_at", { ascending: false })
+
+    if (error) {
+        console.error("getMenteesPapers error:", error.message)
+        return { success: false, data: [] }
+    }
+    return { success: true, data: data as Paper[] }
+}
+
+export async function addComment(paperId: string, comment: string) {
+    const supabase = await getSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, message: "Not authenticated" }
+
+    const { data: commentData, error: commentError } = await supabase
+        .from("paper_comments")
+        .insert({ paper_id: paperId, mentor_id: user.id, comment })
+        .select()
+        .single()
+
+    if (commentError) return { success: false, message: commentError.message }
+
+    const { error: statusError } = await supabase
+        .from("papers")
+        .update({ status: "reviewed" })
+        .eq("id", paperId)
+
+    if (statusError) return { success: false, message: statusError.message }
+
+    return { success: true, comment: commentData as PaperComment }
+}
+
+export async function getPaperDownloadUrl(filePath: string) {
+    const { data, error } = await adminSupabase.storage
+        .from("papers")
+        .createSignedUrl(filePath, 3600)
+
+    if (error || !data) return { success: false, url: null }
+    return { success: true, url: data.signedUrl }
+}

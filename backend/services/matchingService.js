@@ -1,8 +1,10 @@
 const { spawn } = require("child_process")
 const path = require("path")
 
-const PYTHON_SCRIPT = path.resolve(__dirname, "../../app/algo/preprocess/main.py")
-const PYTHON_BIN = path.resolve(__dirname, "../../app/algo/preprocess/venv/bin/python")
+// ── use absolute path from project root ──
+const PROJECT_ROOT = path.resolve(__dirname, "../..")
+const PYTHON_SCRIPT = path.join(PROJECT_ROOT, "app/algo/preprocess/main.py")
+const PYTHON_BIN = path.join(PROJECT_ROOT, "app/algo/venv/bin/python3") // ← fixed path
 
 let isRunning = false
 let lastResult = null
@@ -12,31 +14,46 @@ function runMatchingScript() {
         if (isRunning) {
             return reject(new Error("Matching is already running"))
         }
-
         isRunning = true
-        console.log("🔗 Spawning Python matching script...")
 
-        const process = spawn(PYTHON_BIN, [PYTHON_SCRIPT])
+        // verify paths exist before spawning
+        const fs = require("fs")
+        if (!fs.existsSync(PYTHON_BIN)) {
+            isRunning = false
+            return reject({ success: false, message: `Python binary not found: ${PYTHON_BIN}` })
+        }
+        if (!fs.existsSync(PYTHON_SCRIPT)) {
+            isRunning = false
+            return reject({ success: false, message: `Script not found: ${PYTHON_SCRIPT}` })
+        }
+
+        console.log("🔗 Spawning Python matching script...")
+        console.log("  Binary:", PYTHON_BIN)
+        console.log("  Script:", PYTHON_SCRIPT)
+
+        const proc = spawn(PYTHON_BIN, [PYTHON_SCRIPT], {
+            cwd: path.join(PROJECT_ROOT, "app/algo/preprocess"), // ← set working dir so imports work
+            env: { ...process.env }
+        })
 
         let output = ""
         let errorOutput = ""
 
-        process.stdout.on("data", (data) => {
+        proc.stdout.on("data", (data) => {
             const line = data.toString()
             output += line
             console.log(`[Python] ${line.trim()}`)
         })
 
-        process.stderr.on("data", (data) => {
+        proc.stderr.on("data", (data) => {
             const line = data.toString()
             errorOutput += line
             console.error(`[Python Error] ${line.trim()}`)
         })
 
-        process.on("close", (code) => {
+        proc.on("close", (code) => {
             isRunning = false
 
-            // ── parse structured JSON log ──────────────────────
             let matchingLog = null
             try {
                 const startMarker = "__MATCHING_LOG_START__"
@@ -74,7 +91,7 @@ function runMatchingScript() {
             }
         })
 
-        process.on("error", (err) => {
+        proc.on("error", (err) => {
             isRunning = false
             reject({ success: false, message: err.message })
         })

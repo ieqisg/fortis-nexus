@@ -13,20 +13,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
-import { ArrowLeft, UserRound, Plus, X, Clock, Check, Eye, EyeOff } from "lucide-react";
-import { MentorFormProfile } from "@/types/mentorTypes";
+import { ArrowLeft, UserRound, Users, Plus, X, Clock, Check, Eye, EyeOff } from "lucide-react";
+import { CommunicationPreference, MentorFormProfile, PrevMentoredThesis } from "@/types/mentorTypes";
 import { UserAuth } from "@/app/context/authContext";
 import { MentorInsert } from "@/types/modelTypes";
-import { createMentorProfile } from "@//lib/actions/mentorActions";
+import { createMentorProfile, changeDefaultPassword } from "@//lib/actions/mentorActions";
+import { getMenteeCount, getMentorCapacityStats } from "@//lib/actions/adminActions";
 import { useRouter } from "next/navigation";
-import { changeDefaultPassword } from "@//lib/actions/mentorActions";
 import { Slider } from "@/components/ui/slider";
-
+import { toast } from "sonner";
+import Page from "./page";
 export default function MentorCompleteProfile() {
     const router = useRouter()
 
     const { signUp, getUser, signIn } = UserAuth()
     const [loading, setLoading] = useState(false)
+    const [menteeCount, setMenteeCount] = useState<number | null>(null)
+    const [capacityStats, setCapacityStats] = useState<{
+        totalMentors: number
+        mentorsWithCapacity: number
+        totalCapacitySet: number
+    } | null>(null)
     const [formData, setFormData] = useState<MentorFormProfile>({
         first_name: "",
         last_name: "",
@@ -39,11 +46,13 @@ export default function MentorCompleteProfile() {
         role: "mentor",
         profile_completed: true,
         email: "",
-        experience: 0
-
+        experience: 0,
+        communication_preference: "",
+        prev_mentored_thesis: [],
     })
     const [skillInput, setSkillInput] = useState("");
     const [forteInput, setForteInput] = useState("");
+    const [thesisForm, setThesisForm] = useState<PrevMentoredThesis>({ title_no: "", title: "", mentor: "", year: "" });
     const [passwordData, setPasswordData] = useState({
         newPassword: "",
         confirmPassword: "",
@@ -59,6 +68,17 @@ export default function MentorCompleteProfile() {
     const hasSpecialChar = /[!@#$%^&*\-_]/.test(passwordData.newPassword);
     const isPasswordStrong =
         isLengthValid && hasUppercase && hasNumber && hasSpecialChar;
+
+    useEffect(() => {
+        Promise.all([getMenteeCount(), getMentorCapacityStats()]).then(([mentee, stats]) => {
+            if (mentee.success) setMenteeCount(mentee.count)
+            if (stats.success) setCapacityStats({
+                totalMentors: stats.totalMentors,
+                mentorsWithCapacity: stats.mentorsWithCapacity,
+                totalCapacitySet: stats.totalCapacitySet,
+            })
+        })
+    }, [])
 
     useEffect(() => {
         if (passwordData.newPassword === "" && passwordData.confirmPassword === "") {
@@ -107,16 +127,16 @@ export default function MentorCompleteProfile() {
                 available_days: formData.available_days,
                 time_slot: formData.time_slot,
                 role: "mentor",
-                experience: formData.experience
+                experience: formData.experience,
+                communication_preference: formData.communication_preference || null,
+                prev_mentored_thesis: formData.prev_mentored_thesis,
             }
             const result = await createMentorProfile(payload)
 
-            if (!result.success) {
-                alert(result.message)
-                return;
+            if (result.success) {
+                toast.success("Mentor Profile Completed")
+                router.push("/")
             }
-            alert("Profile completed successfully")
-            router.push("/mentor-dashboard")
         } catch (err) {
             console.error(err)
 
@@ -149,6 +169,15 @@ export default function MentorCompleteProfile() {
         setForteInput("");
     };
 
+    const addThesis = () => {
+        if (!thesisForm.title_no.trim() || !thesisForm.title.trim()) return;
+        setFormData((prev) => ({
+            ...prev,
+            prev_mentored_thesis: [...prev.prev_mentored_thesis, { ...thesisForm }],
+        }));
+        setThesisForm({ title_no: "", title: "", mentor: "", year: "" });
+    };
+
     const handleSkillKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "Enter") {
             e.preventDefault();
@@ -157,10 +186,11 @@ export default function MentorCompleteProfile() {
         }
     };
 
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4">
             <div className="max-w-2xl mx-auto">
-                <Button variant="ghost" className="mb-6">
+                <Button variant="ghost" className="mb-6" >
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back to Home
                 </Button>
@@ -320,6 +350,74 @@ export default function MentorCompleteProfile() {
                                     ))}
                                 </div>
                             </div>
+                            <div className="space-y-3">
+                                <Label>Previously Mentored Theses</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <Label className="text-xs text-gray-500">Title No.</Label>
+                                        <Input
+                                            placeholder="e.g. 1"
+                                            value={thesisForm.title_no}
+                                            onChange={(e) => setThesisForm(prev => ({ ...prev, title_no: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label className="text-xs text-gray-500">Year</Label>
+                                        <Input
+                                            placeholder="e.g. 2023"
+                                            value={thesisForm.year}
+                                            onChange={(e) => setThesisForm(prev => ({ ...prev, year: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <Label className="text-xs text-gray-500">Thesis Title</Label>
+                                        <Input
+                                            placeholder="e.g. Deep Learning for Medical Imaging"
+                                            value={thesisForm.title}
+                                            onChange={(e) => setThesisForm(prev => ({ ...prev, title: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <Label className="text-xs text-gray-500">Mentor / Adviser</Label>
+                                        <Input
+                                            placeholder="e.g. Dr. Juan dela Cruz"
+                                            value={thesisForm.mentor}
+                                            onChange={(e) => setThesisForm(prev => ({ ...prev, mentor: e.target.value }))}
+                                        />
+                                    </div>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={addThesis}
+                                    disabled={!thesisForm.title_no.trim() || !thesisForm.title.trim()}
+                                    className="w-full"
+                                >
+                                    <Plus className="w-4 h-4 mr-2" /> Add Thesis
+                                </Button>
+
+                                {formData.prev_mentored_thesis.length > 0 && (
+                                    <div className="space-y-2">
+                                        {formData.prev_mentored_thesis.map((thesis, index) => (
+                                            <div key={index} className="flex items-start justify-between bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-sm">
+                                                <div>
+                                                    <p className="font-medium text-blue-900">[{thesis.title_no}] {thesis.title}</p>
+                                                    <p className="text-blue-700 text-xs">{thesis.mentor} — {thesis.year}</p>
+                                                </div>
+                                                <button type="button" onClick={() =>
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        prev_mentored_thesis: prev.prev_mentored_thesis.filter((_, i) => i !== index),
+                                                    }))
+                                                }>
+                                                    <X className="w-4 h-4 text-blue-400 hover:text-red-500" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="space-y-2">
                                 <Label
                                     htmlFor="forte"
@@ -437,7 +535,32 @@ export default function MentorCompleteProfile() {
                                             How many mentee groups can you take
                                         </CardDescription>
                                     </CardHeader>
-                                    <CardContent>
+                                    <CardContent className="space-y-3">
+                                        {menteeCount !== null && capacityStats !== null && (
+                                            capacityStats.totalCapacitySet >= menteeCount ? (
+                                                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-100 text-sm">
+                                                    <Users className="w-4 h-4 text-green-600 shrink-0" />
+                                                    <span className="text-green-800 font-medium">
+                                                        All {menteeCount} mentee group{menteeCount !== 1 ? "s" : ""} have been covered.
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 border border-blue-100 text-sm">
+                                                    <Users className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                                                    <div className="text-blue-800 space-y-1">
+                                                        <p>
+                                                            <strong>{capacityStats.mentorsWithCapacity}</strong> of{" "}
+                                                            <strong>{capacityStats.totalMentors}</strong> mentor{capacityStats.totalMentors !== 1 ? "s" : ""} have already set their capacity,
+                                                            covering <strong>{capacityStats.totalCapacitySet}</strong> mentee group{capacityStats.totalCapacitySet !== 1 ? "s" : ""}.
+                                                        </p>
+                                                        <p>
+                                                            <strong>{menteeCount - capacityStats.totalCapacitySet}</strong> of{" "}
+                                                            <strong>{menteeCount}</strong> mentee group{menteeCount !== 1 ? "s" : ""} still need to be covered.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )
+                                        )}
                                         <div className="flex items-center gap-4">
                                             <Label htmlFor="capacity" className="text-base">
                                                 Maximum Mentees
@@ -447,7 +570,7 @@ export default function MentorCompleteProfile() {
                                                 type="number"
                                                 value={formData.mentor_capacity}
                                                 min={1}
-                                                max={10}
+                                                max={20}
                                                 onChange={(e) => setFormData({ ...formData, mentor_capacity: Number(e.target.value) })}
                                                 className="w-24"
                                             />
@@ -478,6 +601,83 @@ export default function MentorCompleteProfile() {
                                 </Card>
                             </div>
 
+
+                            <div>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">
+                                            Communication Preference
+                                        </CardTitle>
+                                        <CardDescription>
+                                            How do you prefer to communicate with your mentees?
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        {/* Top-level choice */}
+                                        <div className="flex gap-6">
+                                            {(["FACE_TO_FACE", "ONLINE"] as const).map((mode) => {
+                                                const isOnlineGroup = mode === "ONLINE";
+                                                const checked = isOnlineGroup
+                                                    ? formData.communication_preference === "ONLINE_CHAT" ||
+                                                    formData.communication_preference === "ONLINE_CALL"
+                                                    : formData.communication_preference === "FACE_TO_FACE";
+                                                return (
+                                                    <label key={mode} className="flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="comm_top"
+                                                            checked={checked}
+                                                            onChange={() => {
+                                                                if (isOnlineGroup) {
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        communication_preference: "ONLINE_CHAT",
+                                                                    }));
+                                                                } else {
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        communication_preference: "FACE_TO_FACE",
+                                                                    }));
+                                                                }
+                                                            }}
+                                                            className="accent-blue-600"
+                                                        />
+                                                        <span className="text-sm font-medium">
+                                                            {isOnlineGroup ? "Online" : "Face to Face"}
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Online sub-options */}
+                                        {(formData.communication_preference === "ONLINE_CHAT" ||
+                                            formData.communication_preference === "ONLINE_CALL") && (
+                                                <div className="ml-6 flex gap-6 border-l-2 border-blue-100 pl-4">
+                                                    {(["ONLINE_CHAT", "ONLINE_CALL"] as CommunicationPreference[]).map((sub) => (
+                                                        <label key={sub} className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                name="comm_sub"
+                                                                checked={formData.communication_preference === sub}
+                                                                onChange={() =>
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        communication_preference: sub,
+                                                                    }))
+                                                                }
+                                                                className="accent-blue-600"
+                                                            />
+                                                            <span className="text-sm">
+                                                                {sub === "ONLINE_CHAT" ? "Chat only" : "Online meeting / call"}
+                                                            </span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            )}
+                                    </CardContent>
+                                </Card>
+                            </div>
 
                             <div className="flex gap-2 justify-end">
                                 <Button

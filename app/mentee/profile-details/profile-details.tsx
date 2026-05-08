@@ -1,130 +1,203 @@
 "use client";
-import { ProfileField } from "@/components/ui/ProfileFiled";
+
 import Sidebar from "@/components/ui/Sidebar";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
-    Card,
-    CardTitle,
-    CardHeader,
-    CardContent,
-    CardDescription,
-    CardFooter,
-} from "@/components/ui/card";
-import { UserRound, BookText, Clock, Calendar, Star, Pencil } from "lucide-react";
-import { DetailRow } from "@/components/ui/DetailRow";
+    BookText, Clock, Calendar, Star, Pencil,
+    UserRound, Users, MessageSquare, GraduationCap
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMentee } from "@/app/context/menteeContext";
 import { parseSlot } from "@/components/ui/AvailabilitySelector";
 
-export default function MenteeProfileDetails() {
+function InfoBlock({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">{label}</p>
+            <div className="text-sm text-slate-800">{children}</div>
+        </div>
+    )
+}
 
+export default function MenteeProfileDetails() {
     const router = useRouter()
     const { mentee, loading } = useMentee()
-    const goEditProfile = () => {
-        router.push("./edit-profile/")
+
+    const commLabel = (pref: string | null | undefined) => {
+        if (!pref) return "—"
+        if (pref === "FACE_TO_FACE") return "Face to Face"
+        if (pref === "ONLINE_CHAT") return "Online — Chat"
+        if (pref === "ONLINE_CALL") return "Online — Call"
+        return pref
     }
-    if (loading) return (<div>Loading...</div>)
+
+    if (loading) return (
+        <div className="flex h-screen items-center justify-center bg-slate-50">
+            <div className="text-center space-y-3">
+                <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-sm text-slate-500">Loading profile...</p>
+            </div>
+        </div>
+    )
+
+    const members: { name: string; student_number: string }[] =
+        mentee?.group_members?.map((m: string) => {
+            try { return JSON.parse(m) } catch { return { name: m, student_number: "" } }
+        }) ?? []
+
+    const timeSlots = mentee?.time_slot ?? []
 
     return (
         <div className="flex h-screen bg-slate-50">
             <Sidebar userType="mentee" userName={mentee?.group_name} />
 
-            <main className="flex-1 overflow-y-auto">
-                <div className="mx-auto w-full px-6 py-8 sm:py-12">
+            <div className="flex-1 overflow-auto">
 
-                    {/* Page heading */}
-                    <div className="mb-6 flex flex-col gap-1">
-                        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-                            Profile
-                        </h1>
-                        <p className="text-sm text-slate-500">
-                            Review how your profile details appear.
-                        </p>
+                {/* Header */}
+                <div className="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 px-8 py-8 text-white">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-5">
+                            <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-2xl font-bold shrink-0">
+                                {mentee?.group_name?.slice(0, 2).toUpperCase() ?? "GR"}
+                            </div>
+                            <div>
+                                <p className="text-emerald-200 text-sm font-medium">Thesis Group</p>
+                                <h1 className="text-2xl font-bold">{mentee?.group_name}</h1>
+                                <p className="text-emerald-100 text-sm mt-0.5 max-w-md line-clamp-1">
+                                    {mentee?.research_title ?? "No thesis title yet"}
+                                </p>
+                            </div>
+                        </div>
+                        <Button
+                            onClick={() => router.push("./edit-profile/")}
+                            className="bg-white/15 hover:bg-white/25 text-white border-0 backdrop-blur"
+                        >
+                            <Pencil className="w-4 h-4 mr-2" /> Edit Profile
+                        </Button>
                     </div>
 
-                    <Card className="overflow-hidden border-slate-200 shadow-sm">
-
-                        {/* Identity block */}
-                        <CardHeader className="pb-4 pt-6">
-                            <CardTitle className="text-xl text-slate-900 sm:text-2xl">
-                                {mentee?.group_name}
-                            </CardTitle>
-                            <CardDescription className="text-sm text-slate-500">
-                                Thesis Group
-                            </CardDescription>
-                        </CardHeader>
-
-                        <div className="h-px w-full bg-slate-100" />
-
-                        <CardContent className="space-y-8 pt-6">
-                            {/* Research details */}
-                            <section className="space-y-4">
-                                <h2 className="text-sm font-semibold text-slate-900">
-                                    Research Details
-                                </h2>
-
-                                <ProfileField
-                                    icon={<BookText className="h-4 w-4" />}
-                                    label="Research Title"
-                                    value={mentee?.research_title ? mentee?.research_title : "Loading..."}
-                                />
-                                <ProfileField
-                                    icon={<BookText className="h-4 w-4" />}
-                                    label="Research Description"
-                                    value={mentee?.research_description ? mentee?.research_description : "Loading..."}
-                                />
-                                <ProfileField
-                                    icon={<Star className="h-4 w-4" />}
-                                    label="Mentor Preference"
-                                    value={mentee?.mentor_preference ? mentee?.mentor_preference : "Loading..."}
-                                />
-                                <ProfileField
-                                    icon={<Calendar className="h-4 w-4" />}
-                                    label="Available Days"
-                                    value={mentee?.available_days ? mentee?.available_days.join(", ") : "Loading..."}
-                                />
-                                <ProfileField
-                                    icon={<Clock className="h-4 w-4" />}
-                                    label="Time Slot"
-                                    value={mentee?.time_slot?.map((encoded: string) => {
-                                        const { day, slot } = parseSlot(encoded)
-                                        return (
-                                            <span key={encoded} className="text-sm block">
-                                                <span className="font-medium">{day}:</span> {slot}
-                                            </span>
-                                        )
-                                    })}
-                                />
-                            </section>
-
-                            <div className="h-px w-full bg-slate-100" />
-
-                            {/* Group members */}
-                            <section className="space-y-3">
-                                <h2 className="text-sm font-semibold text-slate-900">
-                                    Group Members
-                                </h2>
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                    {mentee?.group_members.map((member: string, i: number) => {
-                                        const parsed = JSON.parse(member)
-                                        return (
-                                            <DetailRow icon={<UserRound className="h-4 w-4" />} key={i} stud_no={parsed.student_number} label={`Member ${i + 1}`} value={parsed.name} href="" />
-                                        )
-                                    })}
-
-
-                                </div>
-
-                            </section>
-                        </CardContent>
-                        <CardFooter className="flex justify-end border-t border-slate-100 pt-4">
-                            <Button className="w-full sm:w-auto" onClick={goEditProfile}>
-                                <Pencil className="mr-2 h-4 w-4" /> Edit Profile
-                            </Button>
-                        </CardFooter>
-                    </Card>
+                    {/* Quick stat pills */}
+                    <div className="flex gap-3 mt-5">
+                        <div className="bg-white/10 backdrop-blur rounded-lg px-3 py-1.5 flex items-center gap-2">
+                            <Users className="w-3.5 h-3.5 text-emerald-200" />
+                            <span className="text-xs text-emerald-100">{members.length} member{members.length !== 1 ? "s" : ""}</span>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur rounded-lg px-3 py-1.5 flex items-center gap-2">
+                            <Calendar className="w-3.5 h-3.5 text-emerald-200" />
+                            <span className="text-xs text-emerald-100">{(mentee?.available_days ?? []).length} available day{(mentee?.available_days ?? []).length !== 1 ? "s" : ""}</span>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur rounded-lg px-3 py-1.5 flex items-center gap-2">
+                            <MessageSquare className="w-3.5 h-3.5 text-emerald-200" />
+                            <span className="text-xs text-emerald-100">{commLabel(mentee?.communication_preference)}</span>
+                        </div>
+                    </div>
                 </div>
-            </main>
+
+                <div className="p-6 space-y-5 max-w-4xl">
+
+                    {/* Research Details */}
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
+                            <BookText className="w-4 h-4 text-emerald-600" />
+                            <h2 className="text-sm font-semibold text-slate-700">Research Details</h2>
+                        </div>
+                        <div className="p-5 space-y-5">
+                            <InfoBlock label="Thesis Title">
+                                <p className="font-medium text-slate-900">{mentee?.research_title || <span className="text-slate-400">Not provided</span>}</p>
+                            </InfoBlock>
+
+                            <div className="h-px bg-slate-100" />
+
+                            <InfoBlock label="Research Description">
+                                <p className="leading-relaxed text-slate-700 whitespace-pre-line">
+                                    {mentee?.research_description || <span className="text-slate-400">Not provided</span>}
+                                </p>
+                            </InfoBlock>
+
+                            <div className="h-px bg-slate-100" />
+
+                            <InfoBlock label="Mentor Preference">
+                                <p className="leading-relaxed text-slate-700">
+                                    {mentee?.mentor_preference || <span className="text-slate-400">Not provided</span>}
+                                </p>
+                            </InfoBlock>
+                        </div>
+                    </div>
+
+                    {/* Availability */}
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
+                            <Calendar className="w-4 h-4 text-emerald-600" />
+                            <h2 className="text-sm font-semibold text-slate-700">Availability</h2>
+                        </div>
+                        <div className="p-5 grid sm:grid-cols-2 gap-5">
+                            <InfoBlock label="Available Days">
+                                {(mentee?.available_days ?? []).length > 0 ? (
+                                    <div className="flex flex-wrap gap-1.5 mt-1">
+                                        {mentee!.available_days.map((day: string) => (
+                                            <Badge key={day} variant="outline" className="text-xs border-emerald-200 text-emerald-700 bg-emerald-50">
+                                                {day}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                ) : <span className="text-slate-400">Not set</span>}
+                            </InfoBlock>
+
+                            <InfoBlock label="Time Slots">
+                                {timeSlots.length > 0 ? (
+                                    <div className="space-y-1 mt-1">
+                                        {timeSlots.map((encoded: string) => {
+                                            const { day, slot } = parseSlot(encoded)
+                                            return (
+                                                <div key={encoded} className="flex items-center gap-2 text-slate-700">
+                                                    <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                                                    <span><span className="font-medium">{day}:</span> {slot}</span>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                ) : <span className="text-slate-400">Not set</span>}
+                            </InfoBlock>
+                        </div>
+                    </div>
+
+                    {/* Group Members */}
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
+                            <Users className="w-4 h-4 text-emerald-600" />
+                            <h2 className="text-sm font-semibold text-slate-700">Group Members</h2>
+                            <span className="ml-auto text-xs text-slate-400">{members.length} member{members.length !== 1 ? "s" : ""}</span>
+                        </div>
+                        <div className="p-5">
+                            {members.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400">
+                                    <GraduationCap className="w-8 h-8 mx-auto mb-2 text-slate-200" />
+                                    <p className="text-sm">No members listed.</p>
+                                </div>
+                            ) : (
+                                <div className="grid sm:grid-cols-2 gap-3">
+                                    {members.map((member, i) => (
+                                        <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-colors">
+                                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                                {member.name?.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase() || "?"}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium text-slate-900 truncate">{member.name || "—"}</p>
+                                                {member.student_number && (
+                                                    <p className="text-xs text-slate-400">{member.student_number}</p>
+                                                )}
+                                            </div>
+                                            <span className="ml-auto text-xs text-slate-400 shrink-0">Member {i + 1}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
         </div>
     );
 }
