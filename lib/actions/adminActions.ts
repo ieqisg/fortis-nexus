@@ -114,6 +114,69 @@ export async function rollbackMatches() {
     return { success: true }
 }
 
+export async function adminCreateMentor(payload: {
+    email: string
+    password: string
+    first_name: string
+    last_name: string
+}) {
+    const { data, error: authError } = await supabase.auth.admin.createUser({
+        email: payload.email,
+        password: payload.password,
+        email_confirm: true,
+    })
+    if (authError || !data.user) return { success: false, message: authError?.message ?? "Failed to create auth user" }
+
+    const { error } = await supabase.from("mentor").insert({
+        id: data.user.id,
+        email: payload.email,
+        first_name: payload.first_name,
+        last_name: payload.last_name,
+        role: "mentor",
+        profile_completed: false,
+    })
+    if (error) {
+        await supabase.auth.admin.deleteUser(data.user.id)
+        return { success: false, message: error.message }
+    }
+    return { success: true }
+}
+
+export async function adminCreateMentee(payload: {
+    email: string
+    password: string
+    group_name: string
+    research_title: string
+    research_description: string
+    mentor_preference: string
+    group_members: string[]
+}) {
+    const { data, error: authError } = await supabase.auth.admin.createUser({
+        email: payload.email,
+        password: payload.password,
+        email_confirm: true,
+    })
+    if (authError || !data.user) return { success: false, message: authError?.message ?? "Failed to create auth user" }
+
+    const { error } = await supabase.from("MENTEE_GROUPS").insert({
+        id: data.user.id,
+        email: payload.email,
+        group_name: payload.group_name,
+        research_title: payload.research_title,
+        research_description: payload.research_description,
+        mentor_preference: payload.mentor_preference,
+        role: "mentee",
+        available_days: [],
+        time_slot: [],
+        group_members: payload.group_members,
+    })
+    if (error) {
+        await supabase.auth.admin.deleteUser(data.user.id)
+        return { success: false, message: error.message }
+    }
+    return { success: true }
+}
+
 export async function getMentorCapacityStats() {
     const { data, error } = await supabase
         .from("mentor")
