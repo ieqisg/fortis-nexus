@@ -14,7 +14,7 @@ async function getRole(supabase: ReturnType<typeof createServerClient>, userId: 
     }
 }
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     const response = NextResponse.next()
     const path = request.nextUrl.pathname
 
