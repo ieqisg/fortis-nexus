@@ -1,4 +1,3 @@
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { daysOfWeek, timeSlotOptions } from "@/lib/mockData";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +37,6 @@ export function AvailabilitySelector({
 
     const handleDayToggle = (day: string) => {
         if (selectedDays.includes(day)) {
-            // remove day and all its slots
             onDaysChange(selectedDays.filter(d => d !== day))
             onTimeSlotsChange(selectedTimeSlots.filter(s => !s.startsWith(`${day}:`)))
         } else {
@@ -63,27 +61,27 @@ export function AvailabilitySelector({
                     Available Days
                 </Label>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                    {daysOfWeek.map((day) => (
-                        <div
-                            key={day}
-                            className={`flex items-center space-x-2 p-3 rounded-lg border transition-all cursor-pointer ${selectedDays.includes(day)
-                                ? "bg-emerald-50 border-emerald-300"
-                                : "bg-white border-slate-200 hover:border-slate-300"
+                    {daysOfWeek.map((day) => {
+                        const checked = selectedDays.includes(day)
+                        return (
+                            <label
+                                key={day}
+                                className={`flex items-center gap-2 p-3 rounded-lg border transition-colors cursor-pointer select-none ${
+                                    checked
+                                        ? "bg-emerald-50 border-emerald-300"
+                                        : "bg-white border-slate-200 hover:border-slate-300"
                                 }`}
-                        >
-                            <Checkbox
-                                id={`day-${day}`}
-                                checked={selectedDays.includes(day)}
-                                onCheckedChange={() => handleDayToggle(day)}
-                            />
-                            <Label
-                                htmlFor={`day-${day}`}
-                                className="text-sm font-medium cursor-pointer flex-1 py-1"
                             >
-                                {day.slice(0, 3)}
-                            </Label>
-                        </div>
-                    ))}
+                                <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => handleDayToggle(day)}
+                                    className="w-4 h-4 rounded accent-emerald-600 shrink-0"
+                                />
+                                <span className="text-sm font-medium">{day.slice(0, 3)}</span>
+                            </label>
+                        )
+                    })}
                 </div>
             </div>
 
@@ -97,42 +95,35 @@ export function AvailabilitySelector({
                         const daySlots = getSlotsForDay(day, selectedTimeSlots)
                         return (
                             <div key={day} className="border rounded-lg p-4 bg-white">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <Clock className="w-4 h-4 text-emerald-600" />
+                                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                                    <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
                                     <span className="font-semibold text-slate-700">{day}</span>
-                                    {daySlots.length > 0 && (
-                                        <div className="flex gap-1 flex-wrap ml-2">
-                                            {daySlots.map(slot => (
-                                                <Badge key={slot} className="bg-emerald-100 text-emerald-800 text-xs">
-                                                    {slot}
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    )}
+                                    {daySlots.map(slot => (
+                                        <Badge key={slot} className="bg-emerald-100 text-emerald-800 text-xs">
+                                            {slot}
+                                        </Badge>
+                                    ))}
                                 </div>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                     {timeSlotOptions.map((slot) => {
                                         const isSelected = selectedTimeSlots.includes(encodeSlot(day, slot))
                                         return (
-                                            <div
+                                            <label
                                                 key={slot}
-                                                className={`flex items-center space-x-2 p-2 rounded-lg border transition-all cursor-pointer ${isSelected
-                                                    ? "bg-emerald-50 border-emerald-300"
-                                                    : "bg-white border-slate-200 hover:border-slate-300"
-                                                    }`}
+                                                className={`flex items-center gap-2 p-2 rounded-lg border transition-colors cursor-pointer select-none ${
+                                                    isSelected
+                                                        ? "bg-emerald-50 border-emerald-300"
+                                                        : "bg-white border-slate-200 hover:border-slate-300"
+                                                }`}
                                             >
-                                                <Checkbox
-                                                    id={`slot-${day}-${slot}`}
+                                                <input
+                                                    type="checkbox"
                                                     checked={isSelected}
-                                                    onCheckedChange={() => handleSlotToggle(day, slot)}
+                                                    onChange={() => handleSlotToggle(day, slot)}
+                                                    className="w-4 h-4 rounded accent-emerald-600 shrink-0"
                                                 />
-                                                <Label
-                                                    htmlFor={`slot-${day}-${slot}`}
-                                                    className="text-xs font-medium cursor-pointer flex-1"
-                                                >
-                                                    {slot}
-                                                </Label>
-                                            </div>
+                                                <span className="text-xs font-medium">{slot}</span>
+                                            </label>
                                         )
                                     })}
                                 </div>

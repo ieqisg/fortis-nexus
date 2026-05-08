@@ -15,10 +15,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
-import { GroupMembers, MenteeFormProfile } from "@/types/menteeTypes";
+import { CommunicationPreference, GroupMembers, MenteeFormProfile } from "@/types/menteeTypes";
 import { MenteeGroupInsert } from "@/types/modelTypes";
 import { createMenteeProfile } from "@/lib/actions/menteeActions";
+import { checkGroupNameAvailable } from "@/lib/actions/authActions";
 import { UserAuth } from "@/app/context/authContext";
+import { toast } from "sonner";
 
 export default function MenteeCreateProfile({
     onBack,
@@ -31,6 +33,7 @@ export default function MenteeCreateProfile({
     const [studentNumValid, setStudentNumValid] = useState("");
     const [disableAddMember, setDisableAddMember] = useState(true);
     const [timeAndDayValid, setTimeAndDayValid] = useState("")
+    const [loading, setLoading] = useState(false)
 
     // Form state
     const [formData, setFormData] = useState<MenteeFormProfile>({
@@ -43,7 +46,7 @@ export default function MenteeCreateProfile({
         mentor_preferences: "",
         available_days: [],
         time_slot: [],
-
+        communication_preference: "",
     });
     const studentNumbers = formData.group_members.map((m) => m.student_number).join(",")
     const availableDays = formData.available_days.join(",")
@@ -124,8 +127,15 @@ export default function MenteeCreateProfile({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isFormValid()) return;
-
+        setLoading(true)
         try {
+            const groupCheck = await checkGroupNameAvailable(formData.group_name)
+            if (!groupCheck.available) {
+                toast.error(groupCheck.message ?? "Group name already taken.")
+                setLoading(false)
+                return
+            }
+
             const signUpResult = await signUp();
             if (!signUpResult.success) return;
 
@@ -145,21 +155,21 @@ export default function MenteeCreateProfile({
                 role: "mentee",
                 available_days: formData.available_days,
                 time_slot: formData.time_slot,
-                group_members: formData.group_members.map((member) => JSON.stringify(member))
+                group_members: formData.group_members.map((member) => JSON.stringify(member)),
+                communication_preference: formData.communication_preference || null,
             };
 
             const result = await createMenteeProfile(payload);
 
-            if (!result.success) {
-                alert(result.message);
-                return;
+            if (result.success) {
+                toast.success("Mentee Profile createde successfully")
+                router.push("/mentee/mentee-dashboard")
             }
 
-            alert("Mentee profile created successfully!");
-            router.push("/mentee-dashboard");
-
         } catch (err) {
-            console.error(err);
+            toast.error("An unexpected error occurred")
+        } finally {
+            setLoading(false)
         }
     };
 
@@ -261,11 +271,11 @@ export default function MenteeCreateProfile({
                                     required
                                     id="ThesisTItle"
                                     placeholder="Enter your resarch title"
-                                    value={formData.research_description}
+                                    value={formData.thesis_title}
                                     onChange={(e) =>
                                         setFormData({
                                             ...formData,
-                                            research_description: e.target.value,
+                                            thesis_title: e.target.value,
                                         })
                                     }
                                     rows={5}
@@ -353,6 +363,82 @@ export default function MenteeCreateProfile({
                                 </Card>
                             </div>
 
+                            {/* Communication Preference */}
+                            <div>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">
+                                            Communication Preference
+                                        </CardTitle>
+                                        <CardDescription>
+                                            How do you prefer to communicate with your mentor?
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        <div className="flex gap-6">
+                                            {(["FACE_TO_FACE", "ONLINE"] as const).map((mode) => {
+                                                const isOnlineGroup = mode === "ONLINE";
+                                                const checked = isOnlineGroup
+                                                    ? formData.communication_preference === "ONLINE_CHAT" ||
+                                                      formData.communication_preference === "ONLINE_CALL"
+                                                    : formData.communication_preference === "FACE_TO_FACE";
+                                                return (
+                                                    <label key={mode} className="flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="comm_top"
+                                                            checked={checked}
+                                                            onChange={() => {
+                                                                if (isOnlineGroup) {
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        communication_preference: "ONLINE_CHAT",
+                                                                    }));
+                                                                } else {
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        communication_preference: "FACE_TO_FACE",
+                                                                    }));
+                                                                }
+                                                            }}
+                                                            className="accent-green-600"
+                                                        />
+                                                        <span className="text-sm font-medium">
+                                                            {isOnlineGroup ? "Online" : "Face to Face"}
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {(formData.communication_preference === "ONLINE_CHAT" ||
+                                          formData.communication_preference === "ONLINE_CALL") && (
+                                            <div className="ml-6 flex gap-6 border-l-2 border-green-100 pl-4">
+                                                {(["ONLINE_CHAT", "ONLINE_CALL"] as CommunicationPreference[]).map((sub) => (
+                                                    <label key={sub} className="flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="comm_sub"
+                                                            checked={formData.communication_preference === sub}
+                                                            onChange={() =>
+                                                                setFormData((prev) => ({
+                                                                    ...prev,
+                                                                    communication_preference: sub,
+                                                                }))
+                                                            }
+                                                            className="accent-green-600"
+                                                        />
+                                                        <span className="text-sm">
+                                                            {sub === "ONLINE_CHAT" ? "Chat only" : "Online meeting / call"}
+                                                        </span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </div>
+
                             {/* Buttons */}
                             <div className="flex gap-2 justify-end">
                                 <Button
@@ -365,9 +451,9 @@ export default function MenteeCreateProfile({
                                 <Button
                                     type="submit"
                                     className={`bg-green-600 hover:bg-green-700 ${!isFormValid() ? "opacity-50 cursor-not-allowed" : ""}`}
-                                    disabled={!isFormValid()}
+                                    disabled={!isFormValid() || loading}
                                 >
-                                    Create Mentee Account
+                                    {loading ? "Creating Mentee Account" : "Create Mentee Account"}
                                 </Button>
                             </div>
                         </form>

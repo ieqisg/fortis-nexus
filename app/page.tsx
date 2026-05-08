@@ -9,11 +9,14 @@ import { UserAuth } from "./context/authContext";
 type Role = "mentor" | "mentee";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import { getEmailByGroupName } from "@/lib/actions/authActions";
+import { supabase } from "@/app/config/supabaseClient";
 export default function Home() {
     const [role, setRole] = useState<Role>("mentee");
     const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false)
+    const [groupName, setGroupName] = useState("")
     const { userData, signIn, setUserData, getUser } = UserAuth()
     const { email, password } = userData
 
@@ -58,21 +61,36 @@ export default function Home() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!email || !password) return;
 
         try {
             setLoading(true)
-            const userSignIn = await signIn()
-            if (!userSignIn.success) return;
-            const role = userSignIn?.data?.role
+
             if (role === "mentee") {
+                if (!groupName.trim() || !password) return
+                const result = await getEmailByGroupName(groupName)
+                if (!result.success) {
+                    toast.error(result.message)
+                    return
+                }
+                const { error } = await supabase.auth.signInWithPassword({ email: result.email!, password })
+                if (error) {
+                    toast.error("Incorrect password.")
+                    return
+                }
                 router.push("/mentee/mentee-dashboard")
-            } else if (role === "mentor") {
+                return
+            }
+
+            if (!email || !password) return
+            const userSignIn = await signIn()
+            if (!userSignIn.success) return
+            const userRole = userSignIn?.data?.role
+            if (userRole === "mentor") {
                 router.push("/mentor/mentor-dashboard")
-            } else if (role === "admin") {
+            } else if (userRole === "admin") {
                 router.push("/admin")
             } else {
-                alert("Unknown role")
+                toast.error("Unknown role")
             }
 
         } catch (err) {
@@ -158,55 +176,87 @@ export default function Home() {
 
                 <CardContent className="pt-4">
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="email" className="text-slate-700 font-medium">
-                                Email
-                            </Label>
-
-                            <Input
-                                id="email"
-                                type="email"
-                                placeholder={currentPlaceholders.email}
-                                value={email}
-                                onChange={(e) => setUserData({ ...userData, email: e.target.value })}
-                                className={`h-11 border-slate-200 transition-all duration-200 ${theme.focus}`}
-                            />
-
-
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="password" className="text-slate-700 font-medium">
-                                Password
-                            </Label>
-
-                            <div className="relative">
-                                <Input
-                                    id="password"
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder={currentPlaceholders.password}
-                                    value={password}
-                                    onChange={(e) =>
-                                        setUserData({ ...userData, password: e.target.value })
-                                    }
-                                    className={`h-11 border-slate-200 transition-all duration-200 pr-12 ${theme.focus}`}
-                                />
-
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-transparent"
-                                >
-                                    {showPassword ? (
-                                        <EyeOff className="w-5 h-5 text-slate-500" />
-                                    ) : (
-                                        <Eye className="w-5 h-5 text-slate-500" />
-                                    )}
-                                </Button>
-                            </div>
-                        </div>
+                        {isMentor ? (
+                            <>
+                                <div className="space-y-2">
+                                    <Label htmlFor="email" className="text-slate-700 font-medium">Email</Label>
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        placeholder={currentPlaceholders.email}
+                                        value={email}
+                                        onChange={(e) => setUserData({ ...userData, email: e.target.value })}
+                                        className={`h-11 border-slate-200 transition-all duration-200 ${theme.focus}`}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="password" className="text-slate-700 font-medium">Password</Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="password"
+                                            type={showPassword ? "text" : "password"}
+                                            placeholder={currentPlaceholders.password}
+                                            value={password}
+                                            onChange={(e) => setUserData({ ...userData, password: e.target.value })}
+                                            className={`h-11 border-slate-200 transition-all duration-200 pr-12 ${theme.focus}`}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-transparent"
+                                        >
+                                            {showPassword ? (
+                                                <EyeOff className="w-5 h-5 text-slate-500" />
+                                            ) : (
+                                                <Eye className="w-5 h-5 text-slate-500" />
+                                            )}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="space-y-2">
+                                    <Label htmlFor="groupName" className="text-slate-700 font-medium">Group Name</Label>
+                                    <Input
+                                        id="groupName"
+                                        type="text"
+                                        placeholder="Enter your group name"
+                                        value={groupName}
+                                        onChange={(e) => setGroupName(e.target.value)}
+                                        className={`h-11 border-slate-200 transition-all duration-200 ${theme.focus}`}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="menteePassword" className="text-slate-700 font-medium">Password</Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="menteePassword"
+                                            type={showPassword ? "text" : "password"}
+                                            placeholder="Enter your password"
+                                            value={password}
+                                            onChange={(e) => setUserData({ ...userData, password: e.target.value })}
+                                            className={`h-11 border-slate-200 transition-all duration-200 pr-12 ${theme.focus}`}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-transparent"
+                                        >
+                                            {showPassword ? (
+                                                <EyeOff className="w-5 h-5 text-slate-500" />
+                                            ) : (
+                                                <Eye className="w-5 h-5 text-slate-500" />
+                                            )}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
 
                         <Button
                             type="submit"
@@ -238,15 +288,17 @@ export default function Home() {
                         </p>
                     </div>
 
-                    {/* Forgot password link */}
-                    <div className="mt-4 text-center">
-                        <a
-                            href="#forgot"
-                            className="text-sm text-slate-400 hover:text-slate-600 transition-colors duration-200"
-                        >
-                            Forgot your password?
-                        </a>
-                    </div>
+                    {/* Forgot password link — only for mentor */}
+                    {isMentor && (
+                        <div className="mt-4 text-center">
+                            <a
+                                href="#forgot"
+                                className="text-sm text-slate-400 hover:text-slate-600 transition-colors duration-200"
+                            >
+                                Forgot your password?
+                            </a>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

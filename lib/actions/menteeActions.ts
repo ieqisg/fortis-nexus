@@ -74,7 +74,8 @@ export async function getMenteeData() {
                 technical_skills,
                 forte,
                 email,
-                self_description
+                self_description,
+                prev_mentored_thesis
             )
         )
     `)

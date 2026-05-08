@@ -1,11 +1,9 @@
 "use client";
 
 import Sidebar from "@/components/ui/Sidebar";
-import MatchScoreCard from "@/components/ui/MatchScoreCard";
 import {
     Card,
     CardContent,
-    CardDescription,
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
@@ -13,202 +11,463 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Calendar } from "lucide-react";
-import { useEffect, useState } from "react";
-import { getMenteeData } from "@/lib/actions/menteeActions";
-import { MenteeGroupWithMatch } from "@/types/modelTypes";
+import {
+    Upload, FileText, Calendar, Clock, RefreshCw,
+    Download, MessageSquare, BookOpen, TrendingUp,
+    User, Zap, CheckCircle2, Circle, GraduationCap
+} from "lucide-react";
+import { useRef, useState } from "react";
+import type { PrevMentoredThesis } from "@/types/mentorTypes";
 import { UserAuth } from "@/app/context/authContext";
 import { useMentee } from "@/app/context/menteeContext";
-
-
+import { submitPaper, getPaperDownloadUrl } from "@/lib/actions/paperActions";
+import { toast } from "sonner";
 
 export default function MenteeDashboard() {
-    const { mentee, loading } = useMentee()
-    /* const [mentee, setMentee] = useState<MenteeGroupWithMatch | null>(null) */
-    /* const [loading, setLoading] = useState(true) */
+    const { mentee, loading, meeting, meetingLoading, papers, papersLoading, setPapers } = useMentee()
+    const [submitting, setSubmitting] = useState(false)
+    const [activeTab, setActiveTab] = useState<"submit" | "papers">("submit")
+    const formRef = useRef<HTMLFormElement>(null)
     const { userData } = UserAuth()
+
     const hasMatch = !!mentee?.matches
     const matches = mentee?.matches
+    const scorePercentage = Math.round((matches?.compatibility_score ?? 0) * 100)
+    const reviewedCount = papers.filter(p => p.status === "reviewed").length
 
-    useEffect(() => {
-    }, [])
+    const handleSubmitPaper = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        const formData = new FormData(e.currentTarget)
+        if (!formData.get("title")) return
+        setSubmitting(true)
+        const result = await submitPaper(formData)
+        if (result.success && result.paper) {
+            setPapers(prev => [result.paper!, ...prev])
+            toast.success("Paper submitted successfully")
+            formRef.current?.reset()
+            setActiveTab("papers")
+        } else {
+            toast.error(result.message ?? "Failed to submit paper")
+        }
+        setSubmitting(false)
+    }
 
-    if (loading) return <p>Loading...</p>
+    const handleDownload = async (filePath: string, fileName: string) => {
+        const result = await getPaperDownloadUrl(filePath)
+        if (result.url) {
+            const a = document.createElement("a")
+            a.href = result.url
+            a.download = fileName
+            a.click()
+        }
+    }
+
+    if (loading) return (
+        <div className="flex h-screen items-center justify-center bg-slate-50">
+            <div className="text-center space-y-3">
+                <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-sm text-slate-500">Loading your dashboard...</p>
+            </div>
+        </div>
+    )
 
     return (
-        <>
+        <div className="flex h-screen bg-slate-50">
+            <Sidebar userType="mentee" userName={mentee?.group_name ?? "Loading..."} />
 
-            <div className="flex h-screen bg-gray-50">
-                <Sidebar userType="mentee" userName={mentee?.group_name ?? "Loading..."} />
+            <div className="flex-1 overflow-auto">
 
-                <div className="flex-1 overflow-auto">
-                    <div className="bg-linear-to-r from-green-600 to-emerald-600 text-white p-8">
-                        <h1 className="text-3xl font-bold mb-2">Mentee Dashboard</h1>
-                        <p className="text-green-100">Welcome back, {mentee?.group_name ? mentee?.group_name : "Loading..."}</p>
-                    </div>
-
-                    <div className="p-8">
-                        <div className="grid lg:grid-cols-3 gap-6 mb-8">
-                            <div className="lg:col-span-2">
-                                {matches ? (
-                                    <Card>
-
-                                        <CardHeader>
-                                            <CardTitle>Your Matched Mentor</CardTitle>
-                                            <CardDescription>
-                                                Based on Gale-Shapley algorithm and semantic similarity
-                                            </CardDescription>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="space-y-4">
-                                                <div>
-                                                    <h3 className="text-xl font-bold text-gray-900">
-                                                        {matches?.mentor?.first_name ?? "Loading"} {matches?.mentor?.last_name ?? "Loading"}
-                                                    </h3>
-                                                    <p className="text-gray-600">{matches?.mentor?.email ?? "Loading"}</p>
-                                                </div>
-
-                                                <div>
-                                                    <p className="text-sm font-semibold text-gray-700 mb-2">
-                                                        Expertise:
-                                                    </p>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        <Badge variant="outline">
-                                                            {matches?.mentor?.forte.join(", ") ?? "Loading"}
-                                                        </Badge>
-                                                    </div>
-                                                </div>
-
-                                                <div>
-                                                    <p className="text-sm font-semibold text-gray-700 mb-2">
-                                                        Skills:
-                                                    </p>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        <Badge variant="outline">
-                                                            {matches?.mentor?.technical_skills.join(", ") ?? "Loading"}
-                                                        </Badge>
-                                                    </div>
-                                                </div>
-
-                                                <div>
-                                                    <p className="text-sm font-semibold text-gray-700 mb-2">
-                                                        About:
-                                                    </p>
-                                                    <p className="text-gray-800">
-                                                        {matches?.mentor?.self_description}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                ) : (
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle>Your Matched Mentor</CardTitle>
-                                            <CardDescription>
-                                                Based on Gale-Shapley algorithm and semantic similarity
-                                            </CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="pt-6">
-                                            <h1>
-                                                No mentor match found yet. The matching process is in progress.
-                                            </h1>
-                                        </CardContent>
-
-                                    </Card>
-
-
-                                )}
-
-                            </div>
-
-                            <div>
-                                <MatchScoreCard
-                                    score={matches?.compatibility_score ?? 0}
-                                    keywords={matches?.matched_keywords ?? []}
-                                    hasMatch={hasMatch}
-                                />
-                            </div>
+                {/* Header */}
+                <div className="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 px-8 py-8 text-white">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <p className="text-emerald-200 text-sm font-medium mb-1">Welcome back</p>
+                            <h1 className="text-3xl font-bold">{mentee?.group_name ?? "..."}</h1>
+                            <p className="text-emerald-100 text-sm mt-1">{mentee?.research_title ?? ""}</p>
                         </div>
+                        <div className="flex gap-4">
+                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[80px]">
+                                <p className="text-2xl font-bold">{papers.length}</p>
+                                <p className="text-xs text-emerald-100">Papers</p>
+                            </div>
+                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[80px]">
+                                <p className="text-2xl font-bold">{reviewedCount}</p>
+                                <p className="text-xs text-emerald-100">Reviewed</p>
+                            </div>
+                            {hasMatch && (
+                                <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[80px]">
+                                    <p className="text-2xl font-bold">{scorePercentage}%</p>
+                                    <p className="text-xs text-emerald-100">Match</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
 
-                        <div className="grid lg:grid-cols-2 gap-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center">
-                                        <Upload className="w-5 h-5 mr-2 text-green-600" />
-                                        Submit Paper for Review
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <form className="space-y-4">
-                                        <div>
-                                            <Label htmlFor="paperTitle">Paper Title</Label>
-                                            <Input
-                                                id="paperTitle"
-                                                placeholder="e.g., Chapter 1: Introduction"
-                                                required
-                                            />
+                <div className="p-6 space-y-6">
+
+                    {/* Top row: Mentor + Meeting */}
+                    <div className="grid lg:grid-cols-3 gap-5">
+
+                        {/* Mentor Card */}
+                        <div className="lg:col-span-2">
+                            {matches ? (
+                                <Card className="h-full border-0 shadow-sm">
+                                    <CardHeader className="pb-3 border-b border-slate-100">
+                                        <div className="flex items-center justify-between">
+                                            <CardTitle className="text-base font-semibold text-slate-700 flex items-center gap-2">
+                                                <User className="w-4 h-4 text-emerald-600" />
+                                                Your Matched Mentor
+                                            </CardTitle>
+                                            <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">
+                                                Matched
+                                            </Badge>
                                         </div>
-                                        <div>
-                                            <Label htmlFor="paperFile">File Name</Label>
-                                            <Input
-                                                id="paperFile"
-                                                placeholder="e.g., chapter1.pdf"
-                                                type="file"
-                                                required
-                                            />
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                In a real system, you would upload a file here
-                                            </p>
-                                        </div>
-                                        <Button
-                                            type="submit"
-                                            className="w-full bg-green-600 hover:bg-green-700"
-                                        >
-                                            Submit Paper
-                                        </Button>
-                                    </form>
-                                </CardContent>
-                            </Card>
-
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center">
-                                        <FileText className="w-5 h-5 mr-2 text-blue-600" />
-                                        Submitted Papers
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-4">
-
-
-                                        <div className="border border-gray-200 rounded-lg p-4">
-                                            <h4 className="font-semibold text-gray-900">Chapter 1</h4>
-                                            <p className="text-sm text-gray-600 mt-1">Chapter1.pdf</p>
-                                            <div className="flex items-center text-xs text-gray-500 mt-2">
-                                                <Calendar className="w-3 h-3 mr-1" />
-                                                01-02-26
+                                    </CardHeader>
+                                    <CardContent className="pt-4 space-y-4">
+                                        {/* Mentor identity */}
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
+                                                {(matches.mentor?.first_name?.[0] ?? "") + (matches.mentor?.last_name?.[0] ?? "")}
                                             </div>
-                                            <div className="mt-3 bg-blue-50 p-3 rounded">
-                                                <p className="text-xs font-semibold text-blue-900">
-                                                    Mentor Feedback:
+                                            <div>
+                                                <h3 className="text-lg font-bold text-slate-900">
+                                                    {matches.mentor?.first_name} {matches.mentor?.last_name}
+                                                </h3>
+                                                <p className="text-sm text-slate-500">{matches.mentor?.email}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Match score inline */}
+                                        <div className="bg-slate-50 rounded-lg p-3">
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                                                    <TrendingUp className="w-3 h-3" /> Compatibility
+                                                </span>
+                                                <span className="text-sm font-bold text-emerald-600">{scorePercentage}%</span>
+                                            </div>
+                                            <div className="w-full bg-slate-200 rounded-full h-1.5">
+                                                <div
+                                                    className="bg-emerald-500 h-1.5 rounded-full"
+                                                    style={{ width: `${scorePercentage}%` }}
+                                                />
+                                            </div>
+                                            {matches.matched_keywords && matches.matched_keywords.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-2">
+                                                    {matches.matched_keywords.slice(0, 4).map((kw, i) => (
+                                                        <span key={i} className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                                                            {kw}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Forte & Skills */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Expertise</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {matches.mentor?.forte.map((f, i) => (
+                                                        <Badge key={i} variant="outline" className="text-xs border-blue-200 text-blue-700 bg-blue-50">
+                                                            {f}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Skills</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {matches.mentor?.technical_skills.slice(0, 4).map((s, i) => (
+                                                        <Badge key={i} variant="outline" className="text-xs border-slate-200 text-slate-600">
+                                                            {s}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* About */}
+                                        {matches.mentor?.self_description && (
+                                            <div>
+                                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">About</p>
+                                                <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">
+                                                    {matches.mentor.self_description}
                                                 </p>
+                                            </div>
+                                        )}
 
-                                                <div className="mt-2">
-                                                    <p className="text-sm text-gray-700">Great Job!</p>
-                                                    <p className="text-xs text-gray-500 mt-1">01-02-26</p>
+                                        {/* Prev Theses */}
+                                        {matches.mentor?.prev_mentored_thesis &&
+                                            (matches.mentor.prev_mentored_thesis as PrevMentoredThesis[]).length > 0 && (
+                                                <div>
+                                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1">
+                                                        <BookOpen className="w-3 h-3" /> Previously Mentored Theses
+                                                    </p>
+                                                    <div className="overflow-x-auto rounded-lg border border-slate-200">
+                                                        <table className="w-full text-xs">
+                                                            <thead className="bg-slate-50 text-slate-500">
+                                                                <tr>
+                                                                    <th className="px-3 py-2 text-left font-medium">No.</th>
+                                                                    <th className="px-3 py-2 text-left font-medium">Title</th>
+                                                                    <th className="px-3 py-2 text-left font-medium">Adviser</th>
+                                                                    <th className="px-3 py-2 text-left font-medium">Year</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-slate-100">
+                                                                {(matches.mentor.prev_mentored_thesis as PrevMentoredThesis[]).map((t, i) => (
+                                                                    <tr key={i} className="hover:bg-slate-50">
+                                                                        <td className="px-3 py-2 text-slate-400">{t.title_no}</td>
+                                                                        <td className="px-3 py-2 text-slate-800 font-medium">{t.title}</td>
+                                                                        <td className="px-3 py-2 text-slate-500">{t.mentor}</td>
+                                                                        <td className="px-3 py-2 text-slate-400">{t.year}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            )}
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                <Card className="h-full border-0 shadow-sm border-dashed border-2 border-slate-200 bg-white">
+                                    <CardContent className="flex flex-col items-center justify-center h-full py-16 text-center">
+                                        <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+                                            <GraduationCap className="w-7 h-7 text-slate-400" />
+                                        </div>
+                                        <h3 className="font-semibold text-slate-700 mb-1">No mentor assigned yet</h3>
+                                        <p className="text-sm text-slate-400 max-w-xs">
+                                            The matching process is in progress. You'll be notified once a mentor is assigned.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </div>
+
+                        {/* Right column: Meeting + Progress */}
+                        <div className="space-y-5">
+                            {/* Meeting Card */}
+                            <Card className="border-0 shadow-sm">
+                                <CardHeader className="pb-3 border-b border-slate-100">
+                                    <CardTitle className="text-base font-semibold text-slate-700 flex items-center gap-2">
+                                        <RefreshCw className="w-4 h-4 text-emerald-600" />
+                                        Weekly Meeting
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="pt-4">
+                                    {meetingLoading ? (
+                                        <div className="h-12 bg-slate-100 rounded animate-pulse" />
+                                    ) : meeting ? (
+                                        <div className="space-y-3">
+                                            <p className="font-semibold text-slate-900">{meeting.title}</p>
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center gap-2 text-sm text-slate-600">
+                                                    <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
+                                                    Every <strong>{meeting.recurrence_day}</strong>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-sm text-slate-600">
+                                                    <Clock className="w-4 h-4 text-emerald-500 shrink-0" />
+                                                    <strong>{meeting.recurrence_time}</strong>
                                                 </div>
                                             </div>
+                                            {meeting.description && (
+                                                <p className="text-xs text-slate-500 bg-slate-50 rounded px-2 py-1.5">{meeting.description}</p>
+                                            )}
+                                            <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">Recurring</Badge>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="text-center py-4">
+                                            <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                            <p className="text-xs text-slate-400">No meeting scheduled yet. Your mentor will set this up.</p>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Paper progress */}
+                            <Card className="border-0 shadow-sm">
+                                <CardHeader className="pb-3 border-b border-slate-100">
+                                    <CardTitle className="text-base font-semibold text-slate-700 flex items-center gap-2">
+                                        <Zap className="w-4 h-4 text-amber-500" />
+                                        Paper Progress
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="pt-4 space-y-3">
+                                    {papersLoading ? (
+                                        <div className="h-16 bg-slate-100 rounded animate-pulse" />
+                                    ) : papers.length === 0 ? (
+                                        <div className="text-center py-4">
+                                            <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                            <p className="text-xs text-slate-400">No papers submitted yet.</p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex items-end justify-between">
+                                                <span className="text-3xl font-bold text-slate-900">{reviewedCount}<span className="text-lg text-slate-400">/{papers.length}</span></span>
+                                                <span className="text-xs text-slate-500 mb-1">reviewed</span>
+                                            </div>
+                                            <div className="w-full bg-slate-100 rounded-full h-2">
+                                                <div
+                                                    className="bg-amber-400 h-2 rounded-full transition-all"
+                                                    style={{ width: `${papers.length > 0 ? (reviewedCount / papers.length) * 100 : 0}%` }}
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                                                {papers.map(p => (
+                                                    <div key={p.id} className="flex items-center gap-2">
+                                                        {p.status === "reviewed"
+                                                            ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                                                            : <Circle className="w-4 h-4 text-slate-300 shrink-0" />
+                                                        }
+                                                        <span className={`text-xs truncate ${p.status === "reviewed" ? "text-slate-400 line-through" : "text-slate-700"}`}>
+                                                            {p.title}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
                                 </CardContent>
                             </Card>
                         </div>
                     </div>
+
+                    {/* Papers section */}
+                    <Card className="border-0 shadow-sm">
+                        {/* Tab header */}
+                        <div className="flex border-b border-slate-100">
+                            <button
+                                onClick={() => setActiveTab("submit")}
+                                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "submit"
+                                    ? "border-emerald-500 text-emerald-600"
+                                    : "border-transparent text-slate-500 hover:text-slate-700"
+                                    }`}
+                            >
+                                <Upload className="w-4 h-4" />
+                                Submit Paper
+                            </button>
+                            <button
+                                onClick={() => setActiveTab("papers")}
+                                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "papers"
+                                    ? "border-emerald-500 text-emerald-600"
+                                    : "border-transparent text-slate-500 hover:text-slate-700"
+                                    }`}
+                            >
+                                <FileText className="w-4 h-4" />
+                                My Submissions
+                                {papers.length > 0 && (
+                                    <span className="bg-slate-100 text-slate-600 text-xs px-1.5 py-0.5 rounded-full">{papers.length}</span>
+                                )}
+                            </button>
+                        </div>
+
+                        <CardContent className="pt-5">
+                            {activeTab === "submit" ? (
+                                <form ref={formRef} onSubmit={handleSubmitPaper} className="max-w-lg space-y-4">
+                                    <div>
+                                        <Label htmlFor="paperTitle" className="text-sm font-medium text-slate-700">Paper Title <span className="text-red-400">*</span></Label>
+                                        <Input
+                                            id="paperTitle"
+                                            name="title"
+                                            placeholder="e.g., Chapter 1: Introduction"
+                                            className="mt-1"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="paperFile" className="text-sm font-medium text-slate-700">Attach File <span className="text-slate-400 font-normal">(optional)</span></Label>
+                                        <Input
+                                            id="paperFile"
+                                            name="file"
+                                            type="file"
+                                            accept=".pdf,.doc,.docx"
+                                            className="mt-1"
+                                        />
+                                        <p className="text-xs text-slate-400 mt-1">Accepted: PDF, DOC, DOCX</p>
+                                    </div>
+                                    <Button
+                                        type="submit"
+                                        disabled={submitting}
+                                        className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto"
+                                    >
+                                        <Upload className="w-4 h-4 mr-2" />
+                                        {submitting ? "Submitting..." : "Submit for Review"}
+                                    </Button>
+                                </form>
+                            ) : (
+                                <>
+                                    {papersLoading ? (
+                                        <div className="space-y-3">
+                                            {[1, 2].map(i => <div key={i} className="h-16 bg-slate-100 rounded-lg animate-pulse" />)}
+                                        </div>
+                                    ) : papers.length === 0 ? (
+                                        <div className="text-center py-12 text-slate-400">
+                                            <FileText className="w-10 h-10 mx-auto mb-3 text-slate-200" />
+                                            <p className="text-sm">No papers submitted yet.</p>
+                                            <button onClick={() => setActiveTab("submit")} className="text-xs text-emerald-600 hover:underline mt-1">
+                                                Submit your first paper
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                                            {papers.map(paper => (
+                                                <div key={paper.id} className="border border-slate-200 rounded-xl p-4 hover:border-slate-300 transition-colors">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="flex items-start gap-3 min-w-0">
+                                                            <div className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${paper.status === "reviewed" ? "bg-green-100" : "bg-amber-100"}`}>
+                                                                {paper.status === "reviewed"
+                                                                    ? <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                                                    : <Clock className="w-4 h-4 text-amber-600" />
+                                                                }
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <h4 className="font-semibold text-slate-900 truncate">{paper.title}</h4>
+                                                                <div className="flex items-center gap-3 mt-0.5">
+                                                                    <span className="text-xs text-slate-400 flex items-center gap-1">
+                                                                        <Calendar className="w-3 h-3" />
+                                                                        {new Date(paper.submitted_at).toLocaleDateString()}
+                                                                    </span>
+                                                                    {paper.file_name && (
+                                                                        <button
+                                                                            onClick={() => handleDownload(paper.file_path!, paper.file_name!)}
+                                                                            className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                                                                        >
+                                                                            <Download className="w-3 h-3" />{paper.file_name}
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <Badge className={`shrink-0 text-xs border-0 ${paper.status === "reviewed" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                                                            {paper.status === "reviewed" ? "Reviewed" : "Pending"}
+                                                        </Badge>
+                                                    </div>
+
+                                                    {paper.paper_comments && paper.paper_comments.length > 0 && (
+                                                        <div className="mt-3 bg-blue-50 rounded-lg p-3 space-y-2">
+                                                            <p className="text-xs font-semibold text-blue-800 flex items-center gap-1">
+                                                                <MessageSquare className="w-3 h-3" /> Mentor Feedback
+                                                            </p>
+                                                            {paper.paper_comments.map(c => (
+                                                                <div key={c.id} className="border-l-2 border-blue-300 pl-3">
+                                                                    <p className="text-sm text-slate-700">{c.comment}</p>
+                                                                    <p className="text-xs text-slate-400 mt-0.5">{new Date(c.created_at).toLocaleDateString()}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
 
                 </div>
             </div>
-        </>
+        </div>
     );
 }

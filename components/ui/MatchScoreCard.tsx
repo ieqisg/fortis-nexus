@@ -50,10 +50,10 @@ export default function MatchScoreCard({
 
                         <div>
                             <p className="text-sm font-semibold text-gray-700 mb-2">
-                                Top 5 Matched Keywords:
+                                Top 3 Matched Keywords:
                             </p>
                             <div className="flex flex-wrap gap-2">
-                                {keywords.map((keyword, index) => (
+                                {keywords.slice(0, 3).map((keyword, index) => (
                                     <Badge
                                         key={index}
                                         variant="secondary"
