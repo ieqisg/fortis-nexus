@@ -14,7 +14,7 @@ async function getRole(supabase: ReturnType<typeof createServerClient>, userId: 
     }
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const response = NextResponse.next()
     const path = request.nextUrl.pathname
 
@@ -33,8 +33,6 @@ export async function middleware(request: NextRequest) {
         }
     );
 
-    // getSession reads from the cookie — no network call, safe in Edge Runtime.
-    // getUser() makes a live auth server request which can crash Edge middleware.
     const { data: { session } } = await supabase.auth.getSession()
     const user = session?.user
 
@@ -75,14 +73,14 @@ export async function middleware(request: NextRequest) {
             }
         }
     } catch {
-        // If DB lookup fails, pass through rather than crash
         return response
     }
 
     return response
 }
 
-export const config = {
+export const proxyConfig = {
+    runtime: 'nodejs',
     matcher: [
         "/",
         "/login",
