@@ -5,7 +5,20 @@ require("dotenv").config()
 
 const app = express()
 
-app.use(cors())
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim())
+    : ["http://localhost:3000"]
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // allow server-to-server calls (no origin) and listed origins
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true)
+        } else {
+            callback(new Error(`CORS: origin ${origin} not allowed`))
+        }
+    },
+}))
 app.use(express.json())
 
 app.use("/api/matching", matchingRoutes)

@@ -1,0 +1,10 @@
+[build]
+builder = "nixpacks"
+buildCommand = "npm install --prefix backend && python3 -m venv app/algo/venv && app/algo/venv/bin/pip install -r requirements.txt"
+
+[deploy]
+startCommand = "node backend/server.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
