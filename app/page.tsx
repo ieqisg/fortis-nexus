@@ -144,6 +144,8 @@ export default function Home() {
                     toast.error("Incorrect password.")
                     return
                 }
+                // Revoke all other sessions so only this device stays logged in
+                await supabase.auth.signOut({ scope: 'others' })
                 router.push("/mentee/mentee-dashboard")
                 return
             }
