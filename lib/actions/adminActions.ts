@@ -8,51 +8,48 @@ const supabase = createClient(
 )
 
 export async function getAllUserData() {
-    const [{ data: mentors }, { data: mentee }] = await Promise.all([supabase
-        .from("mentor")
-        .select(
-            `*,
-        matches(
-            status, 
-            matched_at,
-            compatibility_score,
-            matched_keywords,
-            mentee:matches_mentee_group_id_fkey (
-                id,
-                group_name,
-                group_members,
-                research_title,
-                research_description,
-                mentor_preference,
-                time_slot,
-                available_days
-            )
-        )
-            
-    `), supabase
-        .from("MENTEE_GROUPS")
-        .select(`*, 
-        matches(
-            status,
-            matched_at,
-            compatibility_score,
-            matched_keywords,
-            mentor:matches_mentor_id_fkey (
-                id, 
-                first_name, 
-                last_name, 
-                technical_skills, 
-                forte, 
-                email, 
-                self_description
-                
-            )
-        )
-    `)
-
+    const [{ data: mentors }, { data: mentee }] = await Promise.all([
+        supabase
+            .from("mentor")
+            .select(`
+                id, first_name, last_name, email, mentor_capacity,
+                matches(
+                    status, compatibility_score, matched_keywords,
+                    mentee:matches_mentee_group_id_fkey(id, group_name, research_title)
+                )
+            `),
+        supabase
+            .from("MENTEE_GROUPS")
+            .select(`
+                id, group_name, email, research_title, group_members,
+                matches(
+                    status, compatibility_score,
+                    mentor:matches_mentor_id_fkey(first_name, last_name)
+                )
+            `),
     ])
 
     return { success: true, data: { mentee, mentors } }
+}
+
+export async function getMentorDetail(id: string) {
+    const { data, error } = await supabase
+        .from("mentor")
+        .select("technical_skills, forte, self_description")
+        .eq("id", id)
+        .maybeSingle()
+    if (error) return { success: false as const, message: error.message }
+    return { success: true as const, data }
+}
+
+export async function getMenteeDetail(id: string) {
+    const { data, error } = await supabase
+        .from("MENTEE_GROUPS")
+        .select("research_description, mentor_preference, time_slot, available_days")
+        .eq("id", id)
+        .maybeSingle()
+    if (error) return { success: false as const, message: error.message }
+    return { success: true as const, data }
 }
 
 export async function overrideMentorCapacity(mentorId: string, newCapacity: number) {

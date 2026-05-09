@@ -54,7 +54,8 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee } from "@/lib/actions/adminActions"
+import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail } from "@/lib/actions/adminActions"
+import { Skeleton } from "@/components/ui/skeleton"
 import { getAnnouncements, createAnnouncement, deleteAnnouncement, type Announcement } from "@/lib/actions/announcementActions"
 import { Textarea } from "@/components/ui/textarea"
 import { Megaphone, Trash2 } from "lucide-react";
@@ -66,7 +67,6 @@ export default function Admin() {
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
     const [userFilter, setUserFilter] = useState("all")
-    const [selectedMentor, setSelectedMentor] = useState<any>(null)
     const [selectedMentorCard, setSelectedMentorCard] = useState<any>(null)
     const [selectedUser, setSelectedUser] = useState<any>(null)
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -83,6 +83,24 @@ export default function Admin() {
     // capacity override state: mentorId → draft value while editing
     const [capacityEdits, setCapacityEdits] = useState<Record<string, number>>({})
     const [savingCapacity, setSavingCapacity] = useState<string | null>(null)
+
+    const [mentorDetailCache, setMentorDetailCache] = useState<Record<string, { technical_skills?: string[]; forte?: string[]; self_description?: string }>>({})
+    const [menteeDetailCache, setMenteeDetailCache] = useState<Record<string, { research_description?: string; mentor_preference?: string; time_slot?: string[]; available_days?: string[] }>>({})
+
+    const loadMentorDetail = async (id: string) => {
+        if (mentorDetailCache[id]) return
+        const r = await getMentorDetail(id)
+        if (!r.success || !r.data) return
+        const data = r.data
+        setMentorDetailCache(prev => ({ ...prev, [id]: data }))
+    }
+    const loadMenteeDetail = async (id: string) => {
+        if (menteeDetailCache[id]) return
+        const r = await getMenteeDetail(id)
+        if (!r.success || !r.data) return
+        const data = r.data
+        setMenteeDetailCache(prev => ({ ...prev, [id]: data }))
+    }
 
     // announcements
     const [announcements, setAnnouncements] = useState<Announcement[]>([])
@@ -334,7 +352,25 @@ export default function Admin() {
         return matchesSearch && matchesFilter
     })
 
-    if (loading) return <p>Loading...</p>
+    if (loading) return (
+        <div className="flex h-screen bg-gray-50">
+            <AdminSidebar />
+            <div className="flex-1 overflow-auto">
+                <div className="bg-linear-to-r from-blue-600 to-indigo-600 text-white p-8 md:pl-8 pl-16">
+                    <h1 className="text-3xl font-bold mb-2">Mentor–Mentee Matching System</h1>
+                    <p className="text-blue-100">Administrative Dashboard</p>
+                </div>
+                <div className="p-8 space-y-6">
+                    <div className="grid md:grid-cols-4 gap-6">
+                        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
+                    </div>
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                </div>
+            </div>
+        </div>
+    )
 
     return (
         <div className="flex h-screen bg-gray-50">
@@ -745,9 +781,9 @@ export default function Admin() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Dialog>
+                                                        <Dialog onOpenChange={(open) => { if (open) loadMentorDetail(mentor.id) }}>
                                                             <DialogTrigger asChild>
-                                                                <Button variant="outline" size="sm" onClick={() => setSelectedMentor(mentor)}>
+                                                                <Button variant="outline" size="sm">
                                                                     <Eye className="w-4 h-4 mr-1" /> View
                                                                 </Button>
                                                             </DialogTrigger>
@@ -765,23 +801,35 @@ export default function Admin() {
                                                                             </div>
                                                                             <div>
                                                                                 <p className="text-sm text-slate-500">Technical Skills</p>
-                                                                                <div className="flex flex-wrap gap-1">
-                                                                                    {mentor.technical_skills?.map((skill: string) => (
-                                                                                        <Badge key={skill} variant="secondary">{skill}</Badge>
-                                                                                    ))}
-                                                                                </div>
+                                                                                {mentorDetailCache[mentor.id] ? (
+                                                                                    <div className="flex flex-wrap gap-1">
+                                                                                        {mentorDetailCache[mentor.id].technical_skills?.map((skill: string) => (
+                                                                                            <Badge key={skill} variant="secondary">{skill}</Badge>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <Skeleton className="h-5 w-40 mt-1" />
+                                                                                )}
                                                                             </div>
                                                                             <div>
                                                                                 <p className="text-sm text-slate-500">Forte</p>
-                                                                                <div className="flex flex-wrap gap-1">
-                                                                                    {mentor.forte?.map((f: string) => (
-                                                                                        <Badge key={f} variant="secondary">{f}</Badge>
-                                                                                    ))}
-                                                                                </div>
+                                                                                {mentorDetailCache[mentor.id] ? (
+                                                                                    <div className="flex flex-wrap gap-1">
+                                                                                        {mentorDetailCache[mentor.id].forte?.map((f: string) => (
+                                                                                            <Badge key={f} variant="secondary">{f}</Badge>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <Skeleton className="h-5 w-40 mt-1" />
+                                                                                )}
                                                                             </div>
                                                                             <div>
                                                                                 <p className="text-sm text-slate-500">Description</p>
-                                                                                <p className="font-medium">{mentor.self_description}</p>
+                                                                                {mentorDetailCache[mentor.id] ? (
+                                                                                    <p className="font-medium">{mentorDetailCache[mentor.id].self_description}</p>
+                                                                                ) : (
+                                                                                    <Skeleton className="h-4 w-full mt-1" />
+                                                                                )}
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -883,7 +931,7 @@ export default function Admin() {
                                                         {mentor ? `${mentor.first_name} ${mentor.last_name}` : "-"}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Dialog>
+                                                        <Dialog onOpenChange={(open) => { if (open) loadMenteeDetail(group.id) }}>
                                                             <DialogTrigger asChild>
                                                                 <Button variant="outline" size="sm">
                                                                     <Eye className="w-4 h-4 mr-1" /> View
@@ -915,15 +963,27 @@ export default function Admin() {
                                                                         </div>
                                                                         <div>
                                                                             <p className="font-bold">Research Description</p>
-                                                                            <p className="text-sm">{group.research_description}</p>
+                                                                            {menteeDetailCache[group.id] ? (
+                                                                                <p className="text-sm">{menteeDetailCache[group.id].research_description}</p>
+                                                                            ) : (
+                                                                                <Skeleton className="h-4 w-full mt-1" />
+                                                                            )}
                                                                         </div>
                                                                         <div>
                                                                             <p className="font-bold">Mentor Preferences</p>
-                                                                            <p className="text-sm">{group.mentor_preference}</p>
+                                                                            {menteeDetailCache[group.id] ? (
+                                                                                <p className="text-sm">{menteeDetailCache[group.id].mentor_preference}</p>
+                                                                            ) : (
+                                                                                <Skeleton className="h-4 w-3/4 mt-1" />
+                                                                            )}
                                                                         </div>
                                                                         <div>
                                                                             <p className="font-bold">Availability</p>
-                                                                            <p className="text-sm">Days: {group.available_days?.join(", ")} | Time: {group.time_slot?.join(", ")}</p>
+                                                                            {menteeDetailCache[group.id] ? (
+                                                                                <p className="text-sm">Days: {menteeDetailCache[group.id].available_days?.join(", ")} | Time: {menteeDetailCache[group.id].time_slot?.join(", ")}</p>
+                                                                            ) : (
+                                                                                <Skeleton className="h-4 w-2/3 mt-1" />
+                                                                            )}
                                                                         </div>
                                                                     </div>
                                                                 </ScrollArea>
