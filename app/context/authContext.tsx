@@ -69,6 +69,9 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
             return { success: false, error }
         }
 
+        // Revoke all other sessions so only this device stays logged in
+        await supabase.auth.signOut({ scope: 'others' })
+
         const { role } = await getUserRole(data.user.id)
         console.log("role from getUserRole:", role)
 
