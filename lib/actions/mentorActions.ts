@@ -77,10 +77,7 @@ export async function getMentorData() {
                     group_name,
                     group_members,
                     research_title,
-                    research_description,
-                    mentor_preference,
-                    time_slot,
-                    available_days
+                    time_slot
                 )
             )
         `)

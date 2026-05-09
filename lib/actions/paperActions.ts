@@ -68,7 +68,10 @@ export async function getMyPapers() {
 
     const { data, error } = await supabase
         .from("papers")
-        .select("*, paper_comments(*)")
+        .select(`
+            id, title, status, submitted_at, file_name, file_path, mentee_group_id, mentor_id,
+            paper_comments(id, comment, created_at, paper_id, mentor_id)
+        `)
         .eq("mentee_group_id", user.id)
         .order("submitted_at", { ascending: false })
 
@@ -84,8 +87,8 @@ export async function getMenteesPapers() {
     const { data, error } = await supabase
         .from("papers")
         .select(`
-            *,
-            paper_comments(*),
+            id, title, status, submitted_at, file_name, file_path, mentee_group_id, mentor_id,
+            paper_comments(id, comment, created_at, paper_id, mentor_id),
             mentee_group:mentee_group_id (group_name)
         `)
         .eq("mentor_id", user.id)
@@ -95,7 +98,7 @@ export async function getMenteesPapers() {
         console.error("getMenteesPapers error:", error.message)
         return { success: false, data: [] }
     }
-    return { success: true, data: data as Paper[] }
+    return { success: true, data: data as unknown as Paper[] }
 }
 
 export async function addComment(paperId: string, comment: string) {
