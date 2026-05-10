@@ -40,12 +40,33 @@ export type MeetingRecord = {
     is_recurring: boolean
     recurrence_day?: string
     recurrence_time?: string
+    notes?: string
     mentee_group?: {
         id: string
         group_name: string
         available_days?: string[]
         time_slot?: string[]
     }
+}
+
+export type Milestone = {
+    id: string
+    mentor_id: string
+    mentee_group_id: string
+    title: string
+    description?: string
+    due_date?: string
+    completed: boolean
+    completed_at?: string
+    created_at: string
+}
+
+export type MentorAnnouncement = {
+    id: string
+    mentor_id: string
+    title: string
+    body: string
+    created_at: string
 }
 
 export type PaperComment = {
