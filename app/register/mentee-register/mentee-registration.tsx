@@ -13,12 +13,10 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserAuth } from "../../context/authContext";
 import { checkEmailAvailable } from "@/lib/actions/authActions";
 
-export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
+export default function MenteeRegistration({ onNext }: { onNext: (email: string, password: string) => void }) {
     const router = useRouter();
-    const { setUserData } = UserAuth();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -63,8 +61,7 @@ export default function MenteeRegistration({ onNext }: { onNext: () => void }) {
             return
         }
         setEmailError("")
-        setUserData({ email, password });
-        onNext();
+        onNext(email, password);
     };
     const renderCheck = (valid: boolean) => (
         <span

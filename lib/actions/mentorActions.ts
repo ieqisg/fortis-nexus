@@ -87,6 +87,26 @@ export async function getMentorData() {
     return { success: true, data: mentor }
 }
 
+export async function getMentorPreferences(mentorId: string) {
+    const supabase = await getSupabaseClient()
+    const { data, error } = await supabase
+        .from("mentor_preferences")
+        .select("ranked_mentees, created_at")
+        .eq("mentor_id", mentorId)
+        .single()
+    if (error) return { success: false, data: null }
+    return { success: true, data: data.ranked_mentees as RankedMentee[] }
+}
+
+export type RankedMentee = {
+    rank: number
+    mentee_group_id: string
+    group_name: string
+    research_title: string
+    score: number
+    matched_keywords: string[]
+}
+
 export async function changeDefaultPassword(newPassword: string) {
     const supabase = await getSupabaseClient()
 

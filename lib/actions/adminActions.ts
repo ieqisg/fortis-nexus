@@ -174,6 +174,32 @@ export async function adminCreateMentee(payload: {
     return { success: true }
 }
 
+export async function cleanupOrphanedMentees() {
+    const { data: { users }, error } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+    if (error || !users) return { success: false, deleted: 0 }
+
+    const [{ data: menteeIds }, { data: mentorIds }, { data: adminIds }] = await Promise.all([
+        supabase.from("MENTEE_GROUPS").select("id"),
+        supabase.from("mentor").select("id"),
+        supabase.from("admin").select("id"),
+    ])
+
+    const knownIds = new Set([
+        ...(menteeIds ?? []).map(r => r.id),
+        ...(mentorIds ?? []).map(r => r.id),
+        ...(adminIds ?? []).map(r => r.id),
+    ])
+
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const orphans = users.filter(u =>
+        !knownIds.has(u.id) && new Date(u.created_at) < cutoff
+    )
+
+    await Promise.all(orphans.map(u => supabase.auth.admin.deleteUser(u.id)))
+
+    return { success: true, deleted: orphans.length }
+}
+
 export async function getMentorCapacityStats() {
     const { data, error } = await supabase
         .from("mentor")

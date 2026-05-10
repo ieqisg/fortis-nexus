@@ -22,7 +22,8 @@ import { UserAuth } from "@/app/context/authContext";
 import { useMentee } from "@/app/context/menteeContext";
 import { submitPaper, getPaperDownloadUrl } from "@/lib/actions/paperActions";
 import { getAnnouncements, type Announcement } from "@/lib/actions/announcementActions";
-import { Megaphone, X } from "lucide-react";
+import { getMenteePreferences, type RankedMentor } from "@/lib/actions/menteeActions";
+import { Megaphone, X, ChevronDown, ChevronUp, ListOrdered } from "lucide-react";
 import { toast } from "sonner";
 
 export default function MenteeDashboard() {
@@ -32,10 +33,22 @@ export default function MenteeDashboard() {
     const formRef = useRef<HTMLFormElement>(null)
     const [announcements, setAnnouncements] = useState<Announcement[]>([])
     const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set())
+    const [rankingOpen, setRankingOpen] = useState(false)
+    const [rankings, setRankings] = useState<RankedMentor[]>([])
+    const [rankingsLoading, setRankingsLoading] = useState(false)
 
     useEffect(() => {
         getAnnouncements("mentee").then(r => { if (r.success) setAnnouncements(r.data) })
     }, [])
+
+    useEffect(() => {
+        if (!mentee?.id) return
+        setRankingsLoading(true)
+        getMenteePreferences(mentee.id).then(r => {
+            if (r.success && r.data) setRankings(r.data)
+            setRankingsLoading(false)
+        })
+    }, [mentee?.id])
 
     const visibleAnnouncements = announcements.filter(a => !dismissedIds.has(a.id))
     const { userData } = UserAuth()
@@ -88,24 +101,24 @@ export default function MenteeDashboard() {
             <div className="flex-1 overflow-auto">
 
                 {/* Header */}
-                <div className="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 px-8 py-8 text-white">
-                    <div className="flex items-start justify-between">
+                <div className="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 pl-16 pr-4 sm:px-8 py-6 sm:py-8 text-white">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div>
                             <p className="text-emerald-200 text-sm font-medium mb-1">Welcome back</p>
-                            <h1 className="text-3xl font-bold">{mentee?.group_name ?? "..."}</h1>
-                            <p className="text-emerald-100 text-sm mt-1">{mentee?.research_title ?? ""}</p>
+                            <h1 className="text-2xl sm:text-3xl font-bold">{mentee?.group_name ?? "..."}</h1>
+                            <p className="text-emerald-100 text-sm mt-1 line-clamp-1">{mentee?.research_title ?? ""}</p>
                         </div>
-                        <div className="flex gap-4">
-                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[80px]">
+                        <div className="flex flex-wrap gap-3">
+                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[72px]">
                                 <p className="text-2xl font-bold">{papers.length}</p>
                                 <p className="text-xs text-emerald-100">Papers</p>
                             </div>
-                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[80px]">
+                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[72px]">
                                 <p className="text-2xl font-bold">{reviewedCount}</p>
                                 <p className="text-xs text-emerald-100">Reviewed</p>
                             </div>
                             {hasMatch && (
-                                <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[80px]">
+                                <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[72px]">
                                     <p className="text-2xl font-bold">{scorePercentage}%</p>
                                     <p className="text-xs text-emerald-100">Match</p>
                                 </div>
@@ -136,7 +149,7 @@ export default function MenteeDashboard() {
                     </div>
                 )}
 
-                <div className="p-6 space-y-6">
+                <div className="p-4 sm:p-6 space-y-6">
 
                     {/* Top row: Mentor + Meeting */}
                     <div className="grid lg:grid-cols-3 gap-5">
@@ -196,7 +209,7 @@ export default function MenteeDashboard() {
                                         </div>
 
                                         {/* Forte & Skills */}
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <div>
                                                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Expertise</p>
                                                 <div className="flex flex-wrap gap-1">
@@ -365,10 +378,114 @@ export default function MenteeDashboard() {
                         </div>
                     </div>
 
+                    {/* Mentor Preference List */}
+                    {rankings.length > 0 && (
+                        <Card className="border-0 shadow-sm">
+                            <button
+                                onClick={() => setRankingOpen(v => !v)}
+                                className="w-full flex items-center justify-between px-6 py-4 border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                            >
+                                <span className="text-base font-semibold text-slate-700 flex items-center gap-2">
+                                    <ListOrdered className="w-4 h-4 text-emerald-600" />
+                                    Your Mentor Rankings
+                                    <span className="text-xs font-normal text-slate-400 ml-1">
+                                        ({rankings.length} mentors ranked by compatibility)
+                                    </span>
+                                </span>
+                                {rankingOpen
+                                    ? <ChevronUp className="w-4 h-4 text-slate-400" />
+                                    : <ChevronDown className="w-4 h-4 text-slate-400" />
+                                }
+                            </button>
+
+                            {rankingOpen && (
+                                <CardContent className="pt-4">
+                                    {rankingsLoading ? (
+                                        <div className="space-y-2">
+                                            {[1, 2, 3].map(i => (
+                                                <div key={i} className="h-14 bg-slate-100 rounded-lg animate-pulse" />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+                                            {rankings.map((r) => {
+                                                const isMatch = r.mentor_id === matches?.mentor?.id
+                                                const pct = Math.round(r.score * 100)
+                                                return (
+                                                    <div
+                                                        key={r.mentor_id}
+                                                        className={`flex items-center gap-4 rounded-xl px-4 py-3 border transition-colors ${
+                                                            isMatch
+                                                                ? "border-emerald-300 bg-emerald-50"
+                                                                : "border-slate-100 bg-white hover:border-slate-200"
+                                                        }`}
+                                                    >
+                                                        {/* Rank badge */}
+                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                                                            r.rank === 1
+                                                                ? "bg-amber-100 text-amber-700"
+                                                                : r.rank <= 3
+                                                                ? "bg-slate-100 text-slate-600"
+                                                                : "bg-slate-50 text-slate-400"
+                                                        }`}>
+                                                            #{r.rank}
+                                                        </div>
+
+                                                        {/* Avatar */}
+                                                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                                            {r.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                                                        </div>
+
+                                                        {/* Name + keywords */}
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="text-sm font-semibold text-slate-800">{r.name}</span>
+                                                                {isMatch && (
+                                                                    <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">
+                                                                        Your Match
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {r.matched_keywords.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                                    {r.matched_keywords.slice(0, 3).map((kw, i) => (
+                                                                        <span key={i} className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
+                                                                            {kw}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Score bar */}
+                                                        <div className="hidden sm:block w-28 shrink-0">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-slate-400">Match</span>
+                                                                <span className={`text-xs font-bold ${isMatch ? "text-emerald-600" : "text-slate-600"}`}>
+                                                                    {pct}%
+                                                                </span>
+                                                            </div>
+                                                            <div className="w-full bg-slate-100 rounded-full h-1.5">
+                                                                <div
+                                                                    className={`h-1.5 rounded-full ${isMatch ? "bg-emerald-500" : "bg-slate-300"}`}
+                                                                    style={{ width: `${pct}%` }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            )}
+                        </Card>
+                    )}
+
                     {/* Papers section */}
                     <Card className="border-0 shadow-sm">
                         {/* Tab header */}
-                        <div className="flex border-b border-slate-100">
+                        <div className="flex flex-wrap border-b border-slate-100">
                             <button
                                 onClick={() => setActiveTab("submit")}
                                 className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === "submit"
