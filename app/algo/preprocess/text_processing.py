@@ -194,7 +194,7 @@ CS_TECH_VOCAB: frozenset[str] = frozenset({
     "variational inference", "mcmc",
 
     # ── Deep learning architectures ────────────────────────────────────────
-    "neural network", "deep learning",
+    "neural network", "deep learning", "machine learning",
     "convolutional neural network", "cnn",
     "recurrent neural network", "rnn",
     "long short term memory", "lstm",

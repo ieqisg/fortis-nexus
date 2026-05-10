@@ -199,7 +199,7 @@ export default function MenteeDashboard() {
                                             </div>
                                             {matches.matched_keywords && matches.matched_keywords.length > 0 && (
                                                 <div className="flex flex-wrap gap-1 mt-2">
-                                                    {matches.matched_keywords.slice(0, 4).map((kw: string, i: number) => (
+                                                    {matches.matched_keywords.map((kw: string, i: number) => (
                                                         <span key={i} className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
                                                             {kw}
                                                         </span>
@@ -448,7 +448,7 @@ export default function MenteeDashboard() {
                                                             </div>
                                                             {r.matched_keywords.length > 0 && (
                                                                 <div className="flex flex-wrap gap-1 mt-1">
-                                                                    {r.matched_keywords.slice(0, 3).map((kw, i) => (
+                                                                    {r.matched_keywords.map((kw, i) => (
                                                                         <span key={i} className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
                                                                             {kw}
                                                                         </span>

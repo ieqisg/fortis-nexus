@@ -152,6 +152,57 @@ DOMAIN_MAP = {
     "vr": [
         "virtual reality", "ar", "mixed reality", "3d rendering", "unity"
     ],
+
+    # ── Classic / foundational algorithms ─────────────────────────────────
+    "algorithms": [
+        "graph algorithms", "sorting algorithms", "dynamic programming",
+        "greedy algorithms", "divide and conquer", "backtracking",
+        "breadth first search", "depth first search", "binary search",
+        "dijkstra", "a star", "bellman ford", "floyd warshall",
+        "kruskal", "prim", "topological sort",
+    ],
+    "graph algorithms": [
+        "dijkstra", "a star", "bellman ford", "floyd warshall",
+        "breadth first search", "depth first search", "kruskal", "prim",
+        "topological sort", "minimum spanning tree", "shortest path",
+    ],
+    "graph theory": [
+        "graph algorithms", "dijkstra", "breadth first search",
+        "depth first search", "minimum spanning tree", "topological sort",
+    ],
+    "dijkstra": [
+        "shortest path", "graph algorithms", "greedy algorithms", "weighted graph",
+    ],
+    "a star": [
+        "heuristic search", "pathfinding", "graph algorithms", "shortest path",
+    ],
+    "dynamic programming": [
+        "memoization", "tabulation", "optimal substructure",
+        "overlapping subproblems", "knapsack problem",
+    ],
+    "dp": [
+        "dynamic programming", "memoization", "tabulation",
+    ],
+    "sorting algorithms": [
+        "merge sort", "quicksort", "heap sort", "bubble sort",
+        "insertion sort", "radix sort", "counting sort",
+    ],
+    "data structures": [
+        "binary tree", "binary search tree", "heap", "linked list",
+        "hash table", "graph", "stack", "queue", "trie", "balanced tree",
+    ],
+    "greedy algorithms": [
+        "dijkstra", "prim", "kruskal", "activity selection",
+        "huffman coding", "fractional knapsack",
+    ],
+    "computational complexity": [
+        "big o notation", "time complexity", "space complexity",
+        "np complete", "np hard", "polynomial time",
+    ],
+    "algorithm analysis": [
+        "time complexity", "space complexity", "big o notation",
+        "asymptotic analysis", "recurrence relation",
+    ],
 }
 
 # ─────────────────────────────────────────────

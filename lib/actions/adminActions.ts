@@ -200,6 +200,18 @@ export async function cleanupOrphanedMentees() {
     return { success: true, deleted: orphans.length }
 }
 
+export async function getLatestAlgorithmLog() {
+    const { data, error } = await supabase
+        .from("algorithm_logs")
+        .select("log_data, created_at")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single()
+
+    if (error || !data) return { success: false, log: null }
+    return { success: true, log: data.log_data }
+}
+
 export async function getMentorCapacityStats() {
     const { data, error } = await supabase
         .from("mentor")

@@ -413,7 +413,7 @@ def _build_direct_mentee_str(mentee: dict) -> str:
     return clean_text(" ".join(parts))
 
 
-def get_matched_keywords(mentor: dict, mentee: dict, top_n: int = 5) -> list[str]:
+def get_matched_keywords(mentor: dict, mentee: dict) -> list[str]:
     """
     Returns shared technical keywords between mentor and mentee.
 
@@ -423,39 +423,51 @@ def get_matched_keywords(mentor: dict, mentee: dict, top_n: int = 5) -> list[str
 
     Priority order:
       1. Terms that appear in both profiles AND are in CS_TECH_VOCAB
-         (algorithms, languages, frameworks, etc.)
-      2. Shared ngrams that are not academic filler (length > 3)
+      2. Shared bigrams (two-word phrases) not in academic stop words
+         — unigrams are excluded to prevent fragments like "machine" and
+           "learning" appearing alongside the phrase "machine learning"
     """
     mentor_kw_str = _build_direct_mentor_str(mentor)
     mentee_kw_str = _build_direct_mentee_str(mentee)
 
-    # Priority 1: shared vocabulary hits (most meaningful signal)
+    # Priority 1: shared vocabulary hits (most meaningful signal, no cap)
     mentor_vocab = set(_extract_vocab_matches(mentor_kw_str))
     mentee_vocab = set(_extract_vocab_matches(mentee_kw_str))
     shared_vocab = sorted(mentor_vocab & mentee_vocab, key=len, reverse=True)
 
-    if len(shared_vocab) >= top_n:
-        return shared_vocab[:top_n]
-
-    # Priority 2: shared ngrams not in academic stop words
-    def get_ngrams(text: str) -> set[str]:
-        words    = text.split()
-        unigrams = {w for w in words if len(w) > 3 and w not in ACADEMIC_STOP_WORDS}
-        bigrams  = {
+    # Priority 2: shared bigrams only — avoids fragment/phrase duplication
+    def get_bigrams(text: str) -> set[str]:
+        words = text.split()
+        return {
             f"{words[i]} {words[i+1]}"
             for i in range(len(words) - 1)
-            if words[i] not in ACADEMIC_STOP_WORDS and words[i+1] not in ACADEMIC_STOP_WORDS
+            if words[i] not in ACADEMIC_STOP_WORDS
+            and words[i+1] not in ACADEMIC_STOP_WORDS
+            and len(words[i]) > 3
+            and len(words[i+1]) > 3
         }
-        return unigrams | bigrams
 
-    shared_ngrams = get_ngrams(mentor_kw_str) & get_ngrams(mentee_kw_str)
-    already_seen  = set(shared_vocab)
+    shared_bigrams = get_bigrams(mentor_kw_str) & get_bigrams(mentee_kw_str)
+    already_seen = set(shared_vocab)
     extras = sorted(
-        (w for w in shared_ngrams if w not in already_seen),
+        (bg for bg in shared_bigrams
+         if bg not in already_seen
+         and not any(bg in v for v in already_seen)),
         key=len, reverse=True
     )
 
-    return (shared_vocab + extras)[: top_n]
+    return shared_vocab + extras
+
+
+def extract_profile_keywords(profiles: list[dict], is_mentor: bool) -> list[tuple[str, list[str]]]:
+    """Returns [(display_name, [keywords])] for terminal logging."""
+    result = []
+    for p in profiles:
+        text = _build_direct_mentor_str(p) if is_mentor else _build_direct_mentee_str(p)
+        kws  = _extract_vocab_matches(text)
+        name = f"{p.get('first_name', '')} {p.get('last_name', '')}".strip() if is_mentor else p.get("group_name", "")
+        result.append((name, kws))
+    return result
 
 
 # ─────────────────────────────────────────────────────────────────────────────

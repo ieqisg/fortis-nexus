@@ -2,7 +2,8 @@ const matchingService = require("../services/matchingService")
 
 async function runMatching(req, res) {
     try {
-        const result = await matchingService.runMatchingScript()
+        const mode = req.body?.mode ?? "fair-matching"
+        const result = await matchingService.runMatchingScript(mode)
         return res.status(200).json(result)
     } catch (error) {
         // if already running
