@@ -1,0 +1,66 @@
+══════════════════════════════════════════════════════
+  FORTIS NEXUS — THESIS METRICS REPORT
+  Run      : 2026-05-10 10:25:20 UTC  |  mentee-optimal
+  Generated: 2026-05-10 10:51:05 UTC
+══════════════════════════════════════════════════════
+
+  ──────────────────────────────────────────────────────
+  3.1  CORRECTNESS METRICS
+  ──────────────────────────────────────────────────────
+  [#1] Stability Rate ..................... 100.0%  [PASS]  (9/9 stable runs)
+  [#2] Match Coverage ..................... 100.0%  [PASS]  (41/41 matched)
+  [#3] Capacity Utilization ................ 40.2%  [WARN]  (41/102 slots, 5 idle mentors)
+  [#4] Gini Coefficient ................... 0.0278  [PASS]  (<=0.10 target)
+  [#5] Score Floor Compliance ............. 100.0%  [PASS]  (all >=0.70)
+
+  ──────────────────────────────────────────────────────
+  3.2  SEMANTIC QUALITY METRICS
+  ──────────────────────────────────────────────────────
+  [#6] Keyword Precision ................... 85.6%  [PASS]  (30 pairs)
+  [#7] Domain Overlap Rate .............. 5.51 avg  [PASS]  (shared domains per pair)
+  [#8] Mentee Preferred-Match Rate ........ 100.0%  [PASS]  (top-2 mentor, 41 checked)
+  [#9] Mentor Preferred-Match Rate ......... 97.6%  [PASS]  (top-14 tier, 41 checked)
+
+  ──────────────────────────────────────────────────────
+  3.3  EFFICIENCY METRICS
+  ──────────────────────────────────────────────────────
+  [#10] Throughput  N/A  [WARN]  (Cannot compute without latency)
+  [#11] Wall-Clock Latency  N/A  [WARN]  (started_at or timestamp missing from log)
+
+  [#12] Score Distribution  (n=41)
+         Mean     : 0.9671    Median   : 1.0000
+         Std      : 0.0658    Min      : 0.7667    Max : 1.0000
+         P25      : 0.9956    P75      : 1.0000
+         Skewness : -1.7932    Kurtosis : 1.7882
+         SEM      : 0.0103    95% CI   : [0.9463, 0.9878]
+         Normality: stat=21.148, p=0.000  (normal dist. rejected)
+
+  ══════════════════════════════════════════════════════
+
+  Mentor Capacity Breakdown:
+  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+  Adrian Velasco              5/5  [#####]  100%
+  Faith Ramos                 4/4  [####]  100%
+  Bianca Rivera               3/4  [###.]  75%
+  Hannah Uy                   3/3  [###]  100%
+  Ian Mendoza                 3/4  [###.]  75%
+  Karl Navarro                3/4  [###.]  75%
+  Nicole Bautista             3/6  [###...]  50%
+  Ralph Dizon                 3/4  [###.]  75%
+  Test Mentor Mentor          3/4  [###.]  75%
+  Christian Lopez             2/6  [##....]  33%
+  Denise Tan                  2/5  [##...]  40%
+  Ethan Garcia                2/7  [##.....]  29%
+  Samantha Co                 2/6  [##....]  33%
+  Jasmine Cruz                1/6  [#.....]  17%
+  Tristan Reyes               1/5  [#....]  20%
+  Victoria Ong                1/4  [#...]  25%
+  Gabriel Sy                  0/5  [.....]  0%
+  Lia Flores                  0/7  [.......]  0%
+  Marcus Lee                  0/5  [.....]  0%
+  Oscar Lim                   0/3  [...]  0%
+  Paula Torres                0/5  [.....]  0%
+  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+
+  Log file : metrics_log.txt  (overwritten each run)
+  Charts   : metrics_score_distribution.png, metrics_lorenz_curve.png, metrics_capacity.png, metrics_summary.png
