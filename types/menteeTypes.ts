@@ -14,6 +14,8 @@ export type Matches = {
         email: string
         self_description: string
         experience: number
+        available_days: string[]
+        time_slot: string[]
         prev_mentored_thesis: import("./mentorTypes").PrevMentoredThesis[]
     } | null
     mentee: {
@@ -56,6 +58,7 @@ export type MenteeMeeting = {
     recurrence_day: string
     recurrence_time: string
     is_recurring: boolean
+    notes?: string
     mentor: {
         id: string
         first_name: string

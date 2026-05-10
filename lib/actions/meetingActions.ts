@@ -181,3 +181,18 @@ export async function updateMeetingStatus(
     if (error) return { success: false }
     return { success: true }
 }
+
+export async function updateMeetingNotes(meetingId: string, notes: string) {
+    const supabase = await getSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, message: "Not authenticated" }
+
+    const { error } = await supabase
+        .from("meetings")
+        .update({ notes })
+        .eq("id", meetingId)
+        .eq("mentor_id", user.id)
+
+    if (error) return { success: false, message: error.message }
+    return { success: true }
+}

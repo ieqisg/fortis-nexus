@@ -74,10 +74,15 @@ export async function getMentorData() {
                 matched_keywords,
                 mentee:matches_mentee_group_id_fkey (
                     id,
+                    email,
                     group_name,
                     group_members,
                     research_title,
-                    time_slot
+                    research_description,
+                    mentor_preference,
+                    available_days,
+                    time_slot,
+                    communication_preference
                 )
             )
         `)

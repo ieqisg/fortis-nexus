@@ -3,10 +3,12 @@ import MyMentees from "./my-mentees";
 import ProgressMentees from "./progress-mentee";
 import SubmittedPapers from "./submitted-papers";
 import Meeting from "./meeting";
+import Milestones from "./milestones";
+import MentorAnnouncements from "./mentor-announcements";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Sidebar from "@/components/ui/Sidebar";
 import { useMentor } from "@/app/context/mentorContext";
-import { Users, TrendingUp, FileText, CalendarDays, CheckCircle2, Clock, Megaphone, X } from "lucide-react";
+import { Users, TrendingUp, FileText, CalendarDays, CheckCircle2, Clock, Megaphone, X, Target } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getAnnouncements, Announcement } from "@/lib/actions/announcementActions";
 
@@ -111,12 +113,13 @@ export default function MentorDashboard() {
                 {/* Tabs */}
                 <div className="p-4 sm:p-6">
                     <Tabs defaultValue="mentees" className="space-y-5">
-                        <TabsList className="bg-white border border-slate-200 shadow-sm p-1 h-auto gap-1 flex flex-wrap">
+                        <div className="overflow-x-auto -mx-1 px-1 pb-1">
+                        <TabsList className="bg-white border border-slate-200 shadow-sm p-1 h-auto gap-1 flex flex-nowrap w-max min-w-full">
                             <TabsTrigger
                                 value="mentees"
-                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-4 py-2 text-sm"
+                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-3 py-2 text-sm whitespace-nowrap"
                             >
-                                <Users className="w-4 h-4" /> My Mentees
+                                <Users className="w-4 h-4 shrink-0" /> My Mentees
                                 {matchCount > 0 && (
                                     <span className="bg-blue-100 text-blue-700 data-[state=active]:bg-white/20 data-[state=active]:text-white text-xs px-1.5 py-0.5 rounded-full">
                                         {matchCount}
@@ -125,15 +128,15 @@ export default function MentorDashboard() {
                             </TabsTrigger>
                             <TabsTrigger
                                 value="progress"
-                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-4 py-2 text-sm"
+                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-3 py-2 text-sm whitespace-nowrap"
                             >
-                                <TrendingUp className="w-4 h-4" /> Progress Tracking
+                                <TrendingUp className="w-4 h-4 shrink-0" /> Progress
                             </TabsTrigger>
                             <TabsTrigger
                                 value="papers"
-                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-4 py-2 text-sm"
+                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-3 py-2 text-sm whitespace-nowrap"
                             >
-                                <FileText className="w-4 h-4" /> Submitted Papers
+                                <FileText className="w-4 h-4 shrink-0" /> Papers
                                 {pendingCount > 0 && (
                                     <span className="bg-amber-100 text-amber-700 text-xs px-1.5 py-0.5 rounded-full">
                                         {pendingCount}
@@ -142,11 +145,24 @@ export default function MentorDashboard() {
                             </TabsTrigger>
                             <TabsTrigger
                                 value="calendar"
-                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-4 py-2 text-sm"
+                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-3 py-2 text-sm whitespace-nowrap"
                             >
-                                <CalendarDays className="w-4 h-4" /> Calendar & Meetings
+                                <CalendarDays className="w-4 h-4 shrink-0" /> Meetings
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="milestones"
+                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-3 py-2 text-sm whitespace-nowrap"
+                            >
+                                <Target className="w-4 h-4 shrink-0" /> Milestones
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="announcements"
+                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-3 py-2 text-sm whitespace-nowrap"
+                            >
+                                <Megaphone className="w-4 h-4 shrink-0" /> Announcements
                             </TabsTrigger>
                         </TabsList>
+                        </div>
 
                         <TabsContent value="mentees" className="space-y-4 mt-0">
                             <MyMentees matches={mentor?.matches ?? []} mentorId={mentor?.id ?? ""} />
@@ -164,6 +180,14 @@ export default function MentorDashboard() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <Meeting matches={mentor?.matches ?? []} mentorTimeSlots={mentor?.time_slot ?? []} />
                             </div>
+                        </TabsContent>
+
+                        <TabsContent value="milestones" className="space-y-4 mt-0">
+                            <Milestones matches={mentor?.matches ?? []} />
+                        </TabsContent>
+
+                        <TabsContent value="announcements" className="space-y-4 mt-0">
+                            <MentorAnnouncements />
                         </TabsContent>
                     </Tabs>
                 </div>

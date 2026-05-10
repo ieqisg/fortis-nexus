@@ -16,12 +16,13 @@ import {
     Select, SelectContent, SelectItem,
     SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Calendar as CalendarIcon, Clock, Plus, RefreshCw, Edit, Sparkles, Users, CheckCircle2, AlertCircle } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, Plus, RefreshCw, Edit, Sparkles, Users, CheckCircle2, AlertCircle, NotebookPen, Save } from "lucide-react"
 import { Matches } from "@/types/menteeTypes"
-import { setRecurringMeeting, setRecurringMeetingForAll } from "@/lib/actions/meetingActions"
+import { setRecurringMeeting, setRecurringMeetingForAll, updateMeetingNotes } from "@/lib/actions/meetingActions"
 import { parseSlot } from "@/components/ui/AvailabilitySelector"
 import { useMentor } from "@/app/context/mentorContext"
 import type { MeetingRecord } from "@/types/mentorTypes"
+import { toast } from "sonner"
 
 type Meeting = MeetingRecord
 
@@ -102,6 +103,22 @@ export default function Meeting({ matches = [], mentorTimeSlots = [] }: Props) {
         recurrence_time: "",
     })
     const [savingBulk, setSavingBulk] = useState(false)
+
+    // meeting notes: keyed by meetingId
+    const [notesMap, setNotesMap] = useState<Record<string, string>>({})
+    const [savingNotes, setSavingNotes] = useState<Record<string, boolean>>({})
+
+    const handleSaveNotes = async (meetingId: string) => {
+        setSavingNotes(prev => ({ ...prev, [meetingId]: true }))
+        const result = await updateMeetingNotes(meetingId, notesMap[meetingId] ?? "")
+        if (result.success) {
+            setMeetings(prev => prev.map(m => m.id === meetingId ? { ...m, notes: notesMap[meetingId] } : m))
+            toast.success("Meeting notes saved")
+        } else {
+            toast.error("Failed to save notes")
+        }
+        setSavingNotes(prev => ({ ...prev, [meetingId]: false }))
+    }
 
     const recommendations = useMemo(
         () => computeRecommendations(mentorTimeSlots, matches),
@@ -356,18 +373,43 @@ export default function Meeting({ matches = [], mentorTimeSlots = [] }: Props) {
                             </CardHeader>
                             <CardContent>
                                 {recurring ? (
-                                    <div className="flex items-center gap-4 p-3 bg-blue-50 rounded-lg">
-                                        <RefreshCw className="w-5 h-5 text-blue-600 shrink-0" />
-                                        <div>
-                                            <p className="font-medium text-sm text-blue-900">{recurring.title}</p>
-                                            <p className="text-xs text-blue-700">
-                                                Every <strong>{recurring.recurrence_day}</strong> at <strong>{recurring.recurrence_time}</strong>
-                                            </p>
-                                            {recurring.description && (
-                                                <p className="text-xs text-slate-600 mt-1">{recurring.description}</p>
-                                            )}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-4 p-3 bg-blue-50 rounded-lg">
+                                            <RefreshCw className="w-5 h-5 text-blue-600 shrink-0" />
+                                            <div>
+                                                <p className="font-medium text-sm text-blue-900">{recurring.title}</p>
+                                                <p className="text-xs text-blue-700">
+                                                    Every <strong>{recurring.recurrence_day}</strong> at <strong>{recurring.recurrence_time}</strong>
+                                                </p>
+                                                {recurring.description && (
+                                                    <p className="text-xs text-slate-600 mt-1">{recurring.description}</p>
+                                                )}
+                                            </div>
+                                            <Badge className="ml-auto bg-blue-100 text-blue-800">Recurring</Badge>
                                         </div>
-                                        <Badge className="ml-auto bg-blue-100 text-blue-800">Recurring</Badge>
+                                        {/* Meeting notes */}
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-medium text-slate-600 flex items-center gap-1">
+                                                <NotebookPen className="w-3.5 h-3.5" /> Meeting Notes
+                                            </Label>
+                                            <Textarea
+                                                className="text-sm resize-none"
+                                                rows={3}
+                                                placeholder="Write session notes, action items, or discussion points..."
+                                                value={notesMap[recurring.id] ?? recurring.notes ?? ""}
+                                                onChange={e => setNotesMap(prev => ({ ...prev, [recurring.id]: e.target.value }))}
+                                            />
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="gap-1"
+                                                disabled={savingNotes[recurring.id]}
+                                                onClick={() => handleSaveNotes(recurring.id)}
+                                            >
+                                                <Save className="w-3.5 h-3.5" />
+                                                {savingNotes[recurring.id] ? "Saving..." : "Save Notes"}
+                                            </Button>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="space-y-2">

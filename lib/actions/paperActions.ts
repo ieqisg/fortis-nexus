@@ -28,6 +28,27 @@ export async function submitPaper(formData: FormData) {
 
     if (!match?.mentor_id) return { success: false, message: "No mentor assigned yet" }
 
+    // Enforce single-paper-at-a-time: block if a pending paper exists
+    const { data: existing } = await supabase
+        .from("papers")
+        .select("id, status, file_path")
+        .eq("mentee_group_id", user.id)
+        .order("submitted_at", { ascending: false })
+
+    const pendingPaper = existing?.find(p => p.status === "pending")
+    if (pendingPaper) {
+        return { success: false, message: "You have a paper awaiting review. Submit a new one after your mentor reviews it." }
+    }
+
+    // Delete previously reviewed paper(s) before inserting the new one
+    const reviewedPapers = existing?.filter(p => p.status === "reviewed") ?? []
+    for (const old of reviewedPapers) {
+        if (old.file_path) {
+            await adminSupabase.storage.from("papers").remove([old.file_path])
+        }
+        await supabase.from("papers").delete().eq("id", old.id)
+    }
+
     let file_path: string | null = null
     let file_name: string | null = null
 
