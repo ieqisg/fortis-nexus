@@ -47,14 +47,16 @@ import {
     XCircle,
     FileText,
     CheckCircle,
-    Clock,
     UserPlus,
     Plus,
     X,
+    Scale,
+    GraduationCap,
+    Loader2,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees } from "@/lib/actions/adminActions"
+import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog } from "@/lib/actions/adminActions"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getAnnouncements, createAnnouncement, deleteAnnouncement, type Announcement } from "@/lib/actions/announcementActions"
 import { Textarea } from "@/components/ui/textarea"
@@ -75,9 +77,17 @@ export default function Admin() {
     const [userToDelete, setUserToDelete] = useState<any>(null)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [deletingUser, setDeletingUser] = useState(false)
-    const [matching, setMatching] = useState(false)
+    const [matchingMode, setMatchingMode] = useState<string | null>(null)
+    const matching = matchingMode !== null
     const [matchResult, setMatchResult] = useState<any>(null)
     const [matchLog, setMatchLog] = useState<any>(null)
+    const [visibleUsers, setVisibleUsers] = useState(10)
+    const [visibleCapacity, setVisibleCapacity] = useState(8)
+    const [visibleMentorGrid, setVisibleMentorGrid] = useState(6)
+    const [visibleMentees, setVisibleMentees] = useState(8)
+    const [visibleScores, setVisibleScores] = useState(5)
+    const [visibleMatches, setVisibleMatches] = useState(5)
+    const [showAllProposals, setShowAllProposals] = useState(false)
     const [rollingBack, setRollingBack] = useState(false)
     const [isRollbackDialogOpen, setIsRollbackDialogOpen] = useState(false)
     // capacity override state: mentorId → draft value while editing
@@ -116,10 +126,14 @@ export default function Admin() {
     const [creatingUser, setCreatingUser] = useState(false)
     const [showCreatePassword, setShowCreatePassword] = useState(false)
 
-    const handleRunMatching = async () => {
-        setMatching(true)
+    const handleRunMatching = async (mode: string) => {
+        setMatchingMode(mode)
         try {
-            const res = await fetch("/api/run-matching", { method: "POST" })
+            const res = await fetch("/api/run-matching", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mode }),
+            })
             const data = await res.json()
             setMatchResult(data)
             if (data.log) {
@@ -135,7 +149,7 @@ export default function Admin() {
         } catch (err) {
             toast.error("Failed to run matching")
         }
-        setMatching(false)
+        setMatchingMode(null)
     }
 
     const handleRollback = async () => {
@@ -316,16 +330,18 @@ export default function Admin() {
 
     useEffect(() => {
         const fetchData = async () => {
-            const [userResult, annResult] = await Promise.all([
+            const [userResult, annResult, logResult] = await Promise.all([
                 getAllUserData(),
                 getAnnouncements("mentor"), // fetches "all" + "mentor" — admin sees everything
-                cleanupOrphanedMentees(),
+                getLatestAlgorithmLog(),
             ])
+            cleanupOrphanedMentees()
             if (userResult.success) {
                 setMentors(userResult.data.mentors ?? [])
                 setMentees(userResult.data.mentee ?? [])
             }
             if (annResult.success) setAnnouncements(annResult.data)
+            if (logResult.success && logResult.log) setMatchLog(logResult.log)
             setLoading(false)
         }
         fetchData()
@@ -456,34 +472,82 @@ export default function Admin() {
                             </div>
                         </div>
 
-                        {/* Run Matching Button */}
-                        <div className="flex items-center gap-4 mt-4">
-                            <Button
-                                onClick={handleRunMatching}
-                                disabled={matching || rollingBack}
-                                className="bg-blue-600 hover:bg-blue-700"
-                            >
-                                {matching ? (
-                                    <>
-                                        <Clock className="w-4 h-4 mr-2 animate-spin" />
-                                        Running Matching...
-                                    </>
-                                ) : (
-                                    <>
-                                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                                        Run Matching Algorithm
-                                    </>
-                                )}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() => setIsRollbackDialogOpen(true)}
-                                disabled={matching || rollingBack}
-                                className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
-                            >
-                                <XCircle className="w-4 h-4 mr-2" />
-                                Rollback Matches
-                            </Button>
+                        {/* Run Matching Buttons */}
+                        <div className="mt-4 space-y-3">
+                            <div className="flex flex-wrap gap-3">
+                                <div className="flex flex-col items-start gap-1">
+                                    <Button
+                                        onClick={() => handleRunMatching("mentee-optimal")}
+                                        disabled={matching || rollingBack}
+                                        className="bg-emerald-600 hover:bg-emerald-700"
+                                    >
+                                        {matchingMode === "mentee-optimal" ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                Running...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Users className="w-4 h-4 mr-2" />
+                                                Mentee-Optimal
+                                            </>
+                                        )}
+                                    </Button>
+                                    <p className="text-xs text-slate-400">Mentees propose · best for mentees</p>
+                                </div>
+                                <div className="flex flex-col items-start gap-1">
+                                    <Button
+                                        onClick={() => handleRunMatching("mentor-optimal")}
+                                        disabled={matching || rollingBack}
+                                        className="bg-violet-600 hover:bg-violet-700"
+                                    >
+                                        {matchingMode === "mentor-optimal" ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                Running...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <GraduationCap className="w-4 h-4 mr-2" />
+                                                Mentor-Optimal
+                                            </>
+                                        )}
+                                    </Button>
+                                    <p className="text-xs text-slate-400">Mentors propose · best for mentors</p>
+                                </div>
+                                <div className="flex flex-col items-start gap-1">
+                                    <Button
+                                        onClick={() => handleRunMatching("fair-matching")}
+                                        disabled={matching || rollingBack}
+                                        className="bg-blue-600 hover:bg-blue-700"
+                                    >
+                                        {matchingMode === "fair-matching" ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                Running...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Scale className="w-4 h-4 mr-2" />
+                                                Fair Matching
+                                            </>
+                                        )}
+                                    </Button>
+                                    <p className="text-xs text-slate-400">Runs both · picks fairer result</p>
+                                </div>
+                                <div className="flex flex-col items-start gap-1">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setIsRollbackDialogOpen(true)}
+                                        disabled={matching || rollingBack}
+                                        className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                    >
+                                        <XCircle className="w-4 h-4 mr-2" />
+                                        Rollback Matches
+                                    </Button>
+                                    <p className="text-xs text-slate-400">Undo last run</p>
+                                </div>
+                            </div>
                             {matchResult && (
                                 <p className={`text-sm ${matchResult.success ? "text-green-600" : "text-red-600"}`}>
                                     {matchResult.message}
@@ -647,7 +711,7 @@ export default function Admin() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {filteredUsers.map((user) => (
+                                        {filteredUsers.slice(0, visibleUsers).map((user) => (
                                             <TableRow key={user.id}>
                                                 <TableCell className="font-medium">
                                                     {user.type === "mentor"
@@ -677,6 +741,16 @@ export default function Admin() {
                                         ))}
                                     </TableBody>
                                 </Table>
+                                {filteredUsers.length > 10 && (
+                                    <button
+                                        onClick={() => setVisibleUsers(v => v >= filteredUsers.length ? 10 : Math.min(v + 10, filteredUsers.length))}
+                                        className="text-sm text-blue-600 hover:underline mt-2 w-full text-center py-2"
+                                    >
+                                        {visibleUsers >= filteredUsers.length
+                                            ? "Show Less"
+                                            : `Show More (${filteredUsers.length - visibleUsers} remaining)`}
+                                    </button>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
@@ -734,7 +808,7 @@ export default function Admin() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {mentors.map((mentor) => {
+                                        {mentors.slice(0, visibleCapacity).map((mentor) => {
                                             const assigned = mentor.matches?.length ?? 0
                                             const capacity = mentor.mentor_capacity ?? 0
                                             const remaining = capacity - assigned
@@ -843,6 +917,16 @@ export default function Admin() {
                                         })}
                                     </TableBody>
                                 </Table>
+                                {mentors.length > 8 && (
+                                    <button
+                                        onClick={() => setVisibleCapacity(v => v >= mentors.length ? 8 : Math.min(v + 8, mentors.length))}
+                                        className="text-sm text-blue-600 hover:underline mt-2 w-full text-center py-2"
+                                    >
+                                        {visibleCapacity >= mentors.length
+                                            ? "Show Less"
+                                            : `Show More (${mentors.length - visibleCapacity} remaining)`}
+                                    </button>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
@@ -856,7 +940,7 @@ export default function Admin() {
                             </CardHeader>
                             <CardContent>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {mentors.map((mentor) => {
+                                    {mentors.slice(0, visibleMentorGrid).map((mentor) => {
                                         const assigned = mentor.matches?.length ?? 0
                                         const capacity = mentor.mentor_capacity ?? 0
                                         return (
@@ -887,6 +971,16 @@ export default function Admin() {
                                         )
                                     })}
                                 </div>
+                                {mentors.length > 6 && (
+                                    <button
+                                        onClick={() => setVisibleMentorGrid(v => v >= mentors.length ? 6 : Math.min(v + 6, mentors.length))}
+                                        className="text-sm text-blue-600 hover:underline mt-3 w-full text-center py-2"
+                                    >
+                                        {visibleMentorGrid >= mentors.length
+                                            ? "Show Less"
+                                            : `Show More (${mentors.length - visibleMentorGrid} remaining)`}
+                                    </button>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
@@ -911,7 +1005,7 @@ export default function Admin() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {mentees.map((group) => {
+                                        {mentees.slice(0, visibleMentees).map((group) => {
                                             const match = group.matches
                                             const mentor = match?.mentor
                                             const status = match?.status ?? "unmatched"
@@ -996,6 +1090,16 @@ export default function Admin() {
                                         })}
                                     </TableBody>
                                 </Table>
+                                {mentees.length > 8 && (
+                                    <button
+                                        onClick={() => setVisibleMentees(v => v >= mentees.length ? 8 : Math.min(v + 8, mentees.length))}
+                                        className="text-sm text-blue-600 hover:underline mt-2 w-full text-center py-2"
+                                    >
+                                        {visibleMentees >= mentees.length
+                                            ? "Show Less"
+                                            : `Show More (${mentees.length - visibleMentees} remaining)`}
+                                    </button>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
@@ -1082,7 +1186,7 @@ export default function Admin() {
                                                     <div className="mt-4">
                                                         <p className="font-medium text-sm mb-3">Top compatibility scores per mentee group:</p>
                                                         <div className="space-y-3">
-                                                            {matchLog.phase2.scores.map((entry: any) => (
+                                                            {matchLog.phase2.scores.slice(0, visibleScores).map((entry: any) => (
                                                                 <div key={entry.mentee_id} className="border rounded-lg p-3 bg-white">
                                                                     <p className="font-semibold text-sm text-gray-800 mb-2">{entry.mentee_name}</p>
                                                                     <div className="space-y-1">
@@ -1105,7 +1209,7 @@ export default function Admin() {
                                                                                     </Badge>
                                                                                 )}
                                                                                 <div className="flex gap-1 flex-wrap">
-                                                                                    {match.matched_keywords?.slice(0, 3).map((kw: string) => (
+                                                                                    {match.matched_keywords?.map((kw: string) => (
                                                                                         <Badge key={kw} variant="outline" className="text-xs">{kw}</Badge>
                                                                                     ))}
                                                                                 </div>
@@ -1114,6 +1218,16 @@ export default function Admin() {
                                                                     </div>
                                                                 </div>
                                                             ))}
+                                                            {matchLog.phase2.scores.length > 5 && (
+                                                                <button
+                                                                    onClick={() => setVisibleScores(v => v >= matchLog.phase2.scores.length ? 5 : Math.min(v + 5, matchLog.phase2.scores.length))}
+                                                                    className="text-sm text-blue-600 hover:underline mt-1 w-full text-center py-2"
+                                                                >
+                                                                    {visibleScores >= matchLog.phase2.scores.length
+                                                                        ? "Show Less"
+                                                                        : `Show More (${matchLog.phase2.scores.length - visibleScores} remaining)`}
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 )}
@@ -1158,6 +1272,52 @@ export default function Admin() {
                                                         </div>
                                                     </div>
                                                 </div>
+
+                                                {/* Proposal Phase */}
+                                                {(matchLog.phase3.proposal_events_mo || matchLog.phase3.proposal_events_meo) && (() => {
+                                                    const events: any[] = matchLog.phase3.proposal_events_mo ?? matchLog.phase3.proposal_events_meo ?? []
+                                                    const label = matchLog.phase3.proposal_events_mo ? "Mentee-Optimal" : "Mentor-Optimal"
+                                                    const displayed = showAllProposals ? events : events.slice(0, 20)
+                                                    const typeColors: Record<string, string> = {
+                                                        propose: "bg-blue-100 text-blue-700",
+                                                        accept:  "bg-green-100 text-green-700",
+                                                        reject:  "bg-red-100 text-red-700",
+                                                        replace: "bg-orange-100 text-orange-700",
+                                                    }
+                                                    return (
+                                                        <div className="rounded-lg border border-slate-200 overflow-hidden">
+                                                            <div className="p-3 bg-slate-50 border-b border-slate-200">
+                                                                <p className="text-xs font-semibold text-slate-700">
+                                                                    Proposal Phase · {label} ({events.length} events)
+                                                                </p>
+                                                            </div>
+                                                            <div className="p-3 space-y-1 max-h-72 overflow-y-auto">
+                                                                {displayed.map((ev: any, idx: number) => (
+                                                                    <div key={idx} className="flex items-center gap-2 text-xs font-mono">
+                                                                        <span className="text-slate-400 w-8 text-right shrink-0">#{ev.round}</span>
+                                                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0 ${typeColors[ev.type] ?? "bg-slate-100 text-slate-600"}`}>
+                                                                            {ev.type}
+                                                                        </span>
+                                                                        <span className="text-slate-700 truncate">{ev.proposer}</span>
+                                                                        <span className="text-slate-400 shrink-0">→</span>
+                                                                        <span className="text-slate-700 truncate">{ev.to}</span>
+                                                                        {ev.replaced && (
+                                                                            <span className="text-orange-600 truncate">(replaced: {ev.replaced})</span>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            {events.length > 20 && (
+                                                                <button
+                                                                    onClick={() => setShowAllProposals(v => !v)}
+                                                                    className="text-xs text-blue-600 hover:underline w-full text-center py-2 border-t border-slate-100"
+                                                                >
+                                                                    {showAllProposals ? "Show Less" : `Show All ${events.length} Events`}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )
+                                                })()}
 
                                                 <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
                                                     <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
@@ -1210,19 +1370,29 @@ export default function Admin() {
                                                 {matchLog.unmatched > 0 && `, ${matchLog.unmatched} unmatched`})
                                             </h3>
                                             <div className="space-y-2">
-                                                {matchLog.phase3.matches?.map((match: any, idx: number) => (
+                                                {matchLog.phase3.matches?.slice(0, visibleMatches).map((match: any, idx: number) => (
                                                     <div key={idx} className="flex flex-wrap items-center justify-between p-2 bg-white rounded gap-2">
                                                         <span className="font-medium text-sm w-36 shrink-0">{match.mentee_name}</span>
                                                         <span className="text-emerald-600 text-sm">→ {match.mentor_name}</span>
                                                         <span className="text-slate-500 text-xs bg-slate-100 px-2 py-0.5 rounded">score: {match.score}</span>
                                                         <div className="flex gap-1 flex-wrap">
-                                                            {match.keywords?.slice(0, 3).map((kw: string) => (
+                                                            {match.keywords?.map((kw: string) => (
                                                                 <Badge key={kw} variant="outline" className="text-xs">{kw}</Badge>
                                                             ))}
                                                         </div>
                                                     </div>
                                                 ))}
                                             </div>
+                                            {(matchLog.phase3.matches?.length ?? 0) > 5 && (
+                                                <button
+                                                    onClick={() => setVisibleMatches(v => v >= matchLog.phase3.matches.length ? 5 : Math.min(v + 5, matchLog.phase3.matches.length))}
+                                                    className="text-sm text-blue-600 hover:underline mt-2 w-full text-center py-2"
+                                                >
+                                                    {visibleMatches >= matchLog.phase3.matches.length
+                                                        ? "Show Less"
+                                                        : `Show More (${matchLog.phase3.matches.length - visibleMatches} remaining)`}
+                                                </button>
+                                            )}
                                         </div>
 
                                     </div>
@@ -1346,7 +1516,7 @@ export default function Admin() {
                                             <p className="text-xs text-slate-600 line-clamp-2">{mentee.research_title}</p>
                                             {match.matched_keywords?.length > 0 && (
                                                 <div className="flex flex-wrap gap-1">
-                                                    {match.matched_keywords.slice(0, 3).map((kw: string) => (
+                                                    {match.matched_keywords.map((kw: string) => (
                                                         <Badge key={kw} variant="outline" className="text-xs">{kw}</Badge>
                                                     ))}
                                                 </div>

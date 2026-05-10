@@ -10,11 +10,12 @@ __MATCHING_LOG_END__ markers so Node.js can parse the result.
 
 import os
 import json
+import argparse
 from dotenv import load_dotenv
 from supabase import create_client
 from datetime import datetime, timezone
 
-from scoring import compute_weighted_scores, get_matched_keywords
+from scoring import compute_weighted_scores, get_matched_keywords, extract_profile_keywords
 from matching import (
     generate_preferences,
     hospital_resident,
@@ -25,6 +26,9 @@ from matching import (
 )
 
 load_dotenv()
+
+SEP  = "─" * 62
+DSEP = "═" * 62
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -48,11 +52,9 @@ def fetch_mentors(supabase) -> list[dict]:
     """
     result = supabase.table("mentor").select("*").execute()
     mentors = result.data
-    print(f"  Fetched {len(mentors)} mentors")
 
     # Normalize array fields that Supabase may return as JSON strings
     for mentor in mentors:
-        # Normalize communication_preference to None if empty/missing
         cp = mentor.get("communication_preference")
         if not cp:
             mentor["communication_preference"] = None
@@ -67,7 +69,6 @@ def fetch_mentors(supabase) -> list[dict]:
             elif val is None:
                 mentor[field] = []
 
-        # prev_mentored_thesis: normalize to list
         prev = mentor.get("prev_mentored_thesis")
         if isinstance(prev, str):
             try:
@@ -83,11 +84,8 @@ def fetch_mentors(supabase) -> list[dict]:
 def fetch_mentees(supabase) -> list[dict]:
     result = supabase.table("MENTEE_GROUPS").select("*").execute()
     mentees = result.data
-    print(f"  Fetched {len(mentees)} mentees")
 
-    # Normalize array fields
     for mentee in mentees:
-        # Normalize communication_preference to None if empty/missing
         cp = mentee.get("communication_preference")
         if not cp:
             mentee["communication_preference"] = None
@@ -130,8 +128,8 @@ def save_preferences(
     supabase,
     mentors: list[dict],
     mentees: list[dict],
-    scores,           # np.ndarray shape (n_mentees, n_mentors)
-    breakdowns,       # list[list[ScoreBreakdown]] or None
+    scores,
+    breakdowns,
     mentee_prefs: dict,
     mentor_prefs: dict,
 ):
@@ -146,7 +144,6 @@ def save_preferences(
 
     ts = datetime.now(timezone.utc).isoformat()
 
-    # ── mentee_preferences ────────────────────────────────────────────────
     mentee_pref_rows = []
     for mentee in mentees:
         mid   = mentee["id"]
@@ -173,7 +170,6 @@ def save_preferences(
             "created_at":      ts,
         })
 
-    # ── mentor_preferences ────────────────────────────────────────────────
     mentor_pref_rows = []
     for mentor in mentors:
         mid   = mentor["id"]
@@ -201,7 +197,6 @@ def save_preferences(
             "created_at":     ts,
         })
 
-    # Upsert (replace on re-run)
     if mentee_pref_rows:
         supabase.table("mentee_preferences").upsert(mentee_pref_rows).execute()
         print(f"  ✅ Saved preference lists for {len(mentee_pref_rows)} mentees")
@@ -211,98 +206,137 @@ def save_preferences(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PRINT RESULTS
-# ─────────────────────────────────────────────────────────────────────────────
-
-def print_results(match_records, mentors, mentees):
-    mentor_map = {m["id"]: m for m in mentors}
-    mentee_map = {m["id"]: m for m in mentees}
-
-    print(f"\n🎯 Final Matches ({len(match_records)} total):")
-    print(f"{'Mentee Group':<25} {'Mentor':<25} {'Score':<10} {'Algorithm':<18} {'Keywords'}")
-    print("-" * 100)
-
-    for record in match_records:
-        mentee = mentee_map.get(record["mentee_group_id"], {})
-        mentor = mentor_map.get(record["mentor_id"], {})
-        print(
-            f"{mentee.get('group_name', 'Unknown'):<25} "
-            f"{mentor.get('first_name', '')} {mentor.get('last_name', ''):<18} "
-            f"{record['compatibility_score']:<10} "
-            f"{record.get('algorithm', ''):<18} "
-            f"{record['matched_keywords']}"
-        )
-
-    matched_ids = {r["mentee_group_id"] for r in match_records}
-    unmatched   = [m for m in mentees if m["id"] not in matched_ids]
-    if unmatched:
-        print(f"\n⚠️  Unmatched mentees ({len(unmatched)}):")
-        for m in unmatched:
-            print(f"  - {m['group_name']}")
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("=" * 60)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--mode",
+        choices=["mentee-optimal", "mentor-optimal", "fair-matching"],
+        default="fair-matching",
+    )
+    args = parser.parse_args()
+    mode = args.mode
+
+    started_at = datetime.now(timezone.utc)
+
+    print(DSEP)
     print("  MENTOR-MENTEE MATCHING SYSTEM")
-    print(f"  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 60)
+    print(f"  {started_at.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"  Mode: {mode}")
+    print(DSEP)
 
     # ── Step 1: Connect ───────────────────────────────────────────────────────
-    print("\n📦 Step 1: Connecting to Supabase...")
+    print(f"\n{SEP}")
+    print("  STEP 1 · Connecting to Supabase")
+    print(SEP)
     supabase = get_supabase()
+    print("  ✅ Connected")
 
-    # ── Step 2: Fetch ─────────────────────────────────────────────────────────
-    print("\n📦 Step 2: Fetching data...")
+    # ── Step 2: Fetch + Keyword Extraction ────────────────────────────────────
+    print(f"\n{SEP}")
+    print("  STEP 2 · Fetching Data")
+    print(SEP)
     mentors = fetch_mentors(supabase)
     mentees = fetch_mentees(supabase)
 
     if not mentors:
-        print("❌ No mentors found. Exiting.")
+        print("  ❌ No mentors found. Exiting.")
         exit(1)
     if not mentees:
-        print("❌ No mentees found. Exiting.")
+        print("  ❌ No mentees found. Exiting.")
         exit(1)
 
-    mentor_map = {m["id"]: m for m in mentors}
-    mentee_map = {m["id"]: m for m in mentees}
+    print(f"  Fetched {len(mentors)} mentors, {len(mentees)} mentees")
+
+    mentor_map   = {m["id"]: m for m in mentors}
+    mentee_map   = {m["id"]: m for m in mentees}
+
+    # Keyword extraction log
+    print(f"\n{SEP}")
+    print(f"  STEP 2b · Keyword Extraction  ({len(mentors)} mentors, {len(mentees)} mentees)")
+    print(SEP)
+
+    mentor_kws = extract_profile_keywords(mentors, is_mentor=True)
+    print("  Mentors:")
+    for idx, (name, kws) in enumerate(mentor_kws, start=1):
+        kw_str = " | ".join(kws) if kws else "(no vocab keywords found)"
+        print(f"    [{idx:>2}] {name}")
+        print(f"         keywords : {kw_str}")
+
+    print()
+    mentee_kws = extract_profile_keywords(mentees, is_mentor=False)
+    print("  Mentees:")
+    for idx, (name, kws) in enumerate(mentee_kws, start=1):
+        title  = mentee_map.get(mentees[idx - 1]["id"], {}).get("research_title", "")
+        kw_str = " | ".join(kws) if kws else "(no vocab keywords found)"
+        print(f"    [{idx:>2}] {name}  ·  {title}")
+        print(f"         keywords : {kw_str}")
 
     # ── Step 3: Scoring ───────────────────────────────────────────────────────
-    print("\n📊 Step 3: Computing compatibility scores...")
+    print(f"\n{SEP}")
+    print("  STEP 3 · Compatibility Scoring")
+    print(SEP)
+    print("  Weights → keyword 60%  ·  experience 20%  ·  availability 10%")
+    print("            communication 5%  ·  meeting frequency 5%")
+    print()
+
     scores, breakdowns = compute_weighted_scores(mentors, mentees, return_breakdowns=True)
 
     score_log = []
     if breakdowns:
+        print("  Top scores per mentee group:")
+        THIN = "  " + "┄" * 58
         for i, mentee_bds in enumerate(breakdowns):
-            mentee     = mentees[i]
+            mentee      = mentees[i]
             top_matches = sorted(mentee_bds, key=lambda b: b.final_score, reverse=True)[:3]
+            print(THIN)
+            print(f"  {mentee.get('group_name', '')}:")
+            for rank, bd in enumerate(top_matches, start=1):
+                mentor_name = (
+                    f"{mentor_map.get(bd.mentor_id, {}).get('first_name', '')} "
+                    f"{mentor_map.get(bd.mentor_id, {}).get('last_name', '')}".strip()
+                )
+                pct = bd.final_score * 100
+                print(
+                    f"    {rank}. {mentor_name:<22} {pct:>5.1f}%  "
+                    f"kw={bd.keyword_score:.3f} exp={bd.experience_score:.3f} "
+                    f"avail={bd.availability_score:.3f} comm={bd.communication_score:.3f} "
+                    f"freq={bd.meeting_frequency_score:.3f}"
+                )
+            if top_matches and top_matches[0].matched_keywords:
+                kw_preview = ", ".join(top_matches[0].matched_keywords[:6])
+                print(f"    shared keywords (top match): {kw_preview}")
+
             score_log.append({
                 "mentee_id":   mentee["id"],
                 "mentee_name": mentee.get("group_name", ""),
                 "top_matches": [
                     {
-                        "mentor_id":                 bd.mentor_id,
-                        "mentor_name":               f"{mentor_map.get(bd.mentor_id, {}).get('first_name', '')} {mentor_map.get(bd.mentor_id, {}).get('last_name', '')}".strip(),
-                        "keyword_score":             round(bd.keyword_score, 4),
-                        "availability_score":        round(bd.availability_score, 4),
-                        "experience_score":          round(bd.experience_score, 4),
-                        "communication_score":       round(bd.communication_score, 4),
-                        "meeting_frequency_score":   round(bd.meeting_frequency_score, 4),
-                        "communication_mode":        bd.communication_mode,
-                        "final_score":               round(bd.final_score, 4),
-                        "matched_keywords":          bd.matched_keywords,
-                        "shared_domains":            bd.shared_domains,
-                        "matching_hints":            bd.matching_hints,
+                        "mentor_id":               bd.mentor_id,
+                        "mentor_name":             f"{mentor_map.get(bd.mentor_id, {}).get('first_name', '')} {mentor_map.get(bd.mentor_id, {}).get('last_name', '')}".strip(),
+                        "keyword_score":           round(bd.keyword_score, 4),
+                        "availability_score":      round(bd.availability_score, 4),
+                        "experience_score":        round(bd.experience_score, 4),
+                        "communication_score":     round(bd.communication_score, 4),
+                        "meeting_frequency_score": round(bd.meeting_frequency_score, 4),
+                        "communication_mode":      bd.communication_mode,
+                        "final_score":             round(bd.final_score, 4),
+                        "matched_keywords":        bd.matched_keywords,
+                        "shared_domains":          bd.shared_domains,
+                        "matching_hints":          bd.matching_hints,
                     }
                     for bd in top_matches
                 ],
             })
+        print(THIN)
 
     # ── Step 4: Preferences ───────────────────────────────────────────────────
-    print("\n📋 Step 4: Generating preferences...")
+    print(f"\n{SEP}")
+    print("  STEP 4 · Preference Lists")
+    print(SEP)
+
     mentee_prefs, mentor_prefs = generate_preferences(mentors, mentees, scores)
 
     preference_log = {
@@ -328,35 +362,101 @@ if __name__ == "__main__":
         ],
     }
 
+    print("  Mentee → Mentor preferences (top 5):")
+    for entry in preference_log["mentee_preferences"]:
+        ranked_str = " → ".join(entry["ranked_mentors"][:5])
+        print(f"    {entry['mentee_name']:<28}:  {ranked_str}")
+
+    print()
+    print("  Mentor → Mentee preferences (top 5):")
+    for entry in preference_log["mentor_preferences"]:
+        ranked_str = " → ".join(entry["ranked_mentees"][:5])
+        print(f"    {entry['mentor_name']:<28}:  {ranked_str}")
+
     # ── Step 5: Matching ──────────────────────────────────────────────────────
     hospital_capacity = {m["id"]: m.get("mentor_capacity") or 1 for m in mentors}
 
-    print("\n🏥 Step 5a: Running HR (mentee-optimal)...")
-    assignment_mo, _ = hospital_resident(
-        residents=mentees, hospitals=mentors,
-        resident_prefs=mentee_prefs, hospital_prefs=mentor_prefs,
-        hospital_capacity=hospital_capacity,
-    )
+    print(f"\n{SEP}")
+    print("  STEP 5 · Gale-Shapley Hospital-Resident Matching")
+    print(f"  Mode: {mode}")
+    print(SEP)
 
-    print("\n🏥 Step 5b: Running HR (mentor-optimal)...")
-    assignment_meo, _ = hospital_resident_mentor_optimal(
-        residents=mentees, hospitals=mentors,
-        resident_prefs=mentee_prefs, hospital_prefs=mentor_prefs,
-        hospital_capacity=hospital_capacity,
-    )
+    assignment_mo       = None
+    assignment_meo      = None
+    proposal_events_mo  = None
+    proposal_events_meo = None
 
-    print("\n⚖️  Step 5c: Picking fairer matching...")
-    final_assignment, method = pick_fairer_matching(
-        mentors, mentees,
-        assignment_mo, assignment_meo,
-        mentee_prefs, mentor_prefs,
-    )
+    def resolve_name(uid: str) -> str:
+        if uid in mentor_map:
+            m = mentor_map[uid]
+            return f"{m.get('first_name', '')} {m.get('last_name', '')}".strip()
+        if uid in mentee_map:
+            return mentee_map[uid].get("group_name", uid)
+        return uid
 
-    print("\n🔍 Step 5d: Verifying stability...")
+    def resolve_events(events: list[dict]) -> list[dict]:
+        return [
+            {**e,
+             "proposer": resolve_name(e["proposer"]),
+             "to":       resolve_name(e["to"]),
+             "replaced": resolve_name(e["replaced"]) if e["replaced"] else None}
+            for e in events
+        ]
+
+    def print_proposal_events(events: list[dict], label: str) -> None:
+        THIN = "  " + "┄" * 58
+        print(f"\n  Proposal events ({label}): {len(events)} total")
+        print(THIN)
+        for ev in events[:30]:
+            replaced_str = f"   (replaced: {ev['replaced']})" if ev["replaced"] else ""
+            print(f"    [{ev['round']:>3}] {ev['type'].upper():<8}  {ev['proposer']:<24}  →  {ev['to']}{replaced_str}")
+        if len(events) > 30:
+            print(f"  ... ({len(events) - 30} more events — full list in frontend log)")
+
+    if mode in ("mentee-optimal", "fair-matching"):
+        print("\n  5a · Running HR (mentee-optimal)...")
+        print("       Mentees propose → mentors accept/reject based on preference rank")
+        assignment_mo, _, proposal_events_mo = hospital_resident(
+            residents=mentees, hospitals=mentors,
+            resident_prefs=mentee_prefs, hospital_prefs=mentor_prefs,
+            hospital_capacity=hospital_capacity,
+        )
+        print(f"       Matched: {len(assignment_mo)} pairs")
+        print_proposal_events(resolve_events(proposal_events_mo), "mentee-optimal")
+
+    if mode in ("mentor-optimal", "fair-matching"):
+        print("\n  5b · Running HR (mentor-optimal)...")
+        print("       Mentors propose → mentees accept/reject based on preference rank")
+        assignment_meo, _, proposal_events_meo = hospital_resident_mentor_optimal(
+            residents=mentees, hospitals=mentors,
+            resident_prefs=mentee_prefs, hospital_prefs=mentor_prefs,
+            hospital_capacity=hospital_capacity,
+        )
+        print(f"       Matched: {len(assignment_meo)} pairs")
+        print_proposal_events(resolve_events(proposal_events_meo), "mentor-optimal")
+
+    if mode == "fair-matching":
+        print("\n  5c · Picking fairer matching...")
+        final_assignment, method = pick_fairer_matching(
+            mentors, mentees,
+            assignment_mo, assignment_meo,
+            mentee_prefs, mentor_prefs,
+        )
+        print(f"       Selected: {method}")
+    elif mode == "mentee-optimal":
+        final_assignment, method = assignment_mo, "mentee-optimal"
+        print(f"\n  Result: mentee-optimal ({len(final_assignment)} pairs)")
+    else:
+        final_assignment, method = assignment_meo, "mentor-optimal"
+        print(f"\n  Result: mentor-optimal ({len(final_assignment)} pairs)")
+
+    print("\n  5d · Verifying stability...")
     is_stable = verify_stability(
         final_assignment, mentors, mentees,
         mentee_prefs, mentor_prefs, hospital_capacity,
     )
+    stability_label = "✅ STABLE — no blocking pairs" if is_stable else "⚠️  UNSTABLE — blocking pairs detected"
+    print(f"      {stability_label}")
 
     # ── Step 6: Build match records ───────────────────────────────────────────
     mentee_index = {m["id"]: i for i, m in enumerate(mentees)}
@@ -376,10 +476,10 @@ if __name__ == "__main__":
             "is_stable":           is_stable,
         })
 
-    print_results(match_records, mentors, mentees)
-
     # ── Step 7: Save ──────────────────────────────────────────────────────────
-    print("\n💾 Step 7: Saving to Supabase...")
+    print(f"\n{SEP}")
+    print("  STEP 7 · Saving to Supabase")
+    print(SEP)
     clear_matches(supabase)
     save_matches(supabase, match_records)
     save_preferences(
@@ -389,12 +489,13 @@ if __name__ == "__main__":
 
     # ── Step 8: JSON log for Node.js ──────────────────────────────────────────
     log_output = {
-        "success":   True,
-        "matched":   len(match_records),
-        "unmatched": len(mentees) - len(match_records),
-        "algorithm": method,
-        "is_stable": is_stable,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "success":    True,
+        "matched":    len(match_records),
+        "unmatched":  len(mentees) - len(match_records),
+        "algorithm":  method,
+        "is_stable":  is_stable,
+        "started_at": started_at.isoformat(),
+        "timestamp":  datetime.now(timezone.utc).isoformat(),
         "phase1": {
             "mentors_count":      len(mentors),
             "mentees_count":      len(mentees),
@@ -403,16 +504,19 @@ if __name__ == "__main__":
             "prev_thesis_used":   True,
         },
         "phase2": {
-            "scores":               score_log,
+            "scores":                score_log,
             "availability_computed": True,
             "experience_computed":   True,
         },
         "phase3": {
-            "preferences":             preference_log,
-            "mentee_optimal_matches":  len(assignment_mo),
-            "mentor_optimal_matches":  len(assignment_meo),
-            "selected_algorithm":      method,
-            "is_stable":               is_stable,
+            "preferences":            preference_log,
+            "mode":                   mode,
+            "mentee_optimal_matches": len(assignment_mo) if assignment_mo is not None else None,
+            "mentor_optimal_matches": len(assignment_meo) if assignment_meo is not None else None,
+            "selected_algorithm":     method,
+            "is_stable":              is_stable,
+            "proposal_events_mo":     resolve_events(proposal_events_mo)  if proposal_events_mo  is not None else None,
+            "proposal_events_meo":    resolve_events(proposal_events_meo) if proposal_events_meo is not None else None,
             "matches": [
                 {
                     "mentee_name": mentee_map.get(r["mentee_group_id"], {}).get("group_name", ""),
@@ -435,4 +539,20 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[Warning] Could not save algorithm log: {e}")
 
-    print("\n✅ Matching complete!")
+    # ── Results summary ───────────────────────────────────────────────────────
+    unmatched_groups = [m for m in mentees if m["id"] not in final_assignment]
+
+    print(f"\n{SEP}")
+    print("  RESULTS")
+    print(SEP)
+    print(f"  Matched   : {len(match_records)} / {len(mentees)}")
+    print(f"  Unmatched : {len(unmatched_groups)}")
+    print(f"  Algorithm : {method}")
+    print(f"  Stable    : {stability_label}")
+    if unmatched_groups:
+        print("  Unmatched groups:")
+        for m in unmatched_groups:
+            print(f"    - {m.get('group_name', m['id'])}")
+    print(SEP)
+    print("  ✅ Matching complete!")
+    print(DSEP)

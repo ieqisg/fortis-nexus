@@ -68,7 +68,7 @@ def hospital_resident(
     resident_prefs: dict,
     hospital_prefs: dict,
     hospital_capacity: dict,
-) -> tuple[dict, dict]:
+) -> tuple[dict, dict, list[dict]]:
     """
     Hospital-Resident Algorithm, resident-proposing variant.
 
@@ -79,6 +79,7 @@ def hospital_resident(
     Returns:
         resident_assignment:  { mentee_id: mentor_id }
         hospital_assignments: { mentor_id: [mentee_ids] }
+        proposal_events:      list of {round, type, proposer, to, replaced} (IDs)
     """
     # Precompute hospital ranking lookup for O(1) comparison
     hospital_rank = {
@@ -90,6 +91,8 @@ def hospital_resident(
     next_proposal        = {r["id"]: 0 for r in residents}
     hospital_assignments = {h["id"]: [] for h in hospitals}
     resident_assignment  = {}
+    proposal_events: list[dict] = []
+    round_num = 0
 
     while free_residents:
         r_id  = free_residents.popleft()
@@ -106,10 +109,14 @@ def hospital_resident(
         next_proposal[r_id] += 1
         assigned = hospital_assignments[h_id]
         capacity = hospital_capacity.get(h_id, 1)
+        round_num += 1
+
+        proposal_events.append({"round": round_num, "type": "propose", "proposer": r_id, "to": h_id, "replaced": None})
 
         if len(assigned) < capacity:
             assigned.append(r_id)
             resident_assignment[r_id] = h_id
+            proposal_events.append({"round": round_num, "type": "accept", "proposer": r_id, "to": h_id, "replaced": None})
         else:
             worst_r_id    = max(assigned, key=lambda rid: hospital_rank[h_id].get(rid, float("inf")))
             current_rank  = hospital_rank[h_id].get(r_id, float("inf"))
@@ -121,10 +128,12 @@ def hospital_resident(
                 resident_assignment[r_id] = h_id
                 del resident_assignment[worst_r_id]
                 free_residents.append(worst_r_id)
+                proposal_events.append({"round": round_num, "type": "replace", "proposer": r_id, "to": h_id, "replaced": worst_r_id})
             else:
                 free_residents.append(r_id)
+                proposal_events.append({"round": round_num, "type": "reject", "proposer": r_id, "to": h_id, "replaced": None})
 
-    return resident_assignment, hospital_assignments
+    return resident_assignment, hospital_assignments, proposal_events
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -137,7 +146,7 @@ def hospital_resident_mentor_optimal(
     resident_prefs: dict,
     hospital_prefs: dict,
     hospital_capacity: dict,
-) -> tuple[dict, dict]:
+) -> tuple[dict, dict, list[dict]]:
     """
     Hospital-Resident Algorithm, hospital-proposing variant.
     Produces the mentor-optimal stable matching.
@@ -145,7 +154,7 @@ def hospital_resident_mentor_optimal(
     Each hospital proposes one slot at a time to residents.
     Residents hold their best offer and reject others.
 
-    Returns same format as hospital_resident().
+    Returns same format as hospital_resident() plus proposal_events.
     """
     # Precompute resident ranking for O(1) comparison
     resident_rank = {
@@ -156,6 +165,8 @@ def hospital_resident_mentor_optimal(
     hospital_proposal_index  = {h["id"]: 0 for h in hospitals}
     hospital_remaining_slots = {h["id"]: hospital_capacity.get(h["id"], 1) for h in hospitals}
     resident_holding         = {}  # r_id → h_id (best offer held)
+    proposal_events: list[dict] = []
+    round_num = 0
 
     # All hospitals with capacity start active
     active_hospitals = deque(
@@ -171,10 +182,14 @@ def hospital_resident_mentor_optimal(
 
         r_id = prefs[hospital_proposal_index[h_id]]
         hospital_proposal_index[h_id] += 1
+        round_num += 1
+
+        proposal_events.append({"round": round_num, "type": "propose", "proposer": h_id, "to": r_id, "replaced": None})
 
         if r_id not in resident_holding:
             resident_holding[r_id] = h_id
             hospital_remaining_slots[h_id] -= 1
+            proposal_events.append({"round": round_num, "type": "accept", "proposer": h_id, "to": r_id, "replaced": None})
             if hospital_remaining_slots[h_id] > 0:
                 active_hospitals.append(h_id)
         else:
@@ -189,18 +204,20 @@ def hospital_resident_mentor_optimal(
                 # Rejected hospital gets its slot back
                 hospital_remaining_slots[current_h_id] += 1
                 active_hospitals.append(current_h_id)
+                proposal_events.append({"round": round_num, "type": "replace", "proposer": h_id, "to": r_id, "replaced": current_h_id})
                 if hospital_remaining_slots[h_id] > 0:
                     active_hospitals.append(h_id)
             else:
                 # Resident rejects — hospital tries next
                 active_hospitals.append(h_id)
+                proposal_events.append({"round": round_num, "type": "reject", "proposer": h_id, "to": r_id, "replaced": None})
 
     resident_assignment  = dict(resident_holding)
     hospital_assignments = {}
     for r_id, h_id in resident_assignment.items():
         hospital_assignments.setdefault(h_id, []).append(r_id)
 
-    return resident_assignment, hospital_assignments
+    return resident_assignment, hospital_assignments, proposal_events
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -414,7 +431,7 @@ def run_matching(
 
     # ── Step 3a: HR mentee-optimal ────────────────────────────────────────────
     print("\n🏥 Step 3a: Running HR (mentee-optimal)...")
-    assignment_mo, _ = hospital_resident(
+    assignment_mo, _, _ = hospital_resident(
         residents=mentees, hospitals=mentors,
         resident_prefs=mentee_prefs, hospital_prefs=mentor_prefs,
         hospital_capacity=hospital_capacity,
@@ -423,7 +440,7 @@ def run_matching(
 
     # ── Step 3b: HR mentor-optimal ────────────────────────────────────────────
     print("\n🏥 Step 3b: Running HR (mentor-optimal)...")
-    assignment_meo, _ = hospital_resident_mentor_optimal(
+    assignment_meo, _, _ = hospital_resident_mentor_optimal(
         residents=mentees, hospitals=mentors,
         resident_prefs=mentee_prefs, hospital_prefs=mentor_prefs,
         hospital_capacity=hospital_capacity,
