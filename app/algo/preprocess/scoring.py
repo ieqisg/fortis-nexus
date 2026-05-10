@@ -39,6 +39,8 @@ from text_processing import (
     clean_text,
     build_mentor_text,
     build_mentee_text,
+    _extract_vocab_matches,
+    ACADEMIC_STOP_WORDS,
 )
 from domain_expander import expand_pair
 
@@ -391,18 +393,69 @@ def _experience_score(mentor: dict) -> float:
 # 7. GET MATCHED KEYWORDS
 # ─────────────────────────────────────────────────────────────────────────────
 
-def get_matched_keywords(mentor: dict, mentee: dict, top_n: int = 5) -> list[str]:
-    mentor_kw_str = build_mentor_keyword_string(mentor)
-    mentee_kw_str = build_mentee_keyword_string(mentee)
+def _build_direct_mentor_str(mentor: dict) -> str:
+    """Keyword string from raw profile fields only — no domain expansion."""
+    parts = [
+        " ".join(mentor.get("technical_skills") or []),
+        " ".join(mentor.get("forte") or []),
+        mentor.get("self_description") or "",
+    ]
+    return clean_text(" ".join(parts))
 
+
+def _build_direct_mentee_str(mentee: dict) -> str:
+    """Keyword string from raw profile fields only — no domain expansion."""
+    parts = [
+        mentee.get("research_title") or "",
+        mentee.get("research_description") or "",
+        mentee.get("mentor_preference") or "",
+    ]
+    return clean_text(" ".join(parts))
+
+
+def get_matched_keywords(mentor: dict, mentee: dict, top_n: int = 5) -> list[str]:
+    """
+    Returns shared technical keywords between mentor and mentee.
+
+    Uses only raw profile fields (no domain expansion) so that expansion
+    artifacts like "query optimization" or "augmented reality" do not
+    appear as matched keywords.
+
+    Priority order:
+      1. Terms that appear in both profiles AND are in CS_TECH_VOCAB
+         (algorithms, languages, frameworks, etc.)
+      2. Shared ngrams that are not academic filler (length > 3)
+    """
+    mentor_kw_str = _build_direct_mentor_str(mentor)
+    mentee_kw_str = _build_direct_mentee_str(mentee)
+
+    # Priority 1: shared vocabulary hits (most meaningful signal)
+    mentor_vocab = set(_extract_vocab_matches(mentor_kw_str))
+    mentee_vocab = set(_extract_vocab_matches(mentee_kw_str))
+    shared_vocab = sorted(mentor_vocab & mentee_vocab, key=len, reverse=True)
+
+    if len(shared_vocab) >= top_n:
+        return shared_vocab[:top_n]
+
+    # Priority 2: shared ngrams not in academic stop words
     def get_ngrams(text: str) -> set[str]:
         words    = text.split()
-        unigrams = {w for w in words if len(w) > 3}
-        bigrams  = {f"{words[i]} {words[i+1]}" for i in range(len(words) - 1)}
+        unigrams = {w for w in words if len(w) > 3 and w not in ACADEMIC_STOP_WORDS}
+        bigrams  = {
+            f"{words[i]} {words[i+1]}"
+            for i in range(len(words) - 1)
+            if words[i] not in ACADEMIC_STOP_WORDS and words[i+1] not in ACADEMIC_STOP_WORDS
+        }
         return unigrams | bigrams
 
-    shared = get_ngrams(mentor_kw_str) & get_ngrams(mentee_kw_str)
-    return sorted(w for w in shared if len(w) > 3)[:top_n]
+    shared_ngrams = get_ngrams(mentor_kw_str) & get_ngrams(mentee_kw_str)
+    already_seen  = set(shared_vocab)
+    extras = sorted(
+        (w for w in shared_ngrams if w not in already_seen),
+        key=len, reverse=True
+    )
+
+    return (shared_vocab + extras)[: top_n]
 
 
 # ─────────────────────────────────────────────────────────────────────────────

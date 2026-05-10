@@ -42,25 +42,25 @@ export default function MentorDashboard() {
             <div className="flex-1 overflow-auto">
 
                 {/* Header */}
-                <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 px-8 py-8 text-white">
-                    <div className="flex items-start justify-between">
+                <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 pl-16 pr-4 sm:px-8 py-6 sm:py-8 text-white">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div>
                             <p className="text-blue-200 text-sm font-medium mb-1">Welcome back</p>
-                            <h1 className="text-3xl font-bold">
+                            <h1 className="text-2xl sm:text-3xl font-bold">
                                 {`${mentor?.first_name ?? ""} ${mentor?.last_name ?? ""}`.trim() || "Mentor"}
                             </h1>
                             <p className="text-blue-100 text-sm mt-1">{mentor?.email}</p>
                         </div>
-                        <div className="flex gap-4">
-                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[80px]">
+                        <div className="flex flex-wrap gap-3">
+                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[72px]">
                                 <p className="text-2xl font-bold">{matchCount}</p>
                                 <p className="text-xs text-blue-100">Mentees</p>
                             </div>
-                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[80px]">
+                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[72px]">
                                 <p className="text-2xl font-bold">{papers.length}</p>
                                 <p className="text-xs text-blue-100">Papers</p>
                             </div>
-                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[80px]">
+                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[72px]">
                                 <p className="text-2xl font-bold">{reviewedCount}</p>
                                 <p className="text-xs text-blue-100">Reviewed</p>
                             </div>
@@ -68,7 +68,7 @@ export default function MentorDashboard() {
                     </div>
 
                     {/* Quick stats row */}
-                    <div className="flex gap-3 mt-5">
+                    <div className="flex flex-wrap gap-3 mt-5">
                         <div className="bg-white/10 backdrop-blur rounded-lg px-3 py-1.5 flex items-center gap-2">
                             <Users className="w-3.5 h-3.5 text-blue-200" />
                             <span className="text-xs text-blue-100">
@@ -109,7 +109,7 @@ export default function MentorDashboard() {
                 )}
 
                 {/* Tabs */}
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                     <Tabs defaultValue="mentees" className="space-y-5">
                         <TabsList className="bg-white border border-slate-200 shadow-sm p-1 h-auto gap-1 flex flex-wrap">
                             <TabsTrigger
@@ -149,7 +149,7 @@ export default function MentorDashboard() {
                         </TabsList>
 
                         <TabsContent value="mentees" className="space-y-4 mt-0">
-                            <MyMentees matches={mentor?.matches ?? []} />
+                            <MyMentees matches={mentor?.matches ?? []} mentorId={mentor?.id ?? ""} />
                         </TabsContent>
 
                         <TabsContent value="progress" className="space-y-4 mt-0">
@@ -161,7 +161,7 @@ export default function MentorDashboard() {
                         </TabsContent>
 
                         <TabsContent value="calendar" className="space-y-4 mt-0">
-                            <div className="grid md:grid-cols-2 gap-5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <Meeting matches={mentor?.matches ?? []} mentorTimeSlots={mentor?.time_slot ?? []} />
                             </div>
                         </TabsContent>

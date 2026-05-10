@@ -179,10 +179,11 @@ def extract_keywords(text: str) -> list[str]:
     remaining = cleaned
 
     for phrase in known_phrases:
-        if phrase in remaining:
+        pattern = r'\b' + re.escape(phrase) + r'\b'
+        if re.search(pattern, remaining):
             extracted_phrases.append(phrase)
             # Mask it so its tokens aren't re-extracted as fragments
-            remaining = remaining.replace(phrase, " ")
+            remaining = re.sub(pattern, ' ', remaining)
 
     # Then extract remaining single meaningful words
     single_words = re.findall(r'\b[a-z][a-z0-9]{2,}\b', remaining)
@@ -196,7 +197,7 @@ def detect_domains(text: str) -> list[str]:
     text_lower = text.lower()
     detected = []
     for domain in DOMAIN_MAP.keys():
-        if domain in text_lower:
+        if re.search(r'\b' + re.escape(domain) + r'\b', text_lower):
             detected.append(domain)
     return list(set(detected))
 

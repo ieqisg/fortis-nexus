@@ -23,7 +23,7 @@ export interface MentorFormProfile {
     email: string | null;
     experience: number;
     communication_preference: CommunicationPreference | "";
-    prev_mentored_thesis: PrevMentoredThesis[];
+    prev_mentored_thesis?: PrevMentoredThesis[];
 }
 
 export type MentorProfileUpdate = Omit<MentorFormProfile, 'profile_completed'>

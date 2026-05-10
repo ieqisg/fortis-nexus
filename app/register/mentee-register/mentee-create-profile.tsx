@@ -16,20 +16,24 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
 import { CommunicationPreference, GroupMembers, MenteeFormProfile } from "@/types/menteeTypes";
-import { MenteeGroupInsert } from "@/types/modelTypes";
-import { createMenteeProfile } from "@/lib/actions/menteeActions";
+import { registerMentee } from "@/lib/actions/menteeActions";
 import { checkGroupNameAvailable } from "@/lib/actions/authActions";
 import { UserAuth } from "@/app/context/authContext";
+import { supabase } from "@/app/config/supabaseClient";
 import { toast } from "sonner";
 
 export default function MenteeCreateProfile({
+    email,
+    password,
     onBack,
 }: {
+    email: string;
+    password: string;
     onBack: () => void;
 }) {
 
     const router = useRouter();
-    const { userData, signUp, getUser, signIn } = UserAuth();
+    const { setUserData } = UserAuth();
     const [studentNumValid, setStudentNumValid] = useState("");
     const [disableAddMember, setDisableAddMember] = useState(true);
     const [timeAndDayValid, setTimeAndDayValid] = useState("")
@@ -134,39 +138,38 @@ export default function MenteeCreateProfile({
             const groupCheck = await checkGroupNameAvailable(formData.group_name)
             if (!groupCheck.available) {
                 toast.error(groupCheck.message ?? "Group name already taken.")
-                setLoading(false)
                 return
             }
 
-            const signUpResult = await signUp();
-            if (!signUpResult.success) return;
-
-            const signInResult = await signIn();
-            if (!signInResult.success) return;
-
-            const userResult = await getUser();
-            if (!userResult.success || !userResult.data?.user) return;
-
-            const payload: MenteeGroupInsert = {
-                email: userData.email,
-                id: userResult.data.user.id,
+            const payload = {
+                email,
                 group_name: formData.group_name,
                 research_title: formData.thesis_title,
                 research_description: formData.research_description,
                 mentor_preference: formData.mentor_preferences,
-                role: "mentee",
+                role: "mentee" as const,
                 available_days: formData.available_days,
                 time_slot: formData.time_slot,
                 group_members: formData.group_members.map((member) => JSON.stringify(member)),
                 communication_preference: formData.communication_preference || null,
             };
 
-            const result = await createMenteeProfile(payload);
-
-            if (result.success) {
-                toast.success("Mentee Profile createde successfully")
-                router.push("/mentee/mentee-dashboard")
+            const result = await registerMentee(email, password, payload);
+            if (!result.success) {
+                toast.error(result.message ?? "Registration failed. Please try again.")
+                return
             }
+
+            const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+            if (signInError) {
+                toast.error("Account created but sign-in failed. Please log in manually.")
+                router.push("/")
+                return
+            }
+
+            setUserData({ email, password })
+            toast.success("Account created successfully!")
+            router.push("/mentee/mentee-dashboard")
 
         } catch (err) {
             toast.error("An unexpected error occurred")

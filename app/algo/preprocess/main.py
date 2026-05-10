@@ -126,6 +126,90 @@ def save_matches(supabase, match_records: list[dict]):
     print(f"  ✅ Saved {len(match_records)} matches to Supabase")
 
 
+def save_preferences(
+    supabase,
+    mentors: list[dict],
+    mentees: list[dict],
+    scores,           # np.ndarray shape (n_mentees, n_mentors)
+    breakdowns,       # list[list[ScoreBreakdown]] or None
+    mentee_prefs: dict,
+    mentor_prefs: dict,
+):
+    """
+    Persists full ranked preference lists to mentee_preferences and
+    mentor_preferences tables so dashboards can display them.
+    """
+    mentor_map = {m["id"]: m for m in mentors}
+    mentee_map = {m["id"]: m for m in mentees}
+    mentee_index = {m["id"]: i for i, m in enumerate(mentees)}
+    mentor_index = {m["id"]: j for j, m in enumerate(mentors)}
+
+    ts = datetime.now(timezone.utc).isoformat()
+
+    # ── mentee_preferences ────────────────────────────────────────────────
+    mentee_pref_rows = []
+    for mentee in mentees:
+        mid   = mentee["id"]
+        midx  = mentee_index[mid]
+        ranked_mentor_ids = mentee_prefs.get(mid, [])
+        ranked_mentors = []
+        for rank, mentor_id in enumerate(ranked_mentor_ids, start=1):
+            m    = mentor_map.get(mentor_id, {})
+            jidx = mentor_index.get(mentor_id)
+            score = round(float(scores[midx][jidx]), 4) if jidx is not None else 0.0
+            kws: list[str] = []
+            if breakdowns and jidx is not None:
+                kws = breakdowns[midx][jidx].matched_keywords
+            ranked_mentors.append({
+                "rank":             rank,
+                "mentor_id":        mentor_id,
+                "name":             f"{m.get('first_name', '')} {m.get('last_name', '')}".strip(),
+                "score":            score,
+                "matched_keywords": kws,
+            })
+        mentee_pref_rows.append({
+            "mentee_group_id": mid,
+            "ranked_mentors":  ranked_mentors,
+            "created_at":      ts,
+        })
+
+    # ── mentor_preferences ────────────────────────────────────────────────
+    mentor_pref_rows = []
+    for mentor in mentors:
+        mid   = mentor["id"]
+        jidx  = mentor_index[mid]
+        ranked_mentee_ids = mentor_prefs.get(mid, [])
+        ranked_mentees = []
+        for rank, mentee_id in enumerate(ranked_mentee_ids, start=1):
+            me   = mentee_map.get(mentee_id, {})
+            iidx = mentee_index.get(mentee_id)
+            score = round(float(scores[iidx][jidx]), 4) if iidx is not None else 0.0
+            kws: list[str] = []
+            if breakdowns and iidx is not None:
+                kws = breakdowns[iidx][jidx].matched_keywords
+            ranked_mentees.append({
+                "rank":             rank,
+                "mentee_group_id":  mentee_id,
+                "group_name":       me.get("group_name", ""),
+                "research_title":   me.get("research_title", ""),
+                "score":            score,
+                "matched_keywords": kws,
+            })
+        mentor_pref_rows.append({
+            "mentor_id":      mid,
+            "ranked_mentees": ranked_mentees,
+            "created_at":     ts,
+        })
+
+    # Upsert (replace on re-run)
+    if mentee_pref_rows:
+        supabase.table("mentee_preferences").upsert(mentee_pref_rows).execute()
+        print(f"  ✅ Saved preference lists for {len(mentee_pref_rows)} mentees")
+    if mentor_pref_rows:
+        supabase.table("mentor_preferences").upsert(mentor_pref_rows).execute()
+        print(f"  ✅ Saved preference lists for {len(mentor_pref_rows)} mentors")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # PRINT RESULTS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -298,6 +382,10 @@ if __name__ == "__main__":
     print("\n💾 Step 7: Saving to Supabase...")
     clear_matches(supabase)
     save_matches(supabase, match_records)
+    save_preferences(
+        supabase, mentors, mentees, scores, breakdowns,
+        mentee_prefs, mentor_prefs,
+    )
 
     # ── Step 8: JSON log for Node.js ──────────────────────────────────────────
     log_output = {
@@ -341,5 +429,10 @@ if __name__ == "__main__":
     print("\n__MATCHING_LOG_START__")
     print(json.dumps(log_output))
     print("__MATCHING_LOG_END__")
+
+    try:
+        supabase.table("algorithm_logs").insert({"log_data": log_output}).execute()
+    except Exception as e:
+        print(f"[Warning] Could not save algorithm log: {e}")
 
     print("\n✅ Matching complete!")

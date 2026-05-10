@@ -54,7 +54,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail } from "@/lib/actions/adminActions"
+import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees } from "@/lib/actions/adminActions"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getAnnouncements, createAnnouncement, deleteAnnouncement, type Announcement } from "@/lib/actions/announcementActions"
 import { Textarea } from "@/components/ui/textarea"
@@ -319,6 +319,7 @@ export default function Admin() {
             const [userResult, annResult] = await Promise.all([
                 getAllUserData(),
                 getAnnouncements("mentor"), // fetches "all" + "mentor" — admin sees everything
+                cleanupOrphanedMentees(),
             ])
             if (userResult.success) {
                 setMentors(userResult.data.mentors ?? [])
@@ -356,12 +357,12 @@ export default function Admin() {
         <div className="flex h-screen bg-gray-50">
             <AdminSidebar />
             <div className="flex-1 overflow-auto">
-                <div className="bg-linear-to-r from-blue-600 to-indigo-600 text-white p-8 md:pl-8 pl-16">
+                <div className="bg-linear-to-r from-blue-600 to-indigo-600 text-white p-4 sm:p-8 md:pl-8 pl-16">
                     <h1 className="text-3xl font-bold mb-2">Mentor–Mentee Matching System</h1>
                     <p className="text-blue-100">Administrative Dashboard</p>
                 </div>
                 <div className="p-8 space-y-6">
-                    <div className="grid md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                         {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
                     </div>
                     <Skeleton className="h-16 w-full" />
@@ -376,7 +377,7 @@ export default function Admin() {
         <div className="flex h-screen bg-gray-50">
             <AdminSidebar />
             <div className="flex-1 overflow-auto">
-                <div className="bg-linear-to-r from-blue-600 to-indigo-600 text-white p-8 md:pl-8 pl-16">
+                <div className="bg-linear-to-r from-blue-600 to-indigo-600 text-white p-4 sm:p-8 md:pl-8 pl-16">
                     <h1 className="text-3xl font-bold mb-2">Mentor–Mentee Matching System</h1>
                     <p className="text-blue-100">Administrative Dashboard</p>
                 </div>
@@ -386,7 +387,7 @@ export default function Admin() {
                     {/* ── OVERVIEW ── */}
                     <div id="overview">
                         <h2 className="text-2xl font-bold text-gray-900 mb-4">Dashboard Overview</h2>
-                        <div className="grid md:grid-cols-4 gap-6 mb-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-6">
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Total Mentors</CardTitle>
@@ -603,7 +604,7 @@ export default function Admin() {
                                     <Users className="w-5 h-5 mr-2 text-blue-600" /> All Users
                                 </CardTitle>
                                 <CardDescription>Manage mentors and mentees</CardDescription>
-                                <div className="flex items-center space-x-4 mt-4">
+                                <div className="flex flex-wrap items-center gap-3 mt-4">
                                     <div className="flex items-center space-x-2 flex-1">
                                         <Search className="w-4 h-4 text-gray-400" />
                                         <Input
@@ -1072,7 +1073,7 @@ export default function Admin() {
                                                     <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
                                                     <div>
                                                         <p className="font-medium text-sm">Weighted scores applied</p>
-                                                        <p className="text-xs text-slate-500">Keyword similarity (70%), availability (20%), experience (10%)</p>
+                                                        <p className="text-xs text-slate-500">Keyword similarity (60%), experience (20%), availability (10%), communication (5%), meeting frequency (5%)</p>
                                                     </div>
                                                 </div>
 

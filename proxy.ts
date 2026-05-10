@@ -18,6 +18,8 @@ export async function proxy(request: NextRequest) {
     const response = NextResponse.next()
     const path = request.nextUrl.pathname
 
+    if (path.startsWith("/_next/") || path === "/favicon.ico") return response
+
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_KEY!,
@@ -33,8 +35,7 @@ export async function proxy(request: NextRequest) {
         }
     );
 
-    const { data: { session } } = await supabase.auth.getSession()
-    const user = session?.user
+    const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
         if (
@@ -59,11 +60,15 @@ export async function proxy(request: NextRequest) {
             if (role === "admin") return NextResponse.redirect(new URL("/admin", request.url))
         }
 
-        if (!role) return NextResponse.redirect(new URL("/unauthorized", request.url))
+        if (!role) {
+            const publicPaths = ["/", "/login", "/register", "/reset-password"]
+            if (!publicPaths.includes(path)) return NextResponse.redirect(new URL("/", request.url))
+            return response
+        }
 
-        if (path.startsWith("/mentee") && role !== "mentee") return NextResponse.redirect(new URL("/unauthorized", request.url))
-        if (path.startsWith("/mentor") && role !== "mentor") return NextResponse.redirect(new URL("/unauthorized", request.url))
-        if (path.startsWith("/admin") && role !== "admin") return NextResponse.redirect(new URL("/unauthorized", request.url))
+        if (path.startsWith("/mentee") && role !== "mentee") return NextResponse.redirect(new URL("/", request.url))
+        if (path.startsWith("/mentor") && role !== "mentor") return NextResponse.redirect(new URL("/", request.url))
+        if (path.startsWith("/admin") && role !== "admin") return NextResponse.redirect(new URL("/", request.url))
 
         if (role === "mentor") {
             if (path.startsWith("/mentor/complete-profile")) {
@@ -86,8 +91,6 @@ export const proxyConfig = {
         "/login",
         "/register",
         "/reset-password",
-        "/mentee-dashboard/:path*",
-        "/mentor-dashboard/:path*",
         "/mentee/:path*",
         "/mentor/:path*",
         "/admin/:path*",

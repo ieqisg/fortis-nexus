@@ -5,7 +5,6 @@ import { createClient } from "@supabase/supabase-js"
 import { MenteeGroupInsert } from "@/types/modelTypes"
 import { MenteeGroupUpdate } from "@/types/modelTypes"
 import { getSupabaseClient } from "@/app/config/getSupabaseClient"
-import Page from "@/app/admin/page"
 
 export async function createMenteeProfile(payload: MenteeGroupInsert) {
     const supabase = await getSupabaseClient()
@@ -25,6 +24,71 @@ export async function createMenteeProfile(payload: MenteeGroupInsert) {
     }
 
     return { success: true }
+}
+
+export async function registerMentee(
+    email: string,
+    password: string,
+    payload: Omit<MenteeGroupInsert, "id">
+) {
+    const adminSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    let userId: string
+
+    const { data: createData, error: createError } = await adminSupabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+    })
+
+    if (createError) {
+        if (!createError.message.toLowerCase().includes("already registered")) {
+            return { success: false as const, message: createError.message }
+        }
+
+        // Orphan check: auth user exists but may have no MENTEE_GROUPS row
+        const { data: existing } = await adminSupabase.auth.admin.listUsers()
+        const orphan = existing?.users.find(u => u.email === email)
+        if (!orphan) return { success: false as const, message: "Email already registered." }
+
+        const { data: existingGroup } = await adminSupabase
+            .from("MENTEE_GROUPS")
+            .select("id")
+            .eq("email", email)
+            .maybeSingle()
+
+        if (existingGroup) return { success: false as const, message: "Email already registered." }
+
+        // Genuine orphan — delete and recreate
+        await adminSupabase.auth.admin.deleteUser(orphan.id)
+
+        const { data: retryData, error: retryError } = await adminSupabase.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+        })
+        if (retryError || !retryData.user) {
+            return { success: false as const, message: retryError?.message ?? "Failed to create account." }
+        }
+        userId = retryData.user.id
+    } else {
+        if (!createData.user) return { success: false as const, message: "Failed to create account." }
+        userId = createData.user.id
+    }
+
+    const { error: insertError } = await adminSupabase
+        .from("MENTEE_GROUPS")
+        .insert({ ...payload, id: userId })
+
+    if (insertError) {
+        await adminSupabase.auth.admin.deleteUser(userId)
+        return { success: false as const, message: "Failed to save profile. Please try again." }
+    }
+
+    return { success: true as const }
 }
 
 export async function editMenteeProfile(payload: MenteeGroupUpdate) {
@@ -85,6 +149,25 @@ export async function getMenteeData() {
 
     return { success: true, data: mentee }
 
+}
+
+export async function getMenteePreferences(menteeGroupId: string) {
+    const supabase = await getSupabaseClient()
+    const { data, error } = await supabase
+        .from("mentee_preferences")
+        .select("ranked_mentors, created_at")
+        .eq("mentee_group_id", menteeGroupId)
+        .single()
+    if (error) return { success: false, data: null }
+    return { success: true, data: data.ranked_mentors as RankedMentor[] }
+}
+
+export type RankedMentor = {
+    rank: number
+    mentor_id: string
+    name: string
+    score: number
+    matched_keywords: string[]
 }
 
 export async function changeDefaultPassword(newPassword: string) {
