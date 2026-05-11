@@ -199,6 +199,7 @@ export type Database = {
           id: string
           last_name: string | null
           mentor_capacity: number | null
+          orcid: string | null
           prev_mentored_thesis: Json | null
           published_papers: Json | null
           profile_completed: boolean
@@ -217,6 +218,7 @@ export type Database = {
           id: string
           last_name?: string | null
           mentor_capacity?: number | null
+          orcid?: string | null
           prev_mentored_thesis?: Json | null
           published_papers?: Json | null
           profile_completed?: boolean
@@ -235,6 +237,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           mentor_capacity?: number | null
+          orcid?: string | null
           prev_mentored_thesis?: Json | null
           published_papers?: Json | null
           profile_completed?: boolean
