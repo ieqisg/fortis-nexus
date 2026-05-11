@@ -123,10 +123,18 @@ fortis-nexus/
 │   ├── page.tsx                # Login page
 │   ├── admin/                  # Admin dashboard
 │   ├── mentor/
-│   │   ├── mentor-dashboard/   # Mentor dashboard + tabs
+│   │   ├── mentor-dashboard/   # Mentor dashboard (6 tabs)
+│   │   │   ├── dashboard.tsx       # Root layout + tab shell
+│   │   │   ├── my-mentees.tsx      # Mentee cards + profile modal
+│   │   │   ├── progress-mentee.tsx # Progress tracking
+│   │   │   ├── submitted-papers.tsx# Paper review + comments
+│   │   │   ├── meeting.tsx         # Recurring meetings + notes
+│   │   │   ├── milestones.tsx      # Task/milestone management
+│   │   │   └── mentor-announcements.tsx # Mentor-to-mentee broadcasts
 │   │   └── complete-profile/   # First-login profile setup
 │   ├── mentee/
-│   │   └── mentee-dashboard/   # Mentee dashboard
+│   │   └── mentee-dashboard/   # Mentee dashboard (3 tabs)
+│   │       └── dashboard.tsx       # Dashboard / Paper Submission / Tasks & Milestones
 │   ├── register/               # Mentee self-registration
 │   ├── algo/preprocess/        # Python matching engine
 │   │   ├── main.py             # Orchestrator (reads/writes Supabase)
@@ -148,9 +156,14 @@ fortis-nexus/
 │       ├── menteeActions.ts
 │       ├── authActions.ts
 │       ├── announcementActions.ts
+│       ├── mentorAnnouncementActions.ts  # Mentor-to-mentee announcements
+│       ├── milestoneActions.ts           # Milestone CRUD
+│       ├── meetingActions.ts             # Meetings + notes
 │       └── paperActions.ts
 ├── components/ui/              # shadcn/ui + custom components
 ├── types/                      # TypeScript type definitions
+│   ├── mentorTypes.ts          # Milestone, MentorAnnouncement, MeetingRecord
+│   └── menteeTypes.ts          # MenteeMeeting, Matches (with mentor availability)
 ├── supabase/migrations/        # SQL migration files
 └── tests/unit/                 # Vitest unit tests
 ```
@@ -166,10 +179,12 @@ Key tables in Supabase:
 | `mentor` | Mentor profiles (`profile_completed` flag gates first-login redirect) |
 | `MENTEE_GROUPS` | Mentee group profiles and research info |
 | `matches` | Algorithm output — `mentor_id`, `mentee_group_id`, `compatibility_score`, `matched_keywords` |
-| `meetings` | Recurring meeting schedules set by mentors |
-| `papers` | Papers submitted by mentee groups |
+| `meetings` | Recurring meeting schedules; includes a `notes` text column for session notes |
+| `papers` | Papers submitted by mentee groups (one active paper at a time enforced) |
 | `paper_comments` | Mentor feedback on submitted papers |
-| `announcements` | Admin broadcast messages |
+| `announcements` | Admin broadcast messages (targets: all / mentor / mentee) |
+| `mentor_announcements` | Mentor-to-mentee broadcasts scoped to matched mentees only |
+| `milestones` | Tasks/deadlines set by a mentor for a specific mentee group |
 | `algorithm_logs` | Full JSON log of each matching run |
 | `mentor_preferences` | Ranked mentor list per mentee (pre-computed) |
 | `mentee_preferences` | Ranked mentee list per mentor (pre-computed) |
@@ -183,6 +198,7 @@ supabase db push
 # Or run the SQL manually in the Supabase dashboard SQL editor:
 # supabase/migrations/20260510_algorithm_logs.sql
 # supabase/migrations/20260510_preference_tables.sql
+# supabase/migrations/20260511_milestones_notes_announcements.sql
 ```
 
 ---
@@ -230,16 +246,21 @@ Each mentor-mentee pair receives a weighted score:
 
 ### Mentor
 - Completes profile on first login (skills, forte, availability, capacity)
-- Views assigned mentee groups and compatibility scores
-- Sets recurring meeting schedules
+- Views assigned mentee groups and compatibility scores; click any mentee card to open a full profile modal
+- Sets recurring meeting schedules and writes per-session meeting notes
 - Reviews and comments on submitted papers
+- Creates milestones (tasks + due dates) per mentee group; ticks off completed items
+- Broadcasts announcements visible only to their matched mentees
 
 ### Mentee
 - Self-registers via the registration flow
-- Views assigned mentor and compatibility score
+- Views assigned mentor profile (expertise, skills, about, previously mentored theses) and compatibility score
 - Sees ranked list of all mentors by compatibility
-- Submits papers for review
-- Views mentor feedback
+- Sees mentor's available days and time slots on the dashboard
+- Submits papers for review (5 MB limit; one active paper at a time — form locks while a paper is pending; prior reviewed paper is replaced automatically on re-submission)
+- Views mentor feedback and downloads submitted files
+- Reads tasks and milestones set by their mentor, including due dates and completion status
+- Receives mentor announcements scoped to them alongside admin broadcasts
 
 ---
 
@@ -250,7 +271,14 @@ Each mentor-mentee pair receives a weighted score:
 - **Atomic registration** — mentee signup is a single server action; orphaned auth users are detected and cleaned up automatically
 - **Session enforcement** — a user can only be logged in on one device at a time
 - **Rate limiting** — login (5 attempts / 5 min) and password reset (3 / hour) are rate-limited in memory
-- **Announcements** — admins can broadcast messages to mentors, mentees, or everyone
+- **Milestones** — mentors assign tasks with optional descriptions and due dates per mentee group; overdue items are highlighted in red; mentees see a read-only checklist
+- **Meeting notes** — mentors write freeform session notes on each recurring meeting record; notes are visible on the mentee's dashboard
+- **Mentor announcements** — mentors broadcast messages that are scoped to their matched mentees only (separate from admin announcements)
+- **Paper submission rules** — mentees can only have one active paper at a time; the submit form is locked while a paper is pending review; when a reviewed paper is replaced, the old file is deleted from storage automatically; file size is validated at 5 MB
+- **Mentor availability on mentee dashboard** — mentees can see their mentor's available days and time slots directly on their dashboard
+- **Mentee profile modal** — mentors can click any matched mentee card to view a full profile modal (research details, group members, availability, match score)
+- **Tab-based dashboards** — mentor dashboard has 6 tabs (Mentees, Progress, Papers, Meetings, Milestones, Announcements); mentee dashboard has 3 tabs (Dashboard, Paper Submission, Tasks & Milestones)
+- **Announcements** — admins broadcast messages to mentors, mentees, or everyone; mentors broadcast to their own mentees only
 - **Responsive UI** — works on mobile with collapsible sidebar navigation
 
 ---
