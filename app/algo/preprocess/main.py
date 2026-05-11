@@ -78,6 +78,15 @@ def fetch_mentors(supabase) -> list[dict]:
         elif prev is None:
             mentor["prev_mentored_thesis"] = []
 
+        papers = mentor.get("published_papers")
+        if isinstance(papers, str):
+            try:
+                mentor["published_papers"] = json.loads(papers)
+            except Exception:
+                mentor["published_papers"] = []
+        elif papers is None:
+            mentor["published_papers"] = []
+
     return mentors
 
 

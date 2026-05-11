@@ -378,9 +378,10 @@ def _experience_score(mentor: dict) -> float:
     elif isinstance(prev_thesis, str) and prev_thesis.strip():
         components.append(0.3)
 
-    papers = mentor.get("published_papers_count")
-    if papers is not None:
-        components.append(min(papers / 5.0, 1.0))
+    papers = mentor.get("published_papers") or []
+    paper_count = len(papers) if isinstance(papers, list) else 0
+    if paper_count > 0:
+        components.append(min(paper_count / 5.0, 1.0))
 
     certs = mentor.get("certifications")
     if certs is not None:

@@ -234,6 +234,7 @@ export default function MentorProfileDetails() {
                                         <thead className="bg-slate-50 text-slate-500">
                                             <tr>
                                                 <th className="px-4 py-2.5 text-left font-medium">Title</th>
+                                                <th className="px-4 py-2.5 text-left font-medium">Authors</th>
                                                 <th className="px-4 py-2.5 text-left font-medium">Year</th>
                                                 <th className="px-4 py-2.5 text-left font-medium">Link</th>
                                             </tr>
@@ -242,6 +243,9 @@ export default function MentorProfileDetails() {
                                             {papers.map((paper, i) => (
                                                 <tr key={i} className="hover:bg-slate-50">
                                                     <td className="px-4 py-2.5 text-slate-900 font-medium">{paper.title}</td>
+                                                    <td className="px-4 py-2.5 text-slate-500 text-xs max-w-xs truncate">
+                                                        {paper.authors?.join(", ") || <span className="text-slate-300">—</span>}
+                                                    </td>
                                                     <td className="px-4 py-2.5 text-slate-400">{paper.year}</td>
                                                     <td className="px-4 py-2.5">
                                                         {paper.url ? (

@@ -56,8 +56,8 @@ import {
     Crown,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog } from "@/lib/actions/adminActions"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog, fetchPapersByORCID } from "@/lib/actions/adminActions"
 import type { PublishedPaper, PrevMentoredThesis } from "@/types/mentorTypes"
 import type { GroupMembers } from "@/types/menteeTypes"
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector"
@@ -89,6 +89,7 @@ export default function Admin() {
     const [editMenteeLeaderIndex, setEditMenteeLeaderIndex] = useState(0)
     const [skillInput, setSkillInput] = useState("")
     const [forteInput, setForteInput] = useState("")
+    const [fetchingPapers, setFetchingPapers] = useState(false)
     const [savingEdit, setSavingEdit] = useState(false)
     const [userToDelete, setUserToDelete] = useState<any>(null)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -216,6 +217,7 @@ export default function Admin() {
                 self_description: "",
                 communication_preference: "",
                 profile_completed: "",
+                orcid: "",
             })
             setEditMentorPapers([])
             setEditMentorSkills([])
@@ -232,6 +234,7 @@ export default function Admin() {
                     self_description: d.self_description ?? "",
                     communication_preference: d.communication_preference ?? "",
                     profile_completed: d.profile_completed ? "true" : "false",
+                    orcid: d.orcid ?? "",
                 }))
                 setEditMentorSkills(Array.isArray(d.technical_skills) ? d.technical_skills : [])
                 setEditMentorForte(Array.isArray(d.forte) ? d.forte : [])
@@ -296,6 +299,7 @@ export default function Admin() {
                 time_slot: editMentorTimeSlots,
                 prev_mentored_thesis: editMentorTheses,
                 published_papers: editMentorPapers,
+                orcid: (editForm.orcid as string) || null,
             })
         } else {
             result = await adminEditMentee(selectedUser.id, {
@@ -1541,7 +1545,7 @@ export default function Admin() {
                         <DialogDescription>Update all profile details for this user.</DialogDescription>
                     </DialogHeader>
                     <ScrollArea className="max-h-[75vh]">
-                        <div className="space-y-6 py-2 pr-3">
+                        <div className="space-y-6 py-2 pr-3 min-w-0">
                             {selectedUser?.type === "mentor" ? (
                                 <>
                                     {/* ── Basic Info ── */}
@@ -1578,6 +1582,14 @@ export default function Admin() {
                                                 checked={editForm.profile_completed === "true"}
                                                 onChange={e => setEditForm({ ...editForm, profile_completed: e.target.checked ? "true" : "false" })}
                                                 className="w-4 h-4 accent-blue-600"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label>ORCID</Label>
+                                            <Input
+                                                placeholder="0000-0000-0000-0000"
+                                                value={(editForm.orcid as string) ?? ""}
+                                                onChange={e => setEditForm({ ...editForm, orcid: e.target.value })}
                                             />
                                         </div>
                                     </div>
@@ -1689,15 +1701,36 @@ export default function Admin() {
                                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Published Papers</p>
                                             <span className="text-xs text-slate-400">{editMentorPapers.length} entr{editMentorPapers.length !== 1 ? "ies" : "y"}</span>
                                         </div>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            className="w-full text-xs"
+                                            disabled={fetchingPapers || !editForm.orcid}
+                                            onClick={async () => {
+                                                setFetchingPapers(true)
+                                                const res = await fetchPapersByORCID(editForm.orcid as string)
+                                                setFetchingPapers(false)
+                                                if (!res.success) { toast.error(res.message); return }
+                                                setEditMentorPapers(res.papers)
+                                                toast.success(`Fetched ${res.papers.length} paper${res.papers.length !== 1 ? "s" : ""}`)
+                                            }}
+                                        >
+                                            {fetchingPapers && <Loader2 className="w-3 h-3 animate-spin mr-2" />}
+                                            Auto-fetch via ORCID
+                                        </Button>
                                         <div className="space-y-2">
                                             {editMentorPapers.map((paper, idx) => (
                                                 <div key={idx} className="flex gap-2 items-start p-3 rounded-lg border border-slate-200 bg-slate-50">
                                                     <div className="flex-1 space-y-2">
-                                                        <Input placeholder="Paper title" value={paper.title ?? ""} onChange={e => setEditMentorPapers(prev => prev.map((p, i) => i === idx ? { ...p, title: e.target.value } : p))} />
+                                                        <Textarea rows={2} placeholder="Paper title" value={paper.title ?? ""} onChange={e => setEditMentorPapers(prev => prev.map((p, i) => i === idx ? { ...p, title: e.target.value } : p))} className="resize-none text-sm" />
                                                         <div className="flex gap-2">
                                                             <Input placeholder="Year" value={paper.year ?? ""} onChange={e => setEditMentorPapers(prev => prev.map((p, i) => i === idx ? { ...p, year: e.target.value } : p))} className="w-24" />
-                                                            <Input placeholder="URL (optional)" value={paper.url ?? ""} onChange={e => setEditMentorPapers(prev => prev.map((p, i) => i === idx ? { ...p, url: e.target.value } : p))} />
+                                                            <Textarea rows={1} placeholder="URL (optional)" value={paper.url ?? ""} onChange={e => setEditMentorPapers(prev => prev.map((p, i) => i === idx ? { ...p, url: e.target.value } : p))} className="resize-none text-sm flex-1" />
                                                         </div>
+                                                        {paper.authors && paper.authors.length > 0 && (
+                                                            <p className="text-xs text-slate-500">{paper.authors.join(", ")}</p>
+                                                        )}
                                                     </div>
                                                     <Button type="button" variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0" onClick={() => setEditMentorPapers(prev => prev.filter((_, i) => i !== idx))}>
                                                         <X className="w-4 h-4" />
@@ -1830,6 +1863,7 @@ export default function Admin() {
                                 </>
                             )}
                         </div>
+                        <ScrollBar orientation="horizontal" />
                     </ScrollArea>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
