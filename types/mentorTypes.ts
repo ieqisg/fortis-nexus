@@ -7,6 +7,12 @@ export type PrevMentoredThesis = {
     year: string
 }
 
+export type PublishedPaper = {
+    title: string
+    year: string
+    url?: string
+}
+
 export type CommunicationPreference = "FACE_TO_FACE" | "ONLINE_CHAT" | "ONLINE_CALL";
 
 export interface MentorFormProfile {

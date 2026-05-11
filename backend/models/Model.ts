@@ -200,6 +200,7 @@ export type Database = {
           last_name: string | null
           mentor_capacity: number | null
           prev_mentored_thesis: Json | null
+          published_papers: Json | null
           profile_completed: boolean
           role: string
           self_description: string | null
@@ -217,6 +218,7 @@ export type Database = {
           last_name?: string | null
           mentor_capacity?: number | null
           prev_mentored_thesis?: Json | null
+          published_papers?: Json | null
           profile_completed?: boolean
           role?: string
           self_description?: string | null
@@ -234,6 +236,7 @@ export type Database = {
           last_name?: string | null
           mentor_capacity?: number | null
           prev_mentored_thesis?: Json | null
+          published_papers?: Json | null
           profile_completed?: boolean
           role?: string
           self_description?: string | null

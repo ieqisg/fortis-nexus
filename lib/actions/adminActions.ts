@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@supabase/supabase-js"
+import type { PublishedPaper, PrevMentoredThesis } from "@/types/mentorTypes"
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -35,7 +36,7 @@ export async function getAllUserData() {
 export async function getMentorDetail(id: string) {
     const { data, error } = await supabase
         .from("mentor")
-        .select("technical_skills, forte, self_description")
+        .select("technical_skills, forte, self_description, published_papers, experience, available_days, time_slot, communication_preference, prev_mentored_thesis, profile_completed")
         .eq("id", id)
         .maybeSingle()
     if (error) return { success: false as const, message: error.message }
@@ -45,7 +46,7 @@ export async function getMentorDetail(id: string) {
 export async function getMenteeDetail(id: string) {
     const { data, error } = await supabase
         .from("MENTEE_GROUPS")
-        .select("research_description, mentor_preference, time_slot, available_days")
+        .select("research_description, mentor_preference, time_slot, available_days, communication_preference, group_members")
         .eq("id", id)
         .maybeSingle()
     if (error) return { success: false as const, message: error.message }
@@ -76,11 +77,18 @@ export async function adminEditMentor(mentorId: string, payload: {
     last_name?: string
     email?: string
     mentor_capacity?: number
+    experience?: number
+    self_description?: string
+    technical_skills?: string[]
+    forte?: string[]
+    available_days?: string[]
+    time_slot?: string[]
+    communication_preference?: string | null
+    prev_mentored_thesis?: PrevMentoredThesis[]
+    published_papers?: PublishedPaper[]
+    profile_completed?: boolean
 }) {
-    const clean = Object.fromEntries(
-        Object.entries(payload).filter(([, v]) => v !== "" && v !== undefined)
-    )
-    const { error } = await supabase.from("mentor").update(clean).eq("id", mentorId)
+    const { error } = await supabase.from("mentor").update(payload).eq("id", mentorId)
     if (error) return { success: false, message: error.message }
     return { success: true }
 }
@@ -89,11 +97,14 @@ export async function adminEditMentee(menteeId: string, payload: {
     group_name?: string
     research_title?: string
     email?: string
+    research_description?: string
+    mentor_preference?: string
+    available_days?: string[]
+    time_slot?: string[]
+    communication_preference?: string | null
+    group_members?: string[]
 }) {
-    const clean = Object.fromEntries(
-        Object.entries(payload).filter(([, v]) => v !== "" && v !== undefined)
-    )
-    const { error } = await supabase.from("MENTEE_GROUPS").update(clean).eq("id", menteeId)
+    const { error } = await supabase.from("MENTEE_GROUPS").update(payload).eq("id", menteeId)
     if (error) return { success: false, message: error.message }
     return { success: true }
 }
