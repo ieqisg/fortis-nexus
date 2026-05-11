@@ -53,6 +53,7 @@ import {
     Scale,
     GraduationCap,
     Loader2,
+    Crown,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -123,6 +124,7 @@ export default function Admin() {
     const [createRole, setCreateRole] = useState<"mentor" | "mentee">("mentee")
     const [createForm, setCreateForm] = useState({ email: "", password: "", first_name: "", last_name: "", group_name: "", research_title: "", research_description: "", mentor_preference: "" })
     const [createMembers, setCreateMembers] = useState([{ name: "", student_number: "" }])
+    const [createLeaderIndex, setCreateLeaderIndex] = useState(0)
     const [creatingUser, setCreatingUser] = useState(false)
     const [showCreatePassword, setShowCreatePassword] = useState(false)
 
@@ -290,7 +292,7 @@ export default function Admin() {
                 research_title: createForm.research_title,
                 research_description: createForm.research_description,
                 mentor_preference: createForm.mentor_preference,
-                group_members: createMembers.map(m => JSON.stringify(m)),
+                group_members: createMembers.map((m, idx) => JSON.stringify({ ...m, is_leader: idx === createLeaderIndex })),
             })
         }
         if (result.success) {
@@ -301,6 +303,7 @@ export default function Admin() {
             }
             setCreateForm({ email: "", password: "", first_name: "", last_name: "", group_name: "", research_title: "", research_description: "", mentor_preference: "" })
             setCreateMembers([{ name: "", student_number: "" }])
+            setCreateLeaderIndex(0)
             setIsCreateDialogOpen(false)
             toast.success(`${createRole === "mentor" ? "Mentor" : "Mentee"} account created`)
         } else {
@@ -1043,12 +1046,20 @@ export default function Admin() {
                                                                             <p className="font-bold">Members</p>
                                                                             <div className="space-y-1">
                                                                                 {group.group_members?.map((member: string, i: number) => {
-                                                                                    const parsed = JSON.parse(member)
-                                                                                    return (
-                                                                                        <p key={i} className="text-sm">
-                                                                                            {parsed.name} ({parsed.student_number})
-                                                                                        </p>
-                                                                                    )
+                                                                                    try {
+                                                                                        const parsed = JSON.parse(member)
+                                                                                        return (
+                                                                                            <p key={i} className="text-sm flex items-center gap-1.5">
+                                                                                                {parsed.is_leader && <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                                                                                                <span className={parsed.is_leader ? "font-medium" : ""}>
+                                                                                                    {parsed.name} ({parsed.student_number})
+                                                                                                    {parsed.is_leader && <span className="ml-1 text-xs text-amber-600">Leader</span>}
+                                                                                                </span>
+                                                                                            </p>
+                                                                                        )
+                                                                                    } catch {
+                                                                                        return <p key={i} className="text-sm">{member}</p>
+                                                                                    }
                                                                                 })}
                                                                             </div>
                                                                         </div>
@@ -1702,7 +1713,19 @@ export default function Admin() {
                                     <div className="space-y-2">
                                         <Label>Group Members *</Label>
                                         {createMembers.map((member, idx) => (
-                                            <div key={idx} className="flex gap-2">
+                                            <div key={idx} className="flex gap-2 items-center">
+                                                <button
+                                                    type="button"
+                                                    title={idx === createLeaderIndex ? "Group leader" : "Set as leader"}
+                                                    onClick={() => setCreateLeaderIndex(idx)}
+                                                    className={`shrink-0 p-1.5 rounded-md transition-colors ${
+                                                        idx === createLeaderIndex
+                                                            ? "text-amber-500 bg-amber-50 hover:bg-amber-100"
+                                                            : "text-slate-300 hover:text-amber-400 hover:bg-amber-50"
+                                                    }`}
+                                                >
+                                                    <Crown className="w-4 h-4" />
+                                                </button>
                                                 <Input
                                                     placeholder="Member name"
                                                     value={member.name}
@@ -1720,21 +1743,33 @@ export default function Admin() {
                                                         type="button"
                                                         variant="outline"
                                                         size="icon"
-                                                        onClick={() => setCreateMembers(prev => prev.filter((_, i) => i !== idx))}
+                                                        onClick={() => {
+                                                            setCreateMembers(prev => prev.filter((_, i) => i !== idx))
+                                                            setCreateLeaderIndex(prev => {
+                                                                if (prev === idx) return 0
+                                                                if (prev > idx) return prev - 1
+                                                                return prev
+                                                            })
+                                                        }}
                                                     >
                                                         <X className="w-4 h-4" />
                                                     </Button>
                                                 )}
                                             </div>
                                         ))}
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setCreateMembers(prev => [...prev, { name: "", student_number: "" }])}
-                                        >
-                                            <Plus className="w-4 h-4 mr-1" /> Add Member
-                                        </Button>
+                                        <div className="flex items-center gap-3">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setCreateMembers(prev => [...prev, { name: "", student_number: "" }])}
+                                            >
+                                                <Plus className="w-4 h-4 mr-1" /> Add Member
+                                            </Button>
+                                            <p className="text-xs text-slate-400 flex items-center gap-1">
+                                                <Crown className="w-3 h-3 text-amber-400" /> Click the crown to set the group leader
+                                            </p>
+                                        </div>
                                     </div>
                                 </>
                             )}

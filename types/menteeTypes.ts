@@ -34,6 +34,7 @@ export type Matches = {
 export type GroupMembers = {
     name: string;
     student_number: string | "";
+    is_leader?: boolean;
 }
 export type CommunicationPreference = "FACE_TO_FACE" | "ONLINE_CHAT" | "ONLINE_CALL";
 
