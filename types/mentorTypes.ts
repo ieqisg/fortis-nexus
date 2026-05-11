@@ -11,6 +11,7 @@ export type PublishedPaper = {
     title: string
     year: string
     url?: string
+    authors?: string[]
 }
 
 export type CommunicationPreference = "FACE_TO_FACE" | "ONLINE_CHAT" | "ONLINE_CALL";
@@ -30,6 +31,7 @@ export interface MentorFormProfile {
     experience: number;
     communication_preference: CommunicationPreference | "";
     prev_mentored_thesis?: PrevMentoredThesis[];
+    orcid?: string;
 }
 
 export type MentorProfileUpdate = Omit<MentorFormProfile, 'profile_completed'>
@@ -120,4 +122,5 @@ export type MentorEditForm = {
     technical_skills: string[];
     time_slot: string[];
     prev_mentored_thesis: PrevMentoredThesis[];
+    orcid?: string;
 };

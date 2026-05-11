@@ -36,10 +36,21 @@ export async function getAllUserData() {
 export async function getMentorDetail(id: string) {
     const { data, error } = await supabase
         .from("mentor")
-        .select("technical_skills, forte, self_description, published_papers, experience, available_days, time_slot, communication_preference, prev_mentored_thesis, profile_completed")
+        .select("technical_skills, forte, self_description, published_papers, experience, available_days, time_slot, communication_preference, prev_mentored_thesis, profile_completed, orcid")
         .eq("id", id)
         .maybeSingle()
-    if (error) return { success: false as const, message: error.message }
+
+    if (error) {
+        // orcid column may not exist yet — fall back to query without it
+        const { data: fallback, error: fallbackError } = await supabase
+            .from("mentor")
+            .select("technical_skills, forte, self_description, published_papers, experience, available_days, time_slot, communication_preference, prev_mentored_thesis, profile_completed")
+            .eq("id", id)
+            .maybeSingle()
+        if (fallbackError) return { success: false as const, message: fallbackError.message }
+        return { success: true as const, data: fallback }
+    }
+
     return { success: true as const, data }
 }
 
@@ -87,8 +98,11 @@ export async function adminEditMentor(mentorId: string, payload: {
     prev_mentored_thesis?: PrevMentoredThesis[]
     published_papers?: PublishedPaper[]
     profile_completed?: boolean
+    orcid?: string | null
 }) {
-    const { error } = await supabase.from("mentor").update(payload).eq("id", mentorId)
+    const { orcid, ...rest } = payload
+    const finalPayload = (orcid !== null && orcid !== undefined) ? { ...rest, orcid } : rest
+    const { error } = await supabase.from("mentor").update(finalPayload).eq("id", mentorId)
     if (error) return { success: false, message: error.message }
     return { success: true }
 }
@@ -240,4 +254,50 @@ export async function getMentorCapacityStats() {
         mentorsWithCapacity: withCapacity.length,
         totalCapacitySet,
     }
+}
+
+export async function fetchPapersByORCID(orcid: string) {
+    const orcidRes = await fetch(`https://pub.orcid.org/v3.0/${orcid}/works`, {
+        headers: { Accept: "application/json" },
+    })
+    if (!orcidRes.ok) return { success: false as const, message: "ORCID profile not found or inaccessible" }
+
+    const orcidData = await orcidRes.json()
+    const groups: any[] = orcidData.group ?? []
+    const papers: PublishedPaper[] = []
+
+    for (const group of groups) {
+        const summary = group["work-summary"]?.[0]
+        if (!summary) continue
+
+        const title: string = summary.title?.title?.value
+        const year: string = summary["publication-date"]?.year?.value
+        const doi: string | undefined = (summary["external-ids"]?.["external-id"] ?? [])
+            .find((id: any) => id["external-id-type"] === "doi")?.["external-id-value"]
+
+        if (!title || !year) continue
+
+        const url = doi ? `https://doi.org/${doi}` : undefined
+        let authors: string[] | undefined
+
+        if (doi) {
+            try {
+                const crRes = await fetch(
+                    `https://api.crossref.org/works/${encodeURIComponent(doi)}`,
+                    { headers: { "User-Agent": "FortisNexus/1.0 (mailto:admin@fortisnexus.app)" } }
+                )
+                if (crRes.ok) {
+                    const crData = await crRes.json()
+                    const authorList = (crData.message?.author ?? []).map((a: any) =>
+                        [a.given, a.family].filter(Boolean).join(" ")
+                    )
+                    if (authorList.length > 0) authors = authorList
+                }
+            } catch { /* skip CrossRef if unavailable */ }
+        }
+
+        papers.push({ title, year, url, authors })
+    }
+
+    return { success: true as const, papers }
 }
