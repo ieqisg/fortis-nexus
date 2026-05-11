@@ -115,38 +115,94 @@ sequenceDiagram
     participant Storage as Supabase Storage (papers bucket)
     participant DB as Supabase DB
 
-    Mentee->>Browser: Fill paper submission form (title + PDF)
-    Browser->>PaperActions: submitPaper(formData)
-    PaperActions->>DB: getMenteeData() → get active mentor_id from matches
-    DB-->>PaperActions: match record (mentor_id)
-    PaperActions->>Storage: upload PDF → papers/{mentee_id}/{filename}
-    Storage-->>PaperActions: file_path
-    PaperActions->>DB: INSERT into papers (mentee_group_id, mentor_id, title, file_path)
-    DB-->>PaperActions: OK
-    PaperActions-->>Browser: success
-    Browser-->>Mentee: "Paper submitted"
+    Mentee->>Browser: Open Paper Submission tab
+    Browser->>PaperActions: getPapers()
+    PaperActions->>DB: SELECT papers WHERE mentee_group_id = me
+    DB-->>PaperActions: papers list
 
-    Mentor->>Browser: Open "Mentee Papers" tab
+    alt Pending paper exists
+        PaperActions-->>Browser: hasPendingPaper = true
+        Browser-->>Mentee: Submit form is locked — "awaiting review" message
+    else No pending paper
+        Browser-->>Mentee: Submit form is available
+        Mentee->>Browser: Fill form (title + PDF ≤ 5 MB)
+        Browser->>PaperActions: submitPaper(formData)
+
+        PaperActions->>DB: SELECT papers WHERE mentee_group_id = me AND status = 'pending'
+        DB-->>PaperActions: (none)
+
+        alt Reviewed paper exists
+            PaperActions->>DB: SELECT reviewed paper (file_path)
+            PaperActions->>Storage: delete old file
+            PaperActions->>DB: DELETE old paper row
+        end
+
+        PaperActions->>DB: getMenteeData() → get mentor_id from matches
+        DB-->>PaperActions: match record
+        PaperActions->>Storage: upload PDF → papers/{mentee_id}/{filename}
+        Storage-->>PaperActions: file_path
+        PaperActions->>DB: INSERT into papers (mentee_group_id, mentor_id, title, file_path, status='pending')
+        DB-->>PaperActions: OK
+        PaperActions-->>Browser: success
+        Browser-->>Mentee: "Paper submitted" · form locks
+    end
+
+    Mentor->>Browser: Open Papers tab
     Browser->>PaperActions: getMenteesPapers()
     PaperActions->>DB: SELECT papers + paper_comments WHERE mentor_id = me
     DB-->>PaperActions: papers list with comments
-    PaperActions-->>Browser: papers displayed
     Browser-->>Mentor: Papers list
 
     Mentor->>Browser: Click "Download"
     Browser->>PaperActions: getPaperDownloadUrl(filePath)
     PaperActions->>Storage: createSignedUrl(filePath)
     Storage-->>PaperActions: signed URL (time-limited)
-    PaperActions-->>Browser: signed URL
     Browser->>Storage: GET PDF via signed URL
     Storage-->>Browser: PDF file
 
-    Mentor->>Browser: Add comment
+    Mentor->>Browser: Add comment + mark reviewed
     Browser->>PaperActions: addComment(paperId, comment)
-    PaperActions->>DB: INSERT into paper_comments (paper_id, mentor_id, comment)
+    PaperActions->>DB: INSERT into paper_comments · UPDATE papers status='reviewed'
     DB-->>PaperActions: OK
-    PaperActions-->>Browser: comment saved
-    Browser-->>Mentor: Comment posted
+    Browser-->>Mentor: Comment posted · paper marked reviewed
+    Note over Browser,Mentee: Mentee's submit form unlocks on next page load
+```
+
+---
+
+### 1D. Mentor Creates a Milestone — Mentee Views It
+
+```mermaid
+sequenceDiagram
+    actor Mentor as Mentor
+    actor Mentee as Mentee
+    participant Browser as Browser
+    participant MilestoneActions as milestoneActions.ts
+    participant DB as Supabase DB
+
+    Mentor->>Browser: Open Milestones tab · select mentee group
+    Browser->>MilestoneActions: getMilestones(menteeGroupId)
+    MilestoneActions->>DB: SELECT milestones WHERE mentee_group_id = X AND mentor_id = me
+    DB-->>MilestoneActions: milestones list
+    Browser-->>Mentor: Milestone list
+
+    Mentor->>Browser: Fill form (title, description, due date)
+    Browser->>MilestoneActions: createMilestone({ menteeGroupId, title, description, dueDate })
+    MilestoneActions->>DB: INSERT into milestones
+    DB-->>MilestoneActions: new milestone
+    Browser-->>Mentor: Milestone appears in list
+
+    Mentor->>Browser: Tick checkbox during meeting
+    Browser->>MilestoneActions: toggleMilestone(milestoneId, true)
+    MilestoneActions->>DB: UPDATE milestones SET completed=true, completed_at=now()
+    DB-->>MilestoneActions: OK
+    Browser-->>Mentor: Milestone marked done
+
+    Mentee->>Browser: Open Tasks & Milestones tab
+    Browser->>MilestoneActions: getMilestonesForCurrentMentee()
+    MilestoneActions->>DB: SELECT milestones JOIN matches WHERE mentee_group_id = me
+    DB-->>MilestoneActions: milestones list
+    Browser-->>Mentee: Read-only checklist (done · overdue · upcoming badges)
 ```
 
 ---
@@ -165,22 +221,27 @@ flowchart LR
         UC1["Register Account"]
         UC2["Complete / Edit Profile"]
         UC3["View Matched Mentor\n+ Compatibility Score"]
-        UC4["View Meeting Schedule"]
-        UC5["Submit Research Paper"]
+        UC4["View Meeting Schedule\n+ Session Notes"]
+        UC5["Submit Research Paper\n(5 MB limit · one at a time)"]
         UC6["View Paper Comments"]
-        UC7["View Announcements"]
+        UC7["View Admin Announcements"]
+        UC7b["View Mentor Announcements"]
         UC8["Change Password"]
+        UC8b["View Mentor Availability\n(days + time slots)"]
+        UC8c["View Tasks & Milestones\n(read-only checklist)"]
     end
 
     subgraph MentorUC ["Mentor"]
         direction TB
         UC9["Complete / Edit Profile"]
         UC10["View Matched Mentee Groups\n+ Compatibility Scores"]
-        UC11["Download & Comment\non Papers"]
-        UC12["Schedule Recurring Meeting"]
-        UC13["Broadcast Meeting\nto All Mentees"]
-        UC14["View Announcements"]
+        UC10b["View Mentee Profile Modal\n(research · members · availability)"]
+        UC11["Download & Comment\non Papers · Mark Reviewed"]
+        UC12["Schedule Recurring Meeting\n+ Write Session Notes"]
+        UC13["Create / Delete\nMentor Announcements"]
+        UC14["View Admin Announcements"]
         UC15["Change Password"]
+        UC15b["Create / Toggle / Delete\nMilestones per Mentee Group"]
     end
 
     subgraph AdminUC ["Admin"]
@@ -204,8 +265,8 @@ flowchart LR
         UC28["Persist Results\nto Supabase"]
     end
 
-    MenteeActor --- UC1 & UC2 & UC3 & UC4 & UC5 & UC6 & UC7 & UC8
-    MentorActor --- UC9 & UC10 & UC11 & UC12 & UC13 & UC14 & UC15
+    MenteeActor --- UC1 & UC2 & UC3 & UC4 & UC5 & UC6 & UC7 & UC7b & UC8 & UC8b & UC8c
+    MentorActor --- UC9 & UC10 & UC10b & UC11 & UC12 & UC13 & UC14 & UC15 & UC15b
     AdminActor --- UC16 & UC17 & UC18 & UC19 & UC20 & UC21 & UC22 & UC23
     UC16 --> SystemActor
     SystemActor --- UC24 & UC25 & UC26 & UC27 & UC28
@@ -272,6 +333,7 @@ classDiagram
         +string recurrence_day
         +string recurrence_time
         +string status
+        +text notes
         +timestamp created_at
     }
 
@@ -299,6 +361,26 @@ classDiagram
         +string title
         +string body
         +AnnouncementTarget target
+        +timestamp created_at
+    }
+
+    class MentorAnnouncement {
+        +uuid id
+        +uuid mentor_id
+        +string title
+        +string body
+        +timestamp created_at
+    }
+
+    class Milestone {
+        +uuid id
+        +uuid mentor_id
+        +uuid mentee_group_id
+        +string title
+        +text description
+        +date due_date
+        +boolean completed
+        +timestamptz completed_at
         +timestamp created_at
     }
 
@@ -350,6 +432,9 @@ classDiagram
     Mentor "1" --> "0..*" Paper : receives
     Paper "1" --> "0..*" PaperComment : receives
     Mentor "1" --> "0..*" PaperComment : writes
+    Mentor "1" --> "0..*" MentorAnnouncement : broadcasts
+    Mentor "1" --> "0..*" Milestone : creates
+    MenteeGroup "1" --> "0..*" Milestone : assigned
     Announcement --> AnnouncementTarget : targets
     Mentor --> CommunicationPreference : prefers
     MenteeGroup --> CommunicationPreference : prefers
@@ -377,8 +462,9 @@ flowchart TD
         /register/mentee-register  ·  /reset-password"]
 
         ServerActions["Server Actions — lib/actions/
-        authActions · mentorActions · menteeActions
-        meetingActions · paperActions · announcementActions · adminActions"]
+        authActions · mentorActions · menteeActions · adminActions
+        meetingActions · paperActions · announcementActions
+        milestoneActions · mentorAnnouncementActions"]
 
         APIRoute["API Route
         POST /api/run-matching
@@ -394,9 +480,10 @@ flowchart TD
 
         SupaDB["PostgreSQL (pg 17)
         mentor · MENTEE_GROUPS · admin
-        matches · meetings
+        matches · meetings (+ notes column)
         papers · paper_comments
-        announcements
+        announcements · mentor_announcements
+        milestones
         mentee_preferences · mentor_preferences
         algorithm_logs"]
 

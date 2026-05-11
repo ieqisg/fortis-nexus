@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Plus, X, Clock, UserRound } from "lucide-react";
+import { ArrowLeft, Plus, X, Clock, UserRound, Crown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +36,7 @@ export default function MenteeCreateProfile({
     const { setUserData } = UserAuth();
     const [studentNumValid, setStudentNumValid] = useState("");
     const [disableAddMember, setDisableAddMember] = useState(true);
+    const [leaderIndex, setLeaderIndex] = useState(0);
     const [timeAndDayValid, setTimeAndDayValid] = useState("")
     const [loading, setLoading] = useState(false)
     const [groupNameError, setGroupNameError] = useState("")
@@ -127,6 +128,11 @@ export default function MenteeCreateProfile({
             ...prev,
             group_members: prev.group_members.filter((_, i) => i !== index),
         }));
+        setLeaderIndex((prev) => {
+            if (prev === index) return 0;
+            if (prev > index) return prev - 1;
+            return prev;
+        });
     };
     // Handle submit
     const handleSubmit = async (e: React.FormEvent) => {
@@ -150,7 +156,7 @@ export default function MenteeCreateProfile({
                 role: "mentee" as const,
                 available_days: formData.available_days,
                 time_slot: formData.time_slot,
-                group_members: formData.group_members.map((member) => JSON.stringify(member)),
+                group_members: formData.group_members.map((member, idx) => JSON.stringify({ ...member, is_leader: idx === leaderIndex })),
                 communication_preference: formData.communication_preference || null,
             };
 
@@ -234,7 +240,19 @@ export default function MenteeCreateProfile({
                                     Group Members <span className="text-red-600">*</span>
                                 </Label>
                                 {formData.group_members.map((member, idx) => (
-                                    <div key={idx} className="flex gap-2 mb-2">
+                                    <div key={idx} className="flex gap-2 mb-2 items-center">
+                                        <button
+                                            type="button"
+                                            title={idx === leaderIndex ? "Group leader" : "Set as leader"}
+                                            onClick={() => setLeaderIndex(idx)}
+                                            className={`shrink-0 p-1.5 rounded-md transition-colors ${
+                                                idx === leaderIndex
+                                                    ? "text-amber-500 bg-amber-50 hover:bg-amber-100"
+                                                    : "text-slate-300 hover:text-amber-400 hover:bg-amber-50"
+                                            }`}
+                                        >
+                                            <Crown className="w-4 h-4" />
+                                        </button>
                                         <Input
                                             required
                                             placeholder="Member name"
@@ -252,7 +270,6 @@ export default function MenteeCreateProfile({
                                                 updateMember(idx, "student_number", e.target.value)
                                             }
                                         />
-
                                         <Button
                                             type="button"
                                             variant="outline"
@@ -263,17 +280,21 @@ export default function MenteeCreateProfile({
                                         </Button>
                                     </div>
                                 ))}
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    disabled={!disableAddMember}
-                                    size="sm"
-                                    className="mt-1"
-                                    onClick={addMember}
-                                >
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    Add member
-                                </Button>
+                                <div className="flex items-center gap-3 mt-1">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        disabled={!disableAddMember}
+                                        size="sm"
+                                        onClick={addMember}
+                                    >
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        Add member
+                                    </Button>
+                                    <p className="text-xs text-slate-400 flex items-center gap-1">
+                                        <Crown className="w-3 h-3 text-amber-400" /> Click the crown to set the group leader
+                                    </p>
+                                </div>
                                 {studentNumValid && (
                                     <p className="text-red-600 text-sm mt-1">{studentNumValid}</p>
                                 )}

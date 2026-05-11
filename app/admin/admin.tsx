@@ -53,10 +53,14 @@ import {
     Scale,
     GraduationCap,
     Loader2,
+    Crown,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog } from "@/lib/actions/adminActions"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog, fetchPapersByORCID } from "@/lib/actions/adminActions"
+import type { PublishedPaper, PrevMentoredThesis } from "@/types/mentorTypes"
+import type { GroupMembers } from "@/types/menteeTypes"
+import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getAnnouncements, createAnnouncement, deleteAnnouncement, type Announcement } from "@/lib/actions/announcementActions"
 import { Textarea } from "@/components/ui/textarea"
@@ -73,6 +77,19 @@ export default function Admin() {
     const [selectedUser, setSelectedUser] = useState<any>(null)
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
     const [editForm, setEditForm] = useState<Record<string, string | number>>({})
+    const [editMentorPapers, setEditMentorPapers] = useState<PublishedPaper[]>([])
+    const [editMentorSkills, setEditMentorSkills] = useState<string[]>([])
+    const [editMentorForte, setEditMentorForte] = useState<string[]>([])
+    const [editMentorTheses, setEditMentorTheses] = useState<PrevMentoredThesis[]>([])
+    const [editMentorAvailDays, setEditMentorAvailDays] = useState<string[]>([])
+    const [editMentorTimeSlots, setEditMentorTimeSlots] = useState<string[]>([])
+    const [editMenteeAvailDays, setEditMenteeAvailDays] = useState<string[]>([])
+    const [editMenteeTimeSlots, setEditMenteeTimeSlots] = useState<string[]>([])
+    const [editMenteeMembers, setEditMenteeMembers] = useState<GroupMembers[]>([])
+    const [editMenteeLeaderIndex, setEditMenteeLeaderIndex] = useState(0)
+    const [skillInput, setSkillInput] = useState("")
+    const [forteInput, setForteInput] = useState("")
+    const [fetchingPapers, setFetchingPapers] = useState(false)
     const [savingEdit, setSavingEdit] = useState(false)
     const [userToDelete, setUserToDelete] = useState<any>(null)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -94,7 +111,7 @@ export default function Admin() {
     const [capacityEdits, setCapacityEdits] = useState<Record<string, number>>({})
     const [savingCapacity, setSavingCapacity] = useState<string | null>(null)
 
-    const [mentorDetailCache, setMentorDetailCache] = useState<Record<string, { technical_skills?: string[]; forte?: string[]; self_description?: string }>>({})
+    const [mentorDetailCache, setMentorDetailCache] = useState<Record<string, { technical_skills?: string[]; forte?: string[]; self_description?: string; published_papers?: PublishedPaper[] }>>({})
     const [menteeDetailCache, setMenteeDetailCache] = useState<Record<string, { research_description?: string; mentor_preference?: string; time_slot?: string[]; available_days?: string[] }>>({})
 
     const loadMentorDetail = async (id: string) => {
@@ -123,6 +140,7 @@ export default function Admin() {
     const [createRole, setCreateRole] = useState<"mentor" | "mentee">("mentee")
     const [createForm, setCreateForm] = useState({ email: "", password: "", first_name: "", last_name: "", group_name: "", research_title: "", research_description: "", mentor_preference: "" })
     const [createMembers, setCreateMembers] = useState([{ name: "", student_number: "" }])
+    const [createLeaderIndex, setCreateLeaderIndex] = useState(0)
     const [creatingUser, setCreatingUser] = useState(false)
     const [showCreatePassword, setShowCreatePassword] = useState(false)
 
@@ -185,21 +203,78 @@ export default function Admin() {
         setSavingCapacity(null)
     }
 
-    const openEditDialog = (user: any) => {
+    const openEditDialog = async (user: any) => {
         setSelectedUser(user)
+        setSkillInput("")
+        setForteInput("")
         if (user.type === "mentor") {
             setEditForm({
                 first_name: user.first_name ?? "",
                 last_name: user.last_name ?? "",
                 email: user.email ?? "",
                 mentor_capacity: user.mentor_capacity ?? 1,
+                experience: "",
+                self_description: "",
+                communication_preference: "",
+                profile_completed: "",
+                orcid: "",
             })
+            setEditMentorPapers([])
+            setEditMentorSkills([])
+            setEditMentorForte([])
+            setEditMentorTheses([])
+            setEditMentorAvailDays([])
+            setEditMentorTimeSlots([])
+            const detail = await getMentorDetail(user.id)
+            if (detail.success && detail.data) {
+                const d = detail.data as any
+                setEditForm(prev => ({
+                    ...prev,
+                    experience: d.experience ?? 0,
+                    self_description: d.self_description ?? "",
+                    communication_preference: d.communication_preference ?? "",
+                    profile_completed: d.profile_completed ? "true" : "false",
+                    orcid: d.orcid ?? "",
+                }))
+                setEditMentorSkills(Array.isArray(d.technical_skills) ? d.technical_skills : [])
+                setEditMentorForte(Array.isArray(d.forte) ? d.forte : [])
+                setEditMentorTheses(Array.isArray(d.prev_mentored_thesis) ? d.prev_mentored_thesis : [])
+                setEditMentorAvailDays(Array.isArray(d.available_days) ? d.available_days : [])
+                setEditMentorTimeSlots(Array.isArray(d.time_slot) ? d.time_slot : [])
+                setEditMentorPapers(Array.isArray(d.published_papers) ? d.published_papers : [])
+                setMentorDetailCache(prev => ({ ...prev, [user.id]: d }))
+            }
         } else {
             setEditForm({
                 group_name: user.group_name ?? "",
                 research_title: user.research_title ?? "",
                 email: user.email ?? "",
+                research_description: "",
+                mentor_preference: "",
+                communication_preference: "",
             })
+            setEditMenteeAvailDays([])
+            setEditMenteeTimeSlots([])
+            setEditMenteeMembers([])
+            setEditMenteeLeaderIndex(0)
+            const detail = await getMenteeDetail(user.id)
+            if (detail.success && detail.data) {
+                const d = detail.data as any
+                setEditForm(prev => ({
+                    ...prev,
+                    research_description: d.research_description ?? "",
+                    mentor_preference: d.mentor_preference ?? "",
+                    communication_preference: d.communication_preference ?? "",
+                }))
+                setEditMenteeAvailDays(Array.isArray(d.available_days) ? d.available_days : [])
+                setEditMenteeTimeSlots(Array.isArray(d.time_slot) ? d.time_slot : [])
+                const parsedMembers: GroupMembers[] = (d.group_members ?? []).map((m: string) => {
+                    try { return JSON.parse(m) } catch { return { name: m, student_number: "" } }
+                })
+                setEditMenteeMembers(parsedMembers)
+                const leaderIdx = parsedMembers.findIndex(m => m.is_leader)
+                setEditMenteeLeaderIndex(leaderIdx >= 0 ? leaderIdx : 0)
+            }
         }
         setIsEditDialogOpen(true)
     }
@@ -214,12 +289,31 @@ export default function Admin() {
                 last_name: editForm.last_name as string,
                 email: editForm.email as string,
                 mentor_capacity: Number(editForm.mentor_capacity),
+                experience: Number(editForm.experience),
+                self_description: editForm.self_description as string,
+                communication_preference: (editForm.communication_preference as string) || null,
+                profile_completed: editForm.profile_completed === "true",
+                technical_skills: editMentorSkills,
+                forte: editMentorForte,
+                available_days: editMentorAvailDays,
+                time_slot: editMentorTimeSlots,
+                prev_mentored_thesis: editMentorTheses,
+                published_papers: editMentorPapers,
+                orcid: (editForm.orcid as string) || null,
             })
         } else {
             result = await adminEditMentee(selectedUser.id, {
                 group_name: editForm.group_name as string,
                 research_title: editForm.research_title as string,
                 email: editForm.email as string,
+                research_description: editForm.research_description as string,
+                mentor_preference: editForm.mentor_preference as string,
+                available_days: editMenteeAvailDays,
+                time_slot: editMenteeTimeSlots,
+                communication_preference: (editForm.communication_preference as string) || null,
+                group_members: editMenteeMembers.map((m, idx) =>
+                    JSON.stringify({ ...m, is_leader: idx === editMenteeLeaderIndex })
+                ),
             })
         }
         if (result.success) {
@@ -290,7 +384,7 @@ export default function Admin() {
                 research_title: createForm.research_title,
                 research_description: createForm.research_description,
                 mentor_preference: createForm.mentor_preference,
-                group_members: createMembers.map(m => JSON.stringify(m)),
+                group_members: createMembers.map((m, idx) => JSON.stringify({ ...m, is_leader: idx === createLeaderIndex })),
             })
         }
         if (result.success) {
@@ -301,6 +395,7 @@ export default function Admin() {
             }
             setCreateForm({ email: "", password: "", first_name: "", last_name: "", group_name: "", research_title: "", research_description: "", mentor_preference: "" })
             setCreateMembers([{ name: "", student_number: "" }])
+            setCreateLeaderIndex(0)
             setIsCreateDialogOpen(false)
             toast.success(`${createRole === "mentor" ? "Mentor" : "Mentee"} account created`)
         } else {
@@ -907,6 +1002,36 @@ export default function Admin() {
                                                                                 )}
                                                                             </div>
                                                                         </div>
+                                                                        {/* Published Papers */}
+                                                                        <div>
+                                                                            <p className="text-sm text-slate-500 mb-2">Published / Authored Papers</p>
+                                                                            {mentorDetailCache[mentor.id] ? (
+                                                                                (() => {
+                                                                                    const papers: PublishedPaper[] = mentorDetailCache[mentor.id].published_papers ?? []
+                                                                                    return papers.length > 0 ? (
+                                                                                        <div className="space-y-2">
+                                                                                            {papers.map((paper, pi) => (
+                                                                                                <div key={pi} className="flex items-start gap-3 p-2 rounded-lg border border-slate-100 bg-slate-50">
+                                                                                                    <div className="flex-1 min-w-0">
+                                                                                                        <p className="text-sm font-medium text-slate-900 truncate">{paper.title}</p>
+                                                                                                        <p className="text-xs text-slate-400 mt-0.5">{paper.year}</p>
+                                                                                                    </div>
+                                                                                                    {paper.url && (
+                                                                                                        <a href={paper.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline shrink-0 mt-0.5">
+                                                                                                            Link ↗
+                                                                                                        </a>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <p className="text-sm text-slate-400 italic">No published papers listed.</p>
+                                                                                    )
+                                                                                })()
+                                                                            ) : (
+                                                                                <Skeleton className="h-10 w-full mt-1" />
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                 </ScrollArea>
                                                             </DialogContent>
@@ -1043,12 +1168,20 @@ export default function Admin() {
                                                                             <p className="font-bold">Members</p>
                                                                             <div className="space-y-1">
                                                                                 {group.group_members?.map((member: string, i: number) => {
-                                                                                    const parsed = JSON.parse(member)
-                                                                                    return (
-                                                                                        <p key={i} className="text-sm">
-                                                                                            {parsed.name} ({parsed.student_number})
-                                                                                        </p>
-                                                                                    )
+                                                                                    try {
+                                                                                        const parsed = JSON.parse(member)
+                                                                                        return (
+                                                                                            <p key={i} className="text-sm flex items-center gap-1.5">
+                                                                                                {parsed.is_leader && <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                                                                                                <span className={parsed.is_leader ? "font-medium" : ""}>
+                                                                                                    {parsed.name} ({parsed.student_number})
+                                                                                                    {parsed.is_leader && <span className="ml-1 text-xs text-amber-600">Leader</span>}
+                                                                                                </span>
+                                                                                            </p>
+                                                                                        )
+                                                                                    } catch {
+                                                                                        return <p key={i} className="text-sm">{member}</p>
+                                                                                    }
                                                                                 })}
                                                                             </div>
                                                                         </div>
@@ -1280,8 +1413,8 @@ export default function Admin() {
                                                     const displayed = showAllProposals ? events : events.slice(0, 20)
                                                     const typeColors: Record<string, string> = {
                                                         propose: "bg-blue-100 text-blue-700",
-                                                        accept:  "bg-green-100 text-green-700",
-                                                        reject:  "bg-red-100 text-red-700",
+                                                        accept: "bg-green-100 text-green-700",
+                                                        reject: "bg-red-100 text-red-700",
                                                         replace: "bg-orange-100 text-orange-700",
                                                     }
                                                     return (
@@ -1406,79 +1539,332 @@ export default function Admin() {
 
             {/* ── Edit User Dialog ── */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Edit {selectedUser?.type === "mentor" ? "Mentor" : "Mentee"}</DialogTitle>
-                        <DialogDescription>
-                            Update the details for this user. Changes are saved immediately.
-                        </DialogDescription>
+                        <DialogDescription>Update all profile details for this user.</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-2">
-                        {selectedUser?.type === "mentor" ? (
-                            <>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <Label>First Name</Label>
-                                        <Input
-                                            value={editForm.first_name as string ?? ""}
-                                            onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
-                                        />
+                    <ScrollArea className="max-h-[75vh]">
+                        <div className="space-y-6 py-2 pr-3 min-w-0">
+                            {selectedUser?.type === "mentor" ? (
+                                <>
+                                    {/* ── Basic Info ── */}
+                                    <div className="space-y-3">
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Basic Info</p>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1">
+                                                <Label>First Name</Label>
+                                                <Input value={editForm.first_name as string ?? ""} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label>Last Name</Label>
+                                                <Input value={editForm.last_name as string ?? ""} onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })} />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label>Email</Label>
+                                            <Input type="email" value={editForm.email as string ?? ""} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1">
+                                                <Label>Experience (years)</Label>
+                                                <Input type="number" min={0} value={editForm.experience ?? ""} onChange={(e) => setEditForm({ ...editForm, experience: Number(e.target.value) })} />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label>Mentor Capacity</Label>
+                                                <Input type="number" min={1} max={20} value={editForm.mentor_capacity as number ?? 1} onChange={(e) => setEditForm({ ...editForm, mentor_capacity: Number(e.target.value) })} />
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <Label>Profile Completed</Label>
+                                            <input
+                                                type="checkbox"
+                                                checked={editForm.profile_completed === "true"}
+                                                onChange={e => setEditForm({ ...editForm, profile_completed: e.target.checked ? "true" : "false" })}
+                                                className="w-4 h-4 accent-blue-600"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label>ORCID</Label>
+                                            <Input
+                                                placeholder="0000-0000-0000-0000"
+                                                value={(editForm.orcid as string) ?? ""}
+                                                onChange={e => setEditForm({ ...editForm, orcid: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label>Last Name</Label>
-                                        <Input
-                                            value={editForm.last_name as string ?? ""}
-                                            onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
-                                        />
+
+                                    <div className="h-px bg-slate-100" />
+
+                                    {/* ── Profile ── */}
+                                    <div className="space-y-3">
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Profile</p>
+                                        <div className="space-y-1">
+                                            <Label>Self Description</Label>
+                                            <Textarea rows={4} value={editForm.self_description as string ?? ""} onChange={(e) => setEditForm({ ...editForm, self_description: e.target.value })} placeholder="Describe the mentor's background..." />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label>Forte / Specialization</Label>
+                                            <div className="flex flex-wrap gap-1.5 mb-2">
+                                                {editMentorForte.map((f, i) => (
+                                                    <Badge key={i} variant="outline" className="text-xs border-indigo-200 text-indigo-700 bg-indigo-50 flex items-center gap-1">
+                                                        {f}
+                                                        <button type="button" onClick={() => setEditMentorForte(prev => prev.filter((_, j) => j !== i))} className="ml-0.5 hover:text-red-500"><X className="w-3 h-3" /></button>
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Input placeholder="Add specialization..." value={forteInput} onChange={e => setForteInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && forteInput.trim()) { e.preventDefault(); setEditMentorForte(prev => [...prev, forteInput.trim()]); setForteInput("") } }} />
+                                                <Button type="button" variant="outline" size="sm" onClick={() => { if (forteInput.trim()) { setEditMentorForte(prev => [...prev, forteInput.trim()]); setForteInput("") } }}>Add</Button>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label>Technical Skills</Label>
+                                            <div className="flex flex-wrap gap-1.5 mb-2">
+                                                {editMentorSkills.map((s, i) => (
+                                                    <Badge key={i} variant="outline" className="text-xs border-slate-200 text-slate-600 flex items-center gap-1">
+                                                        {s}
+                                                        <button type="button" onClick={() => setEditMentorSkills(prev => prev.filter((_, j) => j !== i))} className="ml-0.5 hover:text-red-500"><X className="w-3 h-3" /></button>
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Input placeholder="Add skill..." value={skillInput} onChange={e => setSkillInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && skillInput.trim()) { e.preventDefault(); setEditMentorSkills(prev => [...prev, skillInput.trim()]); setSkillInput("") } }} />
+                                                <Button type="button" variant="outline" size="sm" onClick={() => { if (skillInput.trim()) { setEditMentorSkills(prev => [...prev, skillInput.trim()]); setSkillInput("") } }}>Add</Button>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label>Email</Label>
-                                    <Input
-                                        type="email"
-                                        value={editForm.email as string ?? ""}
-                                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label>Mentor Capacity</Label>
-                                    <Input
-                                        type="number"
-                                        min={1}
-                                        max={20}
-                                        value={editForm.mentor_capacity as number ?? 1}
-                                        onChange={(e) => setEditForm({ ...editForm, mentor_capacity: Number(e.target.value) })}
-                                        className="w-28"
-                                    />
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <div className="space-y-1">
-                                    <Label>Group Name</Label>
-                                    <Input
-                                        value={editForm.group_name as string ?? ""}
-                                        onChange={(e) => setEditForm({ ...editForm, group_name: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label>Research Title</Label>
-                                    <Input
-                                        value={editForm.research_title as string ?? ""}
-                                        onChange={(e) => setEditForm({ ...editForm, research_title: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label>Email</Label>
-                                    <Input
-                                        type="email"
-                                        value={editForm.email as string ?? ""}
-                                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                                    />
-                                </div>
-                            </>
-                        )}
-                    </div>
+
+                                    <div className="h-px bg-slate-100" />
+
+                                    {/* ── Availability ── */}
+                                    <div className="space-y-3">
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Availability</p>
+                                        <AvailabilitySelector
+                                            selectedDays={editMentorAvailDays}
+                                            selectedTimeSlots={editMentorTimeSlots}
+                                            onDaysChange={setEditMentorAvailDays}
+                                            onTimeSlotsChange={setEditMentorTimeSlots}
+                                        />
+                                        <div className="space-y-1">
+                                            <Label>Communication Preference</Label>
+                                            <div className="flex gap-4 flex-wrap">
+                                                {(["FACE_TO_FACE", "ONLINE_CHAT", "ONLINE_CALL"] as const).map(pref => (
+                                                    <label key={pref} className="flex items-center gap-2 cursor-pointer text-sm">
+                                                        <input type="radio" name="edit_mentor_comm" value={pref} checked={editForm.communication_preference === pref} onChange={() => setEditForm({ ...editForm, communication_preference: pref })} className="accent-blue-600" />
+                                                        {pref === "FACE_TO_FACE" ? "Face to Face" : pref === "ONLINE_CHAT" ? "Online Chat" : "Online Call"}
+                                                    </label>
+                                                ))}
+                                                <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-400">
+                                                    <input type="radio" name="edit_mentor_comm" value="" checked={!editForm.communication_preference} onChange={() => setEditForm({ ...editForm, communication_preference: "" })} className="accent-blue-600" />
+                                                    None
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="h-px bg-slate-100" />
+
+                                    {/* ── Past Mentored Theses ── */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Past Mentored Theses</p>
+                                            <span className="text-xs text-slate-400">{editMentorTheses.length} entr{editMentorTheses.length !== 1 ? "ies" : "y"}</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {editMentorTheses.map((thesis, idx) => (
+                                                <div key={idx} className="flex gap-2 items-start p-3 rounded-lg border border-slate-200 bg-slate-50">
+                                                    <div className="flex-1 space-y-2">
+                                                        <div className="grid grid-cols-4 gap-2">
+                                                            <Input placeholder="Title No." value={thesis.title_no ?? ""} onChange={e => setEditMentorTheses(prev => prev.map((t, i) => i === idx ? { ...t, title_no: e.target.value } : t))} className="col-span-1" />
+                                                            <Input placeholder="Year" value={thesis.year ?? ""} onChange={e => setEditMentorTheses(prev => prev.map((t, i) => i === idx ? { ...t, year: e.target.value } : t))} className="col-span-1" />
+                                                            <Input placeholder="Adviser name" value={thesis.mentor ?? ""} onChange={e => setEditMentorTheses(prev => prev.map((t, i) => i === idx ? { ...t, mentor: e.target.value } : t))} className="col-span-2" />
+                                                        </div>
+                                                        <Input placeholder="Thesis title" value={thesis.title ?? ""} onChange={e => setEditMentorTheses(prev => prev.map((t, i) => i === idx ? { ...t, title: e.target.value } : t))} />
+                                                    </div>
+                                                    <Button type="button" variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0" onClick={() => setEditMentorTheses(prev => prev.filter((_, i) => i !== idx))}>
+                                                        <X className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => setEditMentorTheses(prev => [...prev, { title_no: "", title: "", mentor: "", year: "" }])}>
+                                            <Plus className="w-4 h-4 mr-1" /> Add Thesis
+                                        </Button>
+                                    </div>
+
+                                    <div className="h-px bg-slate-100" />
+
+                                    {/* ── Published Papers ── */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Published Papers</p>
+                                            <span className="text-xs text-slate-400">{editMentorPapers.length} entr{editMentorPapers.length !== 1 ? "ies" : "y"}</span>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            className="w-full text-xs"
+                                            disabled={fetchingPapers || !editForm.orcid}
+                                            onClick={async () => {
+                                                setFetchingPapers(true)
+                                                const res = await fetchPapersByORCID(editForm.orcid as string)
+                                                setFetchingPapers(false)
+                                                if (!res.success) { toast.error(res.message); return }
+                                                setEditMentorPapers(res.papers)
+                                                toast.success(`Fetched ${res.papers.length} paper${res.papers.length !== 1 ? "s" : ""}`)
+                                            }}
+                                        >
+                                            {fetchingPapers && <Loader2 className="w-3 h-3 animate-spin mr-2" />}
+                                            Auto-fetch via ORCID
+                                        </Button>
+                                        <div className="space-y-2">
+                                            {editMentorPapers.map((paper, idx) => (
+                                                <div key={idx} className="flex gap-2 items-start p-3 rounded-lg border border-slate-200 bg-slate-50">
+                                                    <div className="flex-1 space-y-2">
+                                                        <Textarea rows={2} placeholder="Paper title" value={paper.title ?? ""} onChange={e => setEditMentorPapers(prev => prev.map((p, i) => i === idx ? { ...p, title: e.target.value } : p))} className="resize-none text-sm" />
+                                                        <div className="flex gap-2">
+                                                            <Input placeholder="Year" value={paper.year ?? ""} onChange={e => setEditMentorPapers(prev => prev.map((p, i) => i === idx ? { ...p, year: e.target.value } : p))} className="w-24" />
+                                                            <Textarea rows={1} placeholder="URL (optional)" value={paper.url ?? ""} onChange={e => setEditMentorPapers(prev => prev.map((p, i) => i === idx ? { ...p, url: e.target.value } : p))} className="resize-none text-sm flex-1" />
+                                                        </div>
+                                                        {paper.authors && paper.authors.length > 0 && (
+                                                            <p className="text-xs text-slate-500">{paper.authors.join(", ")}</p>
+                                                        )}
+                                                    </div>
+                                                    <Button type="button" variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0" onClick={() => setEditMentorPapers(prev => prev.filter((_, i) => i !== idx))}>
+                                                        <X className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => setEditMentorPapers(prev => [...prev, { title: "", year: "", url: "" }])}>
+                                            <Plus className="w-4 h-4 mr-1" /> Add Paper
+                                        </Button>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    {/* ── Basic Info ── */}
+                                    <div className="space-y-3">
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Basic Info</p>
+                                        <div className="space-y-1">
+                                            <Label>Group Name</Label>
+                                            <Input value={editForm.group_name as string ?? ""} onChange={(e) => setEditForm({ ...editForm, group_name: e.target.value })} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label>Email</Label>
+                                            <Input type="email" value={editForm.email as string ?? ""} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+                                        </div>
+                                    </div>
+
+                                    <div className="h-px bg-slate-100" />
+
+                                    {/* ── Research ── */}
+                                    <div className="space-y-3">
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Research</p>
+                                        <div className="space-y-1">
+                                            <Label>Research / Thesis Title</Label>
+                                            <Input value={editForm.research_title as string ?? ""} onChange={(e) => setEditForm({ ...editForm, research_title: e.target.value })} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label>Research Description</Label>
+                                            <Textarea rows={4} value={editForm.research_description as string ?? ""} onChange={(e) => setEditForm({ ...editForm, research_description: e.target.value })} placeholder="Describe the research..." />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label>Mentor Preference</Label>
+                                            <Textarea rows={3} value={editForm.mentor_preference as string ?? ""} onChange={(e) => setEditForm({ ...editForm, mentor_preference: e.target.value })} placeholder="What the group looks for in a mentor..." />
+                                        </div>
+                                    </div>
+
+                                    <div className="h-px bg-slate-100" />
+
+                                    {/* ── Availability ── */}
+                                    <div className="space-y-3">
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Availability</p>
+                                        <AvailabilitySelector
+                                            selectedDays={editMenteeAvailDays}
+                                            selectedTimeSlots={editMenteeTimeSlots}
+                                            onDaysChange={setEditMenteeAvailDays}
+                                            onTimeSlotsChange={setEditMenteeTimeSlots}
+                                        />
+                                        <div className="space-y-1">
+                                            <Label>Communication Preference</Label>
+                                            <div className="flex gap-4 flex-wrap">
+                                                {(["FACE_TO_FACE", "ONLINE_CHAT", "ONLINE_CALL"] as const).map(pref => (
+                                                    <label key={pref} className="flex items-center gap-2 cursor-pointer text-sm">
+                                                        <input type="radio" name="edit_mentee_comm" value={pref} checked={editForm.communication_preference === pref} onChange={() => setEditForm({ ...editForm, communication_preference: pref })} className="accent-green-600" />
+                                                        {pref === "FACE_TO_FACE" ? "Face to Face" : pref === "ONLINE_CHAT" ? "Online Chat" : "Online Call"}
+                                                    </label>
+                                                ))}
+                                                <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-400">
+                                                    <input type="radio" name="edit_mentee_comm" value="" checked={!editForm.communication_preference} onChange={() => setEditForm({ ...editForm, communication_preference: "" })} className="accent-green-600" />
+                                                    None
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="h-px bg-slate-100" />
+
+                                    {/* ── Group Members ── */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Group Members</p>
+                                            <span className="text-xs text-slate-400">{editMenteeMembers.length} member{editMenteeMembers.length !== 1 ? "s" : ""}</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {editMenteeMembers.map((member, idx) => (
+                                                <div key={idx} className="flex gap-2 items-center">
+                                                    <button
+                                                        type="button"
+                                                        title={idx === editMenteeLeaderIndex ? "Group leader" : "Set as leader"}
+                                                        onClick={() => setEditMenteeLeaderIndex(idx)}
+                                                        className={`shrink-0 p-1.5 rounded-md transition-colors ${idx === editMenteeLeaderIndex ? "text-amber-500 bg-amber-50 hover:bg-amber-100" : "text-slate-300 hover:text-amber-400 hover:bg-amber-50"}`}
+                                                    >
+                                                        <Crown className="w-4 h-4" />
+                                                    </button>
+                                                    <Input
+                                                        placeholder="Member name"
+                                                        value={member.name ?? ""}
+                                                        onChange={e => setEditMenteeMembers(prev => prev.map((m, i) => i === idx ? { ...m, name: e.target.value } : m))}
+                                                    />
+                                                    <Input
+                                                        placeholder="Student no."
+                                                        type="number"
+                                                        value={member.student_number ?? ""}
+                                                        onChange={e => setEditMenteeMembers(prev => prev.map((m, i) => i === idx ? { ...m, student_number: e.target.value } : m))}
+                                                        className="w-36"
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0"
+                                                        onClick={() => {
+                                                            setEditMenteeMembers(prev => prev.filter((_, i) => i !== idx))
+                                                            setEditMenteeLeaderIndex(prev => prev === idx ? 0 : prev > idx ? prev - 1 : prev)
+                                                        }}
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <Button type="button" variant="outline" size="sm" onClick={() => setEditMenteeMembers(prev => [...prev, { name: "", student_number: "" }])}>
+                                                <Plus className="w-4 h-4 mr-1" /> Add Member
+                                            </Button>
+                                            <p className="text-xs text-slate-400 flex items-center gap-1">
+                                                <Crown className="w-3 h-3 text-amber-400" /> Click crown to set leader
+                                            </p>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
                         <Button onClick={handleEditSave} disabled={savingEdit} className="bg-blue-600 hover:bg-blue-700">
@@ -1702,16 +2088,27 @@ export default function Admin() {
                                     <div className="space-y-2">
                                         <Label>Group Members *</Label>
                                         {createMembers.map((member, idx) => (
-                                            <div key={idx} className="flex gap-2">
+                                            <div key={idx} className="flex gap-2 items-center">
+                                                <button
+                                                    type="button"
+                                                    title={idx === createLeaderIndex ? "Group leader" : "Set as leader"}
+                                                    onClick={() => setCreateLeaderIndex(idx)}
+                                                    className={`shrink-0 p-1.5 rounded-md transition-colors ${idx === createLeaderIndex
+                                                        ? "text-amber-500 bg-amber-50 hover:bg-amber-100"
+                                                        : "text-slate-300 hover:text-amber-400 hover:bg-amber-50"
+                                                        }`}
+                                                >
+                                                    <Crown className="w-4 h-4" />
+                                                </button>
                                                 <Input
                                                     placeholder="Member name"
-                                                    value={member.name}
+                                                    value={member.name ?? ""}
                                                     onChange={e => setCreateMembers(prev => prev.map((m, i) => i === idx ? { ...m, name: e.target.value } : m))}
                                                 />
                                                 <Input
                                                     placeholder="Student no."
                                                     type="number"
-                                                    value={member.student_number}
+                                                    value={member.student_number ?? ""}
                                                     onChange={e => setCreateMembers(prev => prev.map((m, i) => i === idx ? { ...m, student_number: e.target.value } : m))}
                                                     className="w-36"
                                                 />
@@ -1720,21 +2117,33 @@ export default function Admin() {
                                                         type="button"
                                                         variant="outline"
                                                         size="icon"
-                                                        onClick={() => setCreateMembers(prev => prev.filter((_, i) => i !== idx))}
+                                                        onClick={() => {
+                                                            setCreateMembers(prev => prev.filter((_, i) => i !== idx))
+                                                            setCreateLeaderIndex(prev => {
+                                                                if (prev === idx) return 0
+                                                                if (prev > idx) return prev - 1
+                                                                return prev
+                                                            })
+                                                        }}
                                                     >
                                                         <X className="w-4 h-4" />
                                                     </Button>
                                                 )}
                                             </div>
                                         ))}
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setCreateMembers(prev => [...prev, { name: "", student_number: "" }])}
-                                        >
-                                            <Plus className="w-4 h-4 mr-1" /> Add Member
-                                        </Button>
+                                        <div className="flex items-center gap-3">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setCreateMembers(prev => [...prev, { name: "", student_number: "" }])}
+                                            >
+                                                <Plus className="w-4 h-4 mr-1" /> Add Member
+                                            </Button>
+                                            <p className="text-xs text-slate-400 flex items-center gap-1">
+                                                <Crown className="w-3 h-3 text-amber-400" /> Click the crown to set the group leader
+                                            </p>
+                                        </div>
                                     </div>
                                 </>
                             )}

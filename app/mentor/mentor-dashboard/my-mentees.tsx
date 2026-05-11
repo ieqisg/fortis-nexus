@@ -20,7 +20,7 @@ import { Matches } from "@/types/menteeTypes";
 import { getMentorPreferences, type RankedMentee } from "@/lib/actions/mentorActions";
 import {
     ChevronDown, ChevronUp, ListOrdered,
-    Users, BookText, Calendar, Clock, MessageSquare, GraduationCap, ExternalLink,
+    Users, BookText, Calendar, Clock, MessageSquare, GraduationCap, ExternalLink, Crown,
 } from "lucide-react";
 import { parseSlot } from "@/components/ui/AvailabilitySelector";
 
@@ -45,7 +45,7 @@ function MenteeProfileModal({ match, open, onClose }: {
     if (!match?.mentee) return null
     const mentee = match.mentee
 
-    const members: { name: string; student_number: string }[] =
+    const members: { name: string; student_number: string; is_leader?: boolean }[] =
         (mentee.group_members ?? []).map((m: string) => {
             try { return JSON.parse(m) } catch { return { name: m, student_number: "" } }
         })
@@ -196,17 +196,22 @@ function MenteeProfileModal({ match, open, onClose }: {
                             ) : (
                                 <div className="grid sm:grid-cols-2 gap-2">
                                     {members.map((member, i) => (
-                                        <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 bg-slate-50">
+                                        <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border ${member.is_leader ? "border-amber-200 bg-amber-50" : "border-slate-100 bg-slate-50"}`}>
                                             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
                                                 {member.name?.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase() || "?"}
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="text-sm font-medium text-slate-900 truncate">{member.name || "—"}</p>
+                                                <p className="text-sm font-medium text-slate-900 truncate flex items-center gap-1.5">
+                                                    {member.name || "—"}
+                                                    {member.is_leader && <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                                                </p>
                                                 {member.student_number && (
                                                     <p className="text-xs text-slate-400">{member.student_number}</p>
                                                 )}
                                             </div>
-                                            <span className="ml-auto text-xs text-slate-400 shrink-0">#{i + 1}</span>
+                                            <span className="ml-auto text-xs text-slate-400 shrink-0">
+                                                {member.is_leader ? "Leader" : `#${i + 1}`}
+                                            </span>
                                         </div>
                                     ))}
                                 </div>
@@ -391,7 +396,12 @@ export default function MyMentees({ matches, mentorId }: Props) {
                                         try {
                                             const parsed = JSON.parse(member)
                                             return (
-                                                <Badge key={i} variant="outline">
+                                                <Badge
+                                                    key={i}
+                                                    variant="outline"
+                                                    className={parsed.is_leader ? "border-amber-300 bg-amber-50 text-amber-800" : ""}
+                                                >
+                                                    {parsed.is_leader && <Crown className="w-3 h-3 mr-1 text-amber-500" />}
                                                     {parsed.name} - {parsed.student_number}
                                                 </Badge>
                                             )

@@ -10,7 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useMentor } from "@/app/context/mentorContext";
 import { parseSlot } from "@/components/ui/AvailabilitySelector";
-import type { PrevMentoredThesis } from "@/types/mentorTypes";
+import type { PrevMentoredThesis, PublishedPaper } from "@/types/mentorTypes";
 
 function InfoBlock({ label, children }: { label: string; children: React.ReactNode }) {
     return (
@@ -43,6 +43,7 @@ export default function MentorProfileDetails() {
     )
 
     const theses = (mentor?.prev_mentored_thesis ?? []) as PrevMentoredThesis[]
+    const papers = (mentor?.published_papers ?? []) as PublishedPaper[]
     const timeSlots = mentor?.time_slot ?? []
 
     return (
@@ -89,6 +90,10 @@ export default function MentorProfileDetails() {
                         <div className="bg-white/10 backdrop-blur rounded-lg px-3 py-1.5 flex items-center gap-2">
                             <BookText className="w-3.5 h-3.5 text-blue-200" />
                             <span className="text-xs text-blue-100">{theses.length} prev. theses</span>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur rounded-lg px-3 py-1.5 flex items-center gap-2">
+                            <Star className="w-3.5 h-3.5 text-blue-200" />
+                            <span className="text-xs text-blue-100">{papers.length} published paper{papers.length !== 1 ? "s" : ""}</span>
                         </div>
                     </div>
                 </div>
@@ -210,6 +215,61 @@ export default function MentorProfileDetails() {
                                 <div className="text-center py-8 text-slate-400">
                                     <BookText className="w-8 h-8 mx-auto mb-2 text-slate-200" />
                                     <p className="text-sm">No previously mentored theses listed.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Published Papers */}
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
+                            <Star className="w-4 h-4 text-blue-600" />
+                            <h2 className="text-sm font-semibold text-slate-700">Published Papers</h2>
+                            <span className="ml-auto text-xs text-slate-400">{papers.length} entr{papers.length !== 1 ? "ies" : "y"}</span>
+                        </div>
+                        <div className="p-5">
+                            {papers.length > 0 ? (
+                                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-slate-50 text-slate-500">
+                                            <tr>
+                                                <th className="px-4 py-2.5 text-left font-medium">Title</th>
+                                                <th className="px-4 py-2.5 text-left font-medium">Authors</th>
+                                                <th className="px-4 py-2.5 text-left font-medium">Year</th>
+                                                <th className="px-4 py-2.5 text-left font-medium">Link</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {papers.map((paper, i) => (
+                                                <tr key={i} className="hover:bg-slate-50">
+                                                    <td className="px-4 py-2.5 text-slate-900 font-medium">{paper.title}</td>
+                                                    <td className="px-4 py-2.5 text-slate-500 text-xs max-w-xs truncate">
+                                                        {paper.authors?.join(", ") || <span className="text-slate-300">—</span>}
+                                                    </td>
+                                                    <td className="px-4 py-2.5 text-slate-400">{paper.year}</td>
+                                                    <td className="px-4 py-2.5">
+                                                        {paper.url ? (
+                                                            <a
+                                                                href={paper.url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-blue-600 hover:underline text-xs"
+                                                            >
+                                                                View ↗
+                                                            </a>
+                                                        ) : (
+                                                            <span className="text-slate-300 text-xs">—</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 text-slate-400">
+                                    <Star className="w-8 h-8 mx-auto mb-2 text-slate-200" />
+                                    <p className="text-sm">No published papers listed.</p>
                                 </div>
                             )}
                         </div>

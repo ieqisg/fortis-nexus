@@ -581,11 +581,25 @@ def build_mentor_text(mentor: dict) -> str:
     if isinstance(prev_thesis, str):
         prev_thesis_text = prev_thesis
     elif isinstance(prev_thesis, list):
-        prev_thesis_text = " ".join(str(t) for t in prev_thesis)
+        prev_thesis_text = " ".join(
+            t.get("title", "") if isinstance(t, dict) else str(t)
+            for t in prev_thesis
+        )
     else:
         prev_thesis_text = ""
 
-    return f"{skills} {forte} {description} {prev_thesis_text}".strip()
+    papers = mentor.get("published_papers") or []
+    if isinstance(papers, str):
+        papers_text = papers
+    elif isinstance(papers, list):
+        papers_text = " ".join(
+            p.get("title", "") if isinstance(p, dict) else str(p)
+            for p in papers
+        )
+    else:
+        papers_text = ""
+
+    return f"{skills} {forte} {description} {prev_thesis_text} {papers_text}".strip()
 
 
 def build_mentee_text(mentee: dict) -> str:

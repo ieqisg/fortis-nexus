@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
     BookText, Clock, Calendar, Star, Pencil,
-    UserRound, Users, MessageSquare, GraduationCap
+    UserRound, Users, MessageSquare, GraduationCap, Crown
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMentee } from "@/app/context/menteeContext";
@@ -41,7 +41,7 @@ export default function MenteeProfileDetails() {
         </div>
     )
 
-    const members: { name: string; student_number: string }[] =
+    const members: { name: string; student_number: string; is_leader?: boolean }[] =
         mentee?.group_members?.map((m: string) => {
             try { return JSON.parse(m) } catch { return { name: m, student_number: "" } }
         }) ?? []
@@ -178,17 +178,22 @@ export default function MenteeProfileDetails() {
                             ) : (
                                 <div className="grid sm:grid-cols-2 gap-3">
                                     {members.map((member, i) => (
-                                        <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-colors">
+                                        <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${member.is_leader ? "border-amber-200 bg-amber-50 hover:bg-amber-100" : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"}`}>
                                             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
                                                 {member.name?.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase() || "?"}
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="text-sm font-medium text-slate-900 truncate">{member.name || "—"}</p>
+                                                <p className="text-sm font-medium text-slate-900 truncate flex items-center gap-1.5">
+                                                    {member.name || "—"}
+                                                    {member.is_leader && <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                                                </p>
                                                 {member.student_number && (
                                                     <p className="text-xs text-slate-400">{member.student_number}</p>
                                                 )}
                                             </div>
-                                            <span className="ml-auto text-xs text-slate-400 shrink-0">Member {i + 1}</span>
+                                            <span className="ml-auto text-xs text-slate-400 shrink-0">
+                                                {member.is_leader ? "Leader" : `Member ${i + 1}`}
+                                            </span>
                                         </div>
                                     ))}
                                 </div>
