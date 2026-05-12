@@ -133,6 +133,8 @@ export async function adminDeleteUser(userId: string, userType: "mentor" | "ment
 export async function rollbackMatches() {
     const { error } = await supabase.from("matches").delete().not("id", "is", null)
     if (error) return { success: false, message: error.message }
+    const { error: logsError } = await supabase.from("algorithm_logs").delete().not("id", "is", null)
+    if (logsError) return { success: false, message: logsError.message }
     return { success: true }
 }
 
