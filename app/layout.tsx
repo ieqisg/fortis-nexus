@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
     title: "Fortis Nexus",
     description: "Fortis Nexus: Mentor-Mentee Matching System",
-    icons: "./favicon.ico"
+    icons: "./logo.png"
 };
 
 export default function RootLayout({
