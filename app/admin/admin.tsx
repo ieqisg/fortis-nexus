@@ -65,7 +65,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { getAnnouncements, createAnnouncement, deleteAnnouncement, type Announcement } from "@/lib/actions/announcementActions"
 import { Textarea } from "@/components/ui/textarea"
 import { Megaphone, Trash2 } from "lucide-react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 
 export default function Admin() {
     const [mentors, setMentors] = useState<any[]>([])
@@ -2168,7 +2168,6 @@ export default function Admin() {
                 </DialogContent>
             </Dialog>
 
-            <Toaster richColors position="top-right" />
         </div>
     )
 }

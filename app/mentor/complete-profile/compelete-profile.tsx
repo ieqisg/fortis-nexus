@@ -132,7 +132,8 @@ export default function MentorCompleteProfile() {
             const result = await createMentorProfile(payload)
 
             if (result.success) {
-                toast.success("Mentor Profile Completed")
+                toast.success("Mentor Profile Completed, Please Login again with your changed password")
+                await signOut()
                 router.push("/")
             }
         } catch (err) {
