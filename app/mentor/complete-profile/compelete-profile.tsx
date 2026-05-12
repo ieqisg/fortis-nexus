@@ -28,6 +28,7 @@ export default function MentorCompleteProfile() {
     const { getUser, signIn, signOut } = UserAuth()
     const [loading, setLoading] = useState(false)
     const [menteeCount, setMenteeCount] = useState<number | null>(null)
+    const [formDataValid, setFormDataValid] = useState(true)
     const [capacityStats, setCapacityStats] = useState<{
         totalMentors: number
         mentorsWithCapacity: number
@@ -48,6 +49,7 @@ export default function MentorCompleteProfile() {
         experience: 0,
         communication_preference: "",
     })
+
     const [skillInput, setSkillInput] = useState("");
     const [forteInput, setForteInput] = useState("");
     const [passwordData, setPasswordData] = useState({
@@ -190,6 +192,22 @@ export default function MentorCompleteProfile() {
                 toast.error("An unexpected error occurred");
             }
         }
+    }
+
+    const isFormDataValid = () => {
+        return (
+            formData.first_name.trim() !== "" &&
+            formData.last_name.trim() !== "" &&
+            formData.technical_skills.length > 0 &&
+            formData.self_description.trim() !== "" &&
+            formData.forte.length > 0 &&
+            formData.mentor_capacity > 0 &&
+            formData.available_days.length > 0 &&
+            formData.time_slot.length > 0 &&
+            formData.role.trim() !== "" &&
+            formData.experience >= 0 &&
+            formData.communication_preference.trim() !== ""
+        );
     };
 
 
@@ -627,7 +645,7 @@ export default function MentorCompleteProfile() {
                                     Cancel
                                 </Button>
                                 <Button
-                                    disabled={loading}
+                                    disabled={loading || !isFormDataValid()}
                                     type="submit"
                                     className=" bg-blue-600 hover:bg-blue-700"
                                 >
