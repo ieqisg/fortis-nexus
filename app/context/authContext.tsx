@@ -73,7 +73,6 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
         await supabase.auth.signOut({ scope: 'others' })
 
         const { role } = await getUserRole(data.user.id)
-        console.log("role from getUserRole:", role)
 
         return { success: true, data: { ...data, role } }
     }
@@ -81,7 +80,6 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     const getUser = async (): Promise<AuthResponse> => {
         const { data: { user }, error } = await supabase.auth.getUser()
         if (error) {
-            console.error("Error getting user", error)
             return { success: false, error }
         }
         return { success: true, data: { user } }

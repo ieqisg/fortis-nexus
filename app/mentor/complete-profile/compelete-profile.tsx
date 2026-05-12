@@ -25,7 +25,7 @@ import { toast } from "sonner";
 export default function MentorCompleteProfile() {
     const router = useRouter()
 
-    const { getUser, signIn } = UserAuth()
+    const { getUser, signIn, signOut } = UserAuth()
     const [loading, setLoading] = useState(false)
     const [menteeCount, setMenteeCount] = useState<number | null>(null)
     const [capacityStats, setCapacityStats] = useState<{
@@ -134,7 +134,7 @@ export default function MentorCompleteProfile() {
                 router.push("/")
             }
         } catch (err) {
-            console.error(err)
+            toast.error("An unexpected error occured")
 
         } finally {
             setLoading(false)
@@ -173,11 +173,30 @@ export default function MentorCompleteProfile() {
         }
     };
 
+    const handleCancel = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (window.confirm("Are you sure you want to cancel your profile creation?")) {
+            try {
+                const user = await getUser();
+                if (!user) return;
+
+                const cancel = await signOut();
+                if (cancel.success) {
+                    toast.success("Cancelled successfully");
+                    router.push("/");
+                }
+            } catch (err) {
+                toast.error("An unexpected error occurred");
+            }
+        }
+    };
+
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12 px-4">
             <div className="max-w-2xl mx-auto">
-                <Button variant="ghost" className="mb-6" >
+                <Button variant="ghost" className="mb-6" onClick={handleCancel}>
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back to Home
                 </Button>
@@ -602,9 +621,10 @@ export default function MentorCompleteProfile() {
                                 <Button
                                     type="submit"
                                     className=" bg-gray-600 "
-                                /* onClick={onBack} */
+                                    onClick={handleCancel}
+                                    disabled={loading}
                                 >
-                                    Back
+                                    Cancel
                                 </Button>
                                 <Button
                                     disabled={loading}

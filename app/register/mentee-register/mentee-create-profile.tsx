@@ -33,7 +33,7 @@ export default function MenteeCreateProfile({
 }) {
 
     const router = useRouter();
-    const { setUserData } = UserAuth();
+    const { setUserData, getUser, signOut } = UserAuth();
     const [studentNumValid, setStudentNumValid] = useState("");
     const [disableAddMember, setDisableAddMember] = useState(true);
     const [leaderIndex, setLeaderIndex] = useState(0);
@@ -184,11 +184,30 @@ export default function MenteeCreateProfile({
         }
     };
 
+    const handleCancel = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (window.confirm("Are you sure you want to cancel your profile creation?")) {
+            try {
+                const user = await getUser();
+                if (!user) return;
+
+                const cancel = await signOut();
+                if (cancel.success) {
+                    toast.success("Cancelled successfully");
+                    router.push("/");
+                }
+            } catch (err) {
+                toast.error("An unexpected error occurred");
+            }
+        }
+    };
+
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 py-12 px-4">
             <div className="max-w-2xl mx-auto">
-                <Button variant="ghost" className="mb-6" onClick={onBack}>
+                <Button variant="ghost" className="mb-6" onClick={handleCancel}>
                     <ArrowLeft className="w-4 h-4" />
                     Back To Home
                 </Button>
@@ -245,11 +264,10 @@ export default function MenteeCreateProfile({
                                             type="button"
                                             title={idx === leaderIndex ? "Group leader" : "Set as leader"}
                                             onClick={() => setLeaderIndex(idx)}
-                                            className={`shrink-0 p-1.5 rounded-md transition-colors ${
-                                                idx === leaderIndex
-                                                    ? "text-amber-500 bg-amber-50 hover:bg-amber-100"
-                                                    : "text-slate-300 hover:text-amber-400 hover:bg-amber-50"
-                                            }`}
+                                            className={`shrink-0 p-1.5 rounded-md transition-colors ${idx === leaderIndex
+                                                ? "text-amber-500 bg-amber-50 hover:bg-amber-100"
+                                                : "text-slate-300 hover:text-amber-400 hover:bg-amber-50"
+                                                }`}
                                         >
                                             <Crown className="w-4 h-4" />
                                         </button>
@@ -418,7 +436,7 @@ export default function MenteeCreateProfile({
                                                 const isOnlineGroup = mode === "ONLINE";
                                                 const checked = isOnlineGroup
                                                     ? formData.communication_preference === "ONLINE_CHAT" ||
-                                                      formData.communication_preference === "ONLINE_CALL"
+                                                    formData.communication_preference === "ONLINE_CALL"
                                                     : formData.communication_preference === "FACE_TO_FACE";
                                                 return (
                                                     <label key={mode} className="flex items-center gap-2 cursor-pointer">
@@ -450,29 +468,29 @@ export default function MenteeCreateProfile({
                                         </div>
 
                                         {(formData.communication_preference === "ONLINE_CHAT" ||
-                                          formData.communication_preference === "ONLINE_CALL") && (
-                                            <div className="ml-6 flex gap-6 border-l-2 border-green-100 pl-4">
-                                                {(["ONLINE_CHAT", "ONLINE_CALL"] as CommunicationPreference[]).map((sub) => (
-                                                    <label key={sub} className="flex items-center gap-2 cursor-pointer">
-                                                        <input
-                                                            type="radio"
-                                                            name="comm_sub"
-                                                            checked={formData.communication_preference === sub}
-                                                            onChange={() =>
-                                                                setFormData((prev) => ({
-                                                                    ...prev,
-                                                                    communication_preference: sub,
-                                                                }))
-                                                            }
-                                                            className="accent-green-600"
-                                                        />
-                                                        <span className="text-sm">
-                                                            {sub === "ONLINE_CHAT" ? "Chat only" : "Online meeting / call"}
-                                                        </span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        )}
+                                            formData.communication_preference === "ONLINE_CALL") && (
+                                                <div className="ml-6 flex gap-6 border-l-2 border-green-100 pl-4">
+                                                    {(["ONLINE_CHAT", "ONLINE_CALL"] as CommunicationPreference[]).map((sub) => (
+                                                        <label key={sub} className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                name="comm_sub"
+                                                                checked={formData.communication_preference === sub}
+                                                                onChange={() =>
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        communication_preference: sub,
+                                                                    }))
+                                                                }
+                                                                className="accent-green-600"
+                                                            />
+                                                            <span className="text-sm">
+                                                                {sub === "ONLINE_CHAT" ? "Chat only" : "Online meeting / call"}
+                                                            </span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            )}
                                     </CardContent>
                                 </Card>
                             </div>
