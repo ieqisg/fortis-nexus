@@ -41,14 +41,8 @@ export async function getMentorDetail(id: string) {
         .maybeSingle()
 
     if (error) {
-        // orcid column may not exist yet — fall back to query without it
-        const { data: fallback, error: fallbackError } = await supabase
-            .from("mentor")
-            .select("technical_skills, forte, self_description, published_papers, experience, available_days, time_slot, communication_preference, prev_mentored_thesis, profile_completed")
-            .eq("id", id)
-            .maybeSingle()
-        if (fallbackError) return { success: false as const, message: fallbackError.message }
-        return { success: true as const, data: fallback }
+        console.error("[getMentorDetail] query failed:", error.message)
+        return { success: false as const, message: error.message }
     }
 
     return { success: true as const, data }
@@ -104,8 +98,8 @@ export async function adminEditMentor(mentorId: string, payload: {
     const { orcid, ieee_id, ...rest } = payload
     const finalPayload = {
         ...rest,
-        ...(orcid !== null && orcid !== undefined ? { orcid } : {}),
-        ...(ieee_id !== null && ieee_id !== undefined ? { ieee_id } : {}),
+        orcid: orcid ?? null,
+        ieee_id: ieee_id ?? null,
     }
     const { error } = await supabase.from("mentor").update(finalPayload).eq("id", mentorId)
     if (error) return { success: false, message: error.message }

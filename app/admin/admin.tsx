@@ -66,6 +66,19 @@ import { Textarea } from "@/components/ui/textarea"
 import { Megaphone, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+function mergePapers(existing: PublishedPaper[], incoming: PublishedPaper[]): PublishedPaper[] {
+    const merged = [...existing]
+    for (const paper of incoming) {
+        const normTitle = paper.title.toLowerCase().trim()
+        const isDup = merged.some(p =>
+            (paper.url && p.url && p.url === paper.url) ||
+            p.title.toLowerCase().trim() === normTitle
+        )
+        if (!isDup) merged.push(paper)
+    }
+    return merged
+}
+
 export default function Admin() {
     const [mentors, setMentors] = useState<any[]>([])
     const [mentees, setMentees] = useState<any[]>([])
@@ -925,75 +938,107 @@ export default function Admin() {
                                                                     <DialogTitle>{mentor.first_name} {mentor.last_name}</DialogTitle>
                                                                     <DialogDescription>Mentor Profile Details</DialogDescription>
                                                                 </DialogHeader>
-                                                                <ScrollArea className="max-h-[60vh] overflow-hidden">
-                                                                    <div className="space-y-4 p-4">
-                                                                        <div className="grid grid-cols-2 gap-4">
-                                                                            <div>
-                                                                                <p className="text-sm text-slate-500">Email</p>
-                                                                                <p className="font-medium">{mentor.email}</p>
+                                                                <ScrollArea className="max-h-[60vh]">
+                                                                    <div className="space-y-4 p-1">
+                                                                        {/* Info card */}
+                                                                        <div className="rounded-xl border border-slate-200 overflow-hidden">
+                                                                            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                                                                                <p className="text-sm font-semibold text-slate-700">Profile Details</p>
                                                                             </div>
-                                                                            <div>
-                                                                                <p className="text-sm text-slate-500">Technical Skills</p>
-                                                                                {mentorDetailCache[mentor.id] ? (
-                                                                                    <div className="flex flex-wrap gap-1">
-                                                                                        {mentorDetailCache[mentor.id].technical_skills?.map((skill: string) => (
-                                                                                            <Badge key={skill} variant="secondary">{skill}</Badge>
-                                                                                        ))}
+                                                                            <div className="p-4 space-y-3">
+                                                                                <div>
+                                                                                    <p className="text-xs text-slate-500 mb-0.5">Email</p>
+                                                                                    <p className="text-sm font-medium text-slate-900">{mentor.email}</p>
+                                                                                </div>
+                                                                                <div className="h-px bg-slate-100" />
+                                                                                <div className="grid grid-cols-2 gap-4">
+                                                                                    <div>
+                                                                                        <p className="text-xs text-slate-500 mb-1">Forte</p>
+                                                                                        {mentorDetailCache[mentor.id] ? (
+                                                                                            <div className="flex flex-wrap gap-1">
+                                                                                                {(mentorDetailCache[mentor.id].forte ?? []).length > 0
+                                                                                                    ? (mentorDetailCache[mentor.id].forte ?? []).map((f: string) => (
+                                                                                                        <Badge key={f} variant="outline" className="text-xs border-indigo-200 text-indigo-700 bg-indigo-50">{f}</Badge>
+                                                                                                    ))
+                                                                                                    : <span className="text-xs text-slate-400">Not set</span>}
+                                                                                            </div>
+                                                                                        ) : <Skeleton className="h-5 w-32" />}
                                                                                     </div>
-                                                                                ) : (
-                                                                                    <Skeleton className="h-5 w-40 mt-1" />
-                                                                                )}
-                                                                            </div>
-                                                                            <div>
-                                                                                <p className="text-sm text-slate-500">Forte</p>
-                                                                                {mentorDetailCache[mentor.id] ? (
-                                                                                    <div className="flex flex-wrap gap-1">
-                                                                                        {mentorDetailCache[mentor.id].forte?.map((f: string) => (
-                                                                                            <Badge key={f} variant="secondary">{f}</Badge>
-                                                                                        ))}
+                                                                                    <div>
+                                                                                        <p className="text-xs text-slate-500 mb-1">Technical Skills</p>
+                                                                                        {mentorDetailCache[mentor.id] ? (
+                                                                                            <div className="flex flex-wrap gap-1">
+                                                                                                {(mentorDetailCache[mentor.id].technical_skills ?? []).length > 0
+                                                                                                    ? (mentorDetailCache[mentor.id].technical_skills ?? []).map((s: string) => (
+                                                                                                        <Badge key={s} variant="outline" className="text-xs border-slate-200 text-slate-600">{s}</Badge>
+                                                                                                    ))
+                                                                                                    : <span className="text-xs text-slate-400">Not set</span>}
+                                                                                            </div>
+                                                                                        ) : <Skeleton className="h-5 w-32" />}
                                                                                     </div>
-                                                                                ) : (
-                                                                                    <Skeleton className="h-5 w-40 mt-1" />
-                                                                                )}
-                                                                            </div>
-                                                                            <div>
-                                                                                <p className="text-sm text-slate-500">Description</p>
-                                                                                {mentorDetailCache[mentor.id] ? (
-                                                                                    <p className="font-medium">{mentorDetailCache[mentor.id].self_description}</p>
-                                                                                ) : (
-                                                                                    <Skeleton className="h-4 w-full mt-1" />
-                                                                                )}
+                                                                                </div>
+                                                                                <div className="h-px bg-slate-100" />
+                                                                                <div>
+                                                                                    <p className="text-xs text-slate-500 mb-0.5">Description</p>
+                                                                                    {mentorDetailCache[mentor.id] ? (
+                                                                                        <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+                                                                                            {mentorDetailCache[mentor.id].self_description || <span className="text-slate-400">Not provided</span>}
+                                                                                        </p>
+                                                                                    ) : <Skeleton className="h-10 w-full" />}
+                                                                                </div>
                                                                             </div>
                                                                         </div>
                                                                         {/* Published Papers */}
-                                                                        <div>
-                                                                            <p className="text-sm text-slate-500 mb-2">Published / Authored Papers</p>
-                                                                            {mentorDetailCache[mentor.id] ? (
-                                                                                (() => {
-                                                                                    const papers: PublishedPaper[] = mentorDetailCache[mentor.id].published_papers ?? []
-                                                                                    return papers.length > 0 ? (
-                                                                                        <div className="space-y-2">
-                                                                                            {papers.map((paper, pi) => (
-                                                                                                <div key={pi} className="flex items-start gap-3 p-2 rounded-lg border border-slate-100 bg-slate-50">
-                                                                                                    <div className="flex-1 min-w-0">
-                                                                                                        <p className="text-sm font-medium text-slate-900 truncate">{paper.title}</p>
-                                                                                                        <p className="text-xs text-slate-400 mt-0.5">{paper.year}</p>
-                                                                                                    </div>
-                                                                                                    {paper.url && (
-                                                                                                        <a href={paper.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline shrink-0 mt-0.5">
-                                                                                                            Link ↗
-                                                                                                        </a>
-                                                                                                    )}
-                                                                                                </div>
-                                                                                            ))}
-                                                                                        </div>
-                                                                                    ) : (
-                                                                                        <p className="text-sm text-slate-400 italic">No published papers listed.</p>
-                                                                                    )
-                                                                                })()
-                                                                            ) : (
-                                                                                <Skeleton className="h-10 w-full mt-1" />
-                                                                            )}
+                                                                        <div className="rounded-xl border border-slate-200 overflow-hidden">
+                                                                            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50">
+                                                                                <p className="text-sm font-semibold text-slate-700">Published / Authored Papers</p>
+                                                                                {mentorDetailCache[mentor.id] && (
+                                                                                    <span className="ml-auto text-xs text-slate-400">
+                                                                                        {(mentorDetailCache[mentor.id].published_papers ?? []).length} entr{(mentorDetailCache[mentor.id].published_papers ?? []).length !== 1 ? "ies" : "y"}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="p-4">
+                                                                                {mentorDetailCache[mentor.id] ? (
+                                                                                    (() => {
+                                                                                        const papers: PublishedPaper[] = mentorDetailCache[mentor.id].published_papers ?? []
+                                                                                        return papers.length > 0 ? (
+                                                                                            <div className="overflow-x-auto rounded-lg border border-slate-200">
+                                                                                                <table className="w-full text-sm">
+                                                                                                    <thead className="bg-slate-50 text-slate-500">
+                                                                                                        <tr>
+                                                                                                            <th className="px-4 py-2.5 text-left font-medium">Title</th>
+                                                                                                            <th className="px-4 py-2.5 text-left font-medium">Year</th>
+                                                                                                            <th className="px-4 py-2.5 text-left font-medium">Link</th>
+                                                                                                        </tr>
+                                                                                                    </thead>
+                                                                                                    <tbody className="divide-y divide-slate-100">
+                                                                                                        {papers.map((paper, pi) => (
+                                                                                                            <tr key={pi} className="hover:bg-slate-50">
+                                                                                                                <td className="px-4 py-2.5 text-slate-900 font-medium">{paper.title}</td>
+                                                                                                                <td className="px-4 py-2.5 text-slate-400 whitespace-nowrap">{paper.year}</td>
+                                                                                                                <td className="px-4 py-2.5 whitespace-nowrap">
+                                                                                                                    {paper.url ? (
+                                                                                                                        <a href={paper.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs">
+                                                                                                                            View ↗
+                                                                                                                        </a>
+                                                                                                                    ) : (
+                                                                                                                        <span className="text-slate-300 text-xs">—</span>
+                                                                                                                    )}
+                                                                                                                </td>
+                                                                                                            </tr>
+                                                                                                        ))}
+                                                                                                    </tbody>
+                                                                                                </table>
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <p className="text-sm text-slate-400 italic">No published papers listed.</p>
+                                                                                        )
+                                                                                    })()
+                                                                                ) : (
+                                                                                    <Skeleton className="h-16 w-full" />
+                                                                                )}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 </ScrollArea>
@@ -1024,7 +1069,7 @@ export default function Admin() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Registered Mentors</CardTitle>
-                                <CardDescription>Complete list of all registered mentors with their profiles</CardDescription>
+                                <CardDescription>Complete list of all registered mentors with their mentees</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1550,7 +1595,7 @@ export default function Admin() {
                                         <div className="space-y-1">
                                             <Label>ORCID</Label>
                                             <Input
-                                                placeholder="0000-0000-0000-0000"
+                                                placeholder="e.g. 0000-0003-4870-8326"
                                                 value={(editForm.orcid as string) ?? ""}
                                                 onChange={e => setEditForm({ ...editForm, orcid: e.target.value })}
                                             />
@@ -1558,7 +1603,7 @@ export default function Admin() {
                                         <div className="space-y-1">
                                             <Label>IEEE Author ID or Profile URL</Label>
                                             <Input
-                                                placeholder="e.g. 37089333571 or ieeexplore.ieee.org/author/..."
+                                                placeholder="e.g. 37089333571"
                                                 value={(editForm.ieee_id as string) ?? ""}
                                                 onChange={e => setEditForm({ ...editForm, ieee_id: e.target.value })}
                                             />
@@ -1684,7 +1729,7 @@ export default function Admin() {
                                                     const res = await fetchPapersByORCID(editForm.orcid as string)
                                                     setFetchingPapers(false)
                                                     if (!res.success) { toast.error(res.message); return }
-                                                    setEditMentorPapers(res.papers)
+                                                    setEditMentorPapers(prev => mergePapers(prev, res.papers))
                                                     toast.success(`Fetched ${res.papers.length} paper${res.papers.length !== 1 ? "s" : ""}`)
                                                 }}
                                             >
@@ -1702,7 +1747,7 @@ export default function Admin() {
                                                     const res = await fetchPapersByIEEE(editForm.ieee_id as string)
                                                     setFetchingPapers(false)
                                                     if (!res.success) { toast.error(res.message); return }
-                                                    setEditMentorPapers(res.papers)
+                                                    setEditMentorPapers(prev => mergePapers(prev, res.papers))
                                                     toast.success(`Fetched ${res.papers.length} paper${res.papers.length !== 1 ? "s" : ""}`)
                                                 }}
                                             >
