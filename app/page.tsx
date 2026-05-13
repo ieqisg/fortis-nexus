@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useRouter } from "next/navigation";
 import { UserAuth } from "./context/authContext";
 type Role = "mentor" | "mentee";
-import { Eye, EyeOff, ArrowLeft, Mail } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Mail, Crown, GraduationCap, ShieldCheck } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { getEmailByGroupName, checkLoginRateLimit, checkResetRateLimit } from "@/lib/actions/authActions";
 import { supabase } from "@/app/config/supabaseClient";
@@ -29,6 +30,8 @@ export default function Home() {
     const [groupName, setGroupName] = useState("")
     const { userData, signIn, setUserData, getUser } = UserAuth()
     const { email, password } = userData
+
+    const [roleChoiceOpen, setRoleChoiceOpen] = useState(false)
 
     // Forgot password state
     const [forgotMode, setForgotMode] = useState(false)
@@ -154,7 +157,10 @@ export default function Home() {
             const userSignIn = await signIn()
             if (!userSignIn.success) return
             const userRole = userSignIn?.data?.role
-            if (userRole === "mentor") {
+            const isAdminMentor = userSignIn?.data?.is_admin === true
+            if (userRole === "mentor" && isAdminMentor) {
+                setRoleChoiceOpen(true)
+            } else if (userRole === "mentor") {
                 router.push("/mentor/mentor-dashboard")
             } else if (userRole === "admin") {
                 router.push("/admin")
@@ -445,6 +451,37 @@ export default function Home() {
                     )} {/* end forgotMode conditional */}
                 </CardContent>
             </Card>
+
+            <Dialog open={roleChoiceOpen} onOpenChange={setRoleChoiceOpen}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Crown className="w-5 h-5 text-amber-500" />
+                            Choose How to Log In
+                        </DialogTitle>
+                        <DialogDescription>
+                            Your account has both mentor and admin access. How would you like to continue?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-3 pt-2">
+                        <Button
+                            className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white"
+                            onClick={() => { setRoleChoiceOpen(false); router.push("/mentor/mentor-dashboard") }}
+                        >
+                            <GraduationCap className="w-4 h-4 mr-2" />
+                            Continue as Mentor
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-amber-400 text-amber-700 hover:bg-amber-50"
+                            onClick={() => { setRoleChoiceOpen(false); router.push("/admin") }}
+                        >
+                            <ShieldCheck className="w-4 h-4 mr-2" />
+                            Continue as Admin
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

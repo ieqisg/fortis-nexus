@@ -11,6 +11,7 @@ type AuthResponse = {
         user?: any;
         session?: any;
         role?: string;
+        is_admin?: boolean;
     };
     error?: any;
 }
@@ -72,9 +73,9 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
         // Revoke all other sessions so only this device stays logged in
         await supabase.auth.signOut({ scope: 'others' })
 
-        const { role } = await getUserRole(data.user.id)
+        const { role, is_admin } = await getUserRole(data.user.id)
 
-        return { success: true, data: { ...data, role } }
+        return { success: true, data: { ...data, role, is_admin } }
     }
 
     const getUser = async (): Promise<AuthResponse> => {

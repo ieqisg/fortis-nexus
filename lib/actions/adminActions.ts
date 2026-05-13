@@ -13,7 +13,7 @@ export async function getAllUserData() {
         supabase
             .from("mentor")
             .select(`
-                id, first_name, last_name, email, mentor_capacity,
+                id, first_name, last_name, email, mentor_capacity, is_admin,
                 matches(
                     status, compatibility_score, matched_keywords,
                     mentee:matches_mentee_group_id_fkey(id, group_name, research_title)
@@ -125,6 +125,29 @@ export async function adminEditMentee(menteeId: string, payload: {
 export async function adminDeleteUser(userId: string, userType: "mentor" | "mentee") {
     const table = userType === "mentor" ? "mentor" : "MENTEE_GROUPS"
     const { error } = await supabase.from(table).delete().eq("id", userId)
+    if (error) return { success: false, message: error.message }
+    return { success: true }
+}
+
+export async function adminUpdateMentorPassword(mentorId: string, newPassword: string) {
+    const { error } = await supabase.auth.admin.updateUserById(mentorId, { password: newPassword })
+    if (error) return { success: false, message: error.message }
+    return { success: true }
+}
+
+export async function adminUpdateMentorEmail(mentorId: string, newEmail: string) {
+    const { error } = await supabase.auth.admin.updateUserById(mentorId, {
+        email: newEmail,
+        email_confirm: true,
+    })
+    if (error && !error.message.toLowerCase().includes("user not found")) {
+        return { success: false, message: error.message }
+    }
+    return { success: true }
+}
+
+export async function setMentorAdminRole(mentorId: string, isAdmin: boolean) {
+    const { error } = await supabase.from("mentor").update({ is_admin: isAdmin }).eq("id", mentorId)
     if (error) return { success: false, message: error.message }
     return { success: true }
 }

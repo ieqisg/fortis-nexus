@@ -5,12 +5,13 @@ import type { NextRequest } from "next/server";
 async function getRole(supabase: ReturnType<typeof createServerClient>, userId: string) {
     const [{ data: menteeData }, { data: mentorData }, { data: adminData }] = await Promise.all([
         supabase.from("MENTEE_GROUPS").select("role").eq("id", userId).maybeSingle(),
-        supabase.from("mentor").select("role, profile_completed").eq("id", userId).maybeSingle(),
+        supabase.from("mentor").select("role, profile_completed, is_admin").eq("id", userId).maybeSingle(),
         supabase.from("admin").select("role").eq("id", userId).maybeSingle(),
     ])
     return {
         role: menteeData?.role || mentorData?.role || adminData?.role,
         profileCompleted: mentorData?.profile_completed,
+        isMentorAdmin: mentorData?.is_admin === true,
     }
 }
 
@@ -49,11 +50,13 @@ export async function proxy(request: NextRequest) {
     }
 
     try {
-        const { role, profileCompleted } = await getRole(supabase, user.id)
+        const { role, profileCompleted, isMentorAdmin } = await getRole(supabase, user.id)
 
         if (path === "/" || path === "/login" || path === "/register") {
             if (role === "mentee") return NextResponse.redirect(new URL("/mentee/mentee-dashboard", request.url))
             if (role === "mentor") {
+                // Mentor-admins skip profile completion and go straight to admin
+                if (isMentorAdmin) return NextResponse.redirect(new URL("/admin", request.url))
                 if (!profileCompleted) return NextResponse.redirect(new URL("/mentor/complete-profile", request.url))
                 return NextResponse.redirect(new URL("/mentor/mentor-dashboard", request.url))
             }
@@ -68,9 +71,10 @@ export async function proxy(request: NextRequest) {
 
         if (path.startsWith("/mentee") && role !== "mentee") return NextResponse.redirect(new URL("/", request.url))
         if (path.startsWith("/mentor") && role !== "mentor") return NextResponse.redirect(new URL("/", request.url))
-        if (path.startsWith("/admin") && role !== "admin") return NextResponse.redirect(new URL("/", request.url))
+        // Allow mentor-admins to access /admin paths without having the "admin" table role
+        if (path.startsWith("/admin") && role !== "admin" && !isMentorAdmin) return NextResponse.redirect(new URL("/", request.url))
 
-        if (role === "mentor") {
+        if (role === "mentor" && path.startsWith("/mentor")) {
             if (path.startsWith("/mentor/complete-profile")) {
                 if (profileCompleted) return NextResponse.redirect(new URL("/mentor/mentor-dashboard", request.url))
             } else {
