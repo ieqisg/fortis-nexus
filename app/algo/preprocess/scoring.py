@@ -5,11 +5,11 @@ scoring.py
 
     Pillar                   Weight
     ────────────────────────────────
-    keyword_similarity        0.60   main compatibility signal
-    experience                0.20   mentor background & history
+    keyword_similarity        0.75   main compatibility signal
+    experience                0.10   mentor background & history
     availability              0.10   overlapping days/time slots
-    communication_preference  0.05   online vs face-to-face match
-    meeting_frequency         0.05   how often they can realistically meet
+    communication_preference  0.025  online vs face-to-face match
+    meeting_frequency         0.025  how often they can realistically meet
     ────────────────────────────────
     Total                     1.00
 
@@ -128,17 +128,17 @@ class ScoringWeights:
     """
     Pillar weights — must sum to 1.0.
 
-        keyword_similarity    0.60
-        experience            0.20
+        keyword_similarity    0.75
+        experience            0.10
         availability          0.10
-        communication         0.05
-        meeting_frequency     0.05
+        communication         0.025
+        meeting_frequency     0.025
     """
-    keyword_similarity: float = 0.60
-    experience:         float = 0.20
+    keyword_similarity: float = 0.75
+    experience:         float = 0.10
     availability:       float = 0.10
-    communication:      float = 0.05
-    meeting_frequency:  float = 0.05
+    communication:      float = 0.025
+    meeting_frequency:  float = 0.025
 
     def __post_init__(self):
         total = (
@@ -226,13 +226,7 @@ def build_mentor_keyword_string(mentor: dict) -> str:
     else:
         prev_thesis_text = ""
 
-    dummy_mentee = {"research_title": "", "research_description": "", "mentor_preference": ""}
-    expansion    = expand_pair(mentor, dummy_mentee)
-    expanded_kw  = expansion.get("mentor_expanded", {}).get("expanded_keywords", [])
-    domains      = expansion.get("mentor_expanded", {}).get("domains", [])
-
-    unique = _dedup_keywords([keywords, expanded_kw, domains])
-    return clean_text(f"{boosted} {prev_thesis_text} {' '.join(unique)}")
+    return clean_text(f"{boosted} {prev_thesis_text} {' '.join(keywords)}")
 
 
 def build_mentee_keyword_string(mentee: dict) -> str:
@@ -242,19 +236,95 @@ def build_mentee_keyword_string(mentee: dict) -> str:
     preference = mentee.get("mentor_preference") or ""
     boosted    = f"{title} {title} {title} {preference} {preference} {preference}"
 
-    dummy_mentor = {"technical_skills": [], "forte": [], "self_description": ""}
-    expansion    = expand_pair(dummy_mentor, mentee)
-    expanded_kw  = expansion.get("mentee_expanded", {}).get("expanded_keywords", [])
-    domains      = expansion.get("mentee_expanded", {}).get("domains", [])
-    shared       = expansion.get("shared_domains", [])
-
-    unique = _dedup_keywords([keywords, expanded_kw, domains, shared])
-    return clean_text(f"{boosted} {' '.join(unique)}")
+    return clean_text(f"{boosted} {' '.join(keywords)}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 2. KEYWORD COSINE SIMILARITY
+# 2. KEYWORD SIMILARITY — THREE METHODS
 # ─────────────────────────────────────────────────────────────────────────────
+
+def _extract_mentor_kw_list(mentor: dict) -> list[str]:
+    """Clean keyword list for a mentor: explicit skills + forte + extracted keywords."""
+    skills = [clean_text(s) for s in (mentor.get("technical_skills") or [])]
+    forte  = [clean_text(f) for f in (mentor.get("forte") or [])]
+    kws    = get_mentor_keywords(mentor, top_n=20)
+    seen: set[str] = set()
+    result: list[str] = []
+    for kw in skills + forte + kws:
+        if kw and kw not in seen:
+            seen.add(kw)
+            result.append(kw)
+    return result
+
+
+def _extract_mentee_kw_list(mentee: dict) -> list[str]:
+    """Clean keyword list for a mentee: extracted keywords (title + description + preference)."""
+    kws = get_mentee_keywords(mentee, top_n=20)
+    seen: set[str] = set()
+    result: list[str] = []
+    for kw in kws:
+        if kw and kw not in seen:
+            seen.add(kw)
+            result.append(kw)
+    return result
+
+
+def _kw_similarity_bow(mentor_kws: list[str], mentee_kws: list[str]) -> float:
+    """
+    Approach A — keyword bag-of-words cosine.
+    Joins keyword lists into clean strings (no repetition), TF-IDF vectorizes,
+    returns cosine similarity ∈ [0, 1].
+    """
+    if not mentor_kws or not mentee_kws:
+        return 0.0
+    vectorizer = TfidfVectorizer(
+        stop_words="english",
+        ngram_range=(1, 2),
+        min_df=1,
+        sublinear_tf=True,
+        analyzer="word",
+    )
+    try:
+        mat = vectorizer.fit_transform([" ".join(mentor_kws), " ".join(mentee_kws)])
+        return float(cosine_similarity(mat[1:2], mat[0:1])[0][0])
+    except Exception:
+        return 0.0
+
+
+def _kw_similarity_avg_max(mentor_kws: list[str], mentee_kws: list[str]) -> float:
+    """
+    Approach B — per-keyword average max cosine.
+    For each mentee keyword, compute character-level TF-IDF cosine with every
+    mentor keyword and take the max. Average those best-match scores.
+    Score ∈ [0, 1]. Handles partial matches (e.g. 'nlp' ~ 'natural language processing').
+    """
+    if not mentee_kws or not mentor_kws:
+        return 0.0
+    all_kws = mentee_kws + mentor_kws
+    vectorizer = TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 4), min_df=1)
+    try:
+        mat = vectorizer.fit_transform(all_kws)
+        n_mentee = len(mentee_kws)
+        sim = cosine_similarity(mat[:n_mentee], mat[n_mentee:])
+        return float(sim.max(axis=1).mean())
+    except Exception:
+        return 0.0
+
+
+def _kw_similarity_matched_vocab(mentor: dict, mentee: dict) -> float:
+    """
+    Keyword score = matched keyword count / max vocab size.
+    Uses the same computation as get_matched_keywords() so the score directly
+    reflects the matched keywords shown in the UI. More matches → higher score.
+    """
+    matched = get_matched_keywords(mentor, mentee)
+    if not matched:
+        return 0.0
+    mentor_vocab = set(_extract_vocab_matches(_build_direct_mentor_str(mentor)))
+    mentee_vocab = set(_extract_vocab_matches(_build_direct_mentee_str(mentee)))
+    ref = max(len(mentor_vocab), len(mentee_vocab), 1)
+    return min(len(matched) / ref, 1.0)
+
 
 def compute_keyword_similarity(
     mentor_kw_strings: list[str],
@@ -396,10 +466,24 @@ def _experience_score(mentor: dict) -> float:
 
 def _build_direct_mentor_str(mentor: dict) -> str:
     """Keyword string from raw profile fields only — no domain expansion."""
+    papers = mentor.get("published_papers") or []
+    papers_text = " ".join(
+        p.get("title", "") if isinstance(p, dict) else str(p)
+        for p in papers
+    )
+    prev_thesis = mentor.get("prev_mentored_thesis") or []
+    if isinstance(prev_thesis, str):
+        prev_thesis_text = prev_thesis
+    elif isinstance(prev_thesis, list):
+        prev_thesis_text = " ".join(str(t) for t in prev_thesis)
+    else:
+        prev_thesis_text = ""
     parts = [
         " ".join(mentor.get("technical_skills") or []),
         " ".join(mentor.get("forte") or []),
         mentor.get("self_description") or "",
+        papers_text,
+        prev_thesis_text,
     ]
     return clean_text(" ".join(parts))
 
@@ -496,9 +580,15 @@ def compute_weighted_scores(
     mentees: list[dict],
     weights: Optional[ScoringWeights] = None,
     return_breakdowns: bool = False,
+    keyword_method: str = "matched_vocab",
 ) -> tuple[np.ndarray, list[list[ScoreBreakdown]] | None]:
     """
     Main scoring pipeline — 5 pillars, weights sum to 1.0.
+
+    keyword_method:
+        "tfidf"   — current default: full document TF-IDF cosine (with boosting)
+        "bow"     — Approach A: keyword bag-of-words TF-IDF cosine (clean lists, no repetition)
+        "avg_max" — Approach B: per-keyword average max cosine using char n-grams
 
     Returns:
         scores:     np.ndarray shape (n_mentees, n_mentors) in [0, 1]
@@ -510,26 +600,37 @@ def compute_weighted_scores(
         f"  Weights → keyword:{weights.keyword_similarity} "
         f"exp:{weights.experience} avail:{weights.availability} "
         f"comm:{weights.communication} freq:{weights.meeting_frequency}"
+        f"  [keyword_method={keyword_method}]"
     )
 
-    # ── Keyword strings ───────────────────────────────────────────────────────
-    print("  📝 Extracting and expanding keywords...")
-    mentor_kw_strings, mentee_kw_strings = [], []
-
-    for mentor in mentors:
-        kw = build_mentor_keyword_string(mentor)
-        mentor_kw_strings.append(kw)
-        logger.debug("Mentor %s keywords: %s", mentor.get("id"), kw[:100])
-
-    for mentee in mentees:
-        kw = build_mentee_keyword_string(mentee)
-        mentee_kw_strings.append(kw)
-        logger.debug("Mentee %s keywords: %s", mentee.get("id"), kw[:100])
-
     # ── Keyword similarity ────────────────────────────────────────────────────
-    print("  🔍 Computing keyword cosine similarity...")
-    kw_similarity = compute_keyword_similarity(mentor_kw_strings, mentee_kw_strings)
-    kw_normalized = normalize_matrix(kw_similarity)
+    print(f"  📝 Extracting keywords and computing similarity [{keyword_method}]...")
+    if keyword_method == "matched_vocab":
+        kw_normalized = np.array(
+            [[_kw_similarity_matched_vocab(mentor, mentee) for mentor in mentors]
+             for mentee in mentees],
+            dtype=np.float32,
+        )
+    elif keyword_method in ("bow", "avg_max"):
+        mentor_kw_lists = [_extract_mentor_kw_list(m) for m in mentors]
+        mentee_kw_lists = [_extract_mentee_kw_list(m) for m in mentees]
+        fn = _kw_similarity_bow if keyword_method == "bow" else _kw_similarity_avg_max
+        kw_normalized = np.array(
+            [[fn(mk, ek) for mk in mentor_kw_lists] for ek in mentee_kw_lists],
+            dtype=np.float32,
+        )
+    else:  # "tfidf"
+        mentor_kw_strings: list[str] = []
+        mentee_kw_strings: list[str] = []
+        for mentor in mentors:
+            kw = build_mentor_keyword_string(mentor)
+            mentor_kw_strings.append(kw)
+            logger.debug("Mentor %s keywords: %s", mentor.get("id"), kw[:100])
+        for mentee in mentees:
+            kw = build_mentee_keyword_string(mentee)
+            mentee_kw_strings.append(kw)
+            logger.debug("Mentee %s keywords: %s", mentee.get("id"), kw[:100])
+        kw_normalized = compute_keyword_similarity(mentor_kw_strings, mentee_kw_strings)
 
     # ── Availability ──────────────────────────────────────────────────────────
     print("  📅 Computing availability scores...")
@@ -571,8 +672,6 @@ def compute_weighted_scores(
         + weights.communication     * comm_matrix
         + weights.meeting_frequency * freq_matrix
     )
-    final_scores = normalize_matrix(final_scores)
-    final_scores = np.clip(final_scores * 0.3 + 0.7, 0.7, 1.0)
 
     # ── Breakdowns ────────────────────────────────────────────────────────────
     breakdowns = None

@@ -32,7 +32,7 @@ function runMatchingScript(mode = "fair-matching") {
         console.log("  Script:", PYTHON_SCRIPT)
         console.log("  Mode:  ", mode)
 
-        const proc = spawn(PYTHON_BIN, [PYTHON_SCRIPT, "--mode", mode], {
+        const proc = spawn(PYTHON_BIN, [PYTHON_SCRIPT], {
             cwd: path.join(PROJECT_ROOT, "app/algo/preprocess"), // ← set working dir so imports work
             env: { ...process.env }
         })

@@ -142,6 +142,7 @@ export async function getMenteeData() {
                 experience,
                 available_days,
                 time_slot,
+                communication_preference,
                 prev_mentored_thesis
             )
         )

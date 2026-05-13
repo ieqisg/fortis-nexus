@@ -220,13 +220,8 @@ def save_preferences(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--mode",
-        choices=["mentee-optimal", "mentor-optimal", "fair-matching"],
-        default="fair-matching",
-    )
     args = parser.parse_args()
-    mode = args.mode
+    mode = "fair-matching"
 
     started_at = datetime.now(timezone.utc)
 
@@ -446,12 +441,13 @@ if __name__ == "__main__":
 
     if mode == "fair-matching":
         print("\n  5c · Picking fairer matching...")
-        final_assignment, method = pick_fairer_matching(
+        final_assignment, selected_variant = pick_fairer_matching(
             mentors, mentees,
             assignment_mo, assignment_meo,
             mentee_prefs, mentor_prefs,
         )
-        print(f"       Selected: {method}")
+        print(f"       Selected internally: {selected_variant}")
+        method = "fair-matching"
     elif mode == "mentee-optimal":
         final_assignment, method = assignment_mo, "mentee-optimal"
         print(f"\n  Result: mentee-optimal ({len(final_assignment)} pairs)")
