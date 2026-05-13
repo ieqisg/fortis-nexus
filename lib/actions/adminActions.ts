@@ -36,7 +36,7 @@ export async function getAllUserData() {
 export async function getMentorDetail(id: string) {
     const { data, error } = await supabase
         .from("mentor")
-        .select("technical_skills, forte, self_description, published_papers, experience, available_days, time_slot, communication_preference, prev_mentored_thesis, profile_completed, orcid")
+        .select("technical_skills, forte, self_description, published_papers, experience, available_days, time_slot, communication_preference, prev_mentored_thesis, profile_completed, orcid, ieee_id")
         .eq("id", id)
         .maybeSingle()
 
@@ -99,9 +99,14 @@ export async function adminEditMentor(mentorId: string, payload: {
     published_papers?: PublishedPaper[]
     profile_completed?: boolean
     orcid?: string | null
+    ieee_id?: string | null
 }) {
-    const { orcid, ...rest } = payload
-    const finalPayload = (orcid !== null && orcid !== undefined) ? { ...rest, orcid } : rest
+    const { orcid, ieee_id, ...rest } = payload
+    const finalPayload = {
+        ...rest,
+        ...(orcid !== null && orcid !== undefined ? { orcid } : {}),
+        ...(ieee_id !== null && ieee_id !== undefined ? { ieee_id } : {}),
+    }
     const { error } = await supabase.from("mentor").update(finalPayload).eq("id", mentorId)
     if (error) return { success: false, message: error.message }
     return { success: true }
@@ -300,6 +305,76 @@ export async function fetchPapersByORCID(orcid: string) {
 
         papers.push({ title, year, url, authors })
     }
+
+    return { success: true as const, papers }
+}
+
+export async function fetchPapersByIEEE(ieeeInput: string) {
+    // Accept either a full URL (https://ieeexplore.ieee.org/author/12345) or just the numeric ID
+    const match = ieeeInput.match(/(\d+)\s*$/)
+    if (!match) return { success: false as const, message: "Invalid IEEE Author ID or URL" }
+    const ieeeId = match[1]
+
+    let res: Response
+    try {
+        res = await fetch("https://ieeexplore.ieee.org/rest/search", {
+            method: "POST",
+            // cache: no-store bypasses Next.js's extended fetch caching layer
+            cache: "no-store",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json, text/plain, */*",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+                // sec-fetch-mode: cors is what IEEE Xplore checks to verify the request
+                // looks like a legitimate browser CORS call
+                "sec-fetch-mode": "cors",
+                "sec-fetch-site": "same-origin",
+                "sec-fetch-dest": "empty",
+                Referer: `https://ieeexplore.ieee.org/author/${ieeeId}`,
+                Origin: "https://ieeexplore.ieee.org",
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            },
+            body: JSON.stringify({
+                newsearch: true,
+                queryText: `("Author Ids":${ieeeId})`,
+                highlight: true,
+                returnFacets: ["ALL"],
+                returnType: "SEARCH",
+                matchPubs: true,
+            }),
+        })
+    } catch (err: any) {
+        return { success: false as const, message: `Could not reach IEEE Xplore: ${err?.message ?? "network error"}` }
+    }
+
+    if (!res.ok) return { success: false as const, message: `IEEE Xplore returned ${res.status} — author not found or access denied` }
+
+    let body: any
+    try { body = await res.json() } catch {
+        return { success: false as const, message: "Unexpected response from IEEE Xplore" }
+    }
+
+    const records: any[] = body.records ?? []
+    if (records.length === 0) return { success: false as const, message: "No papers found for this IEEE Author ID" }
+
+    const papers: PublishedPaper[] = records.map((a: any) => {
+        const doi = a.doi
+        const url = doi
+            ? `https://doi.org/${doi}`
+            : a.htmlLink
+                ? `https://ieeexplore.ieee.org${a.htmlLink}`
+                : undefined
+        const authors = Array.isArray(a.authors)
+            ? a.authors.map((au: any) => au.preferredName ?? au.normalizedName).filter(Boolean)
+            : undefined
+        return {
+            title: a.articleTitle ?? "Untitled",
+            year: String(a.publicationYear ?? ""),
+            url,
+            authors,
+        }
+    })
 
     return { success: true as const, papers }
 }

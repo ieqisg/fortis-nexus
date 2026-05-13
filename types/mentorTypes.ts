@@ -32,6 +32,7 @@ export interface MentorFormProfile {
     communication_preference: CommunicationPreference | "";
     prev_mentored_thesis?: PrevMentoredThesis[];
     orcid?: string;
+    ieee_id?: string;
 }
 
 export type MentorProfileUpdate = Omit<MentorFormProfile, 'profile_completed'>
@@ -123,4 +124,5 @@ export type MentorEditForm = {
     time_slot: string[];
     prev_mentored_thesis: PrevMentoredThesis[];
     orcid?: string;
+    ieee_id?: string;
 };
