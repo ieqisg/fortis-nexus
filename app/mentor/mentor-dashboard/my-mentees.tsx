@@ -22,7 +22,8 @@ import {
     ChevronDown, ChevronUp, ListOrdered,
     Users, BookText, Calendar, Clock, MessageSquare, GraduationCap, ExternalLink, Crown,
 } from "lucide-react";
-import { parseSlot } from "@/components/ui/AvailabilitySelector";
+import { parseSlot } from "@/components/ui/AvailabilitySelector"
+import { useMentor } from "@/app/context/mentorContext";
 
 type Props = {
     matches: Matches[]
@@ -85,7 +86,7 @@ function MenteeProfileModal({ match, open, onClose }: {
                             </span>
                             <span className="bg-white/10 backdrop-blur rounded-lg px-2.5 py-1 flex items-center gap-1.5 text-xs text-emerald-100">
                                 <MessageSquare className="w-3 h-3 text-emerald-200" />
-                                {commLabel((mentee as any).communication_preference)}
+                                {commLabel(mentee.communication_preference)}
                             </span>
                             <Badge className="bg-green-700/60 text-white border-0 text-xs">
                                 {match.status}
@@ -225,6 +226,7 @@ function MenteeProfileModal({ match, open, onClose }: {
 }
 
 export default function MyMentees({ matches, mentorId }: Props) {
+    const { mentor } = useMentor()
     const hasMatch = !!matches?.length
     const [rankingOpen, setRankingOpen] = useState(false)
     const [rankings, setRankings] = useState<RankedMentee[]>([])
@@ -389,6 +391,41 @@ export default function MyMentees({ matches, mentorId }: Props) {
                                 score={match.compatibility_score ?? 0}
                                 keywords={match.matched_keywords ?? []}
                             />
+                            {/* Match Criteria */}
+                            {(() => {
+                                const sharedDays = (match.mentee?.available_days ?? []).filter((d: string) =>
+                                    (mentor?.available_days ?? []).includes(d))
+                                const sharedSlots = (match.mentee?.time_slot ?? []).filter((s: string) =>
+                                    (mentor?.time_slot ?? []).includes(s))
+                                const commMatch = !!match.mentee?.communication_preference &&
+                                    match.mentee.communication_preference === mentor?.communication_preference
+                                return (
+                                    <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+                                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Match Criteria</p>
+                                        <div className="grid grid-cols-3 gap-2 text-xs">
+                                            <div>
+                                                <p className="text-slate-400 mb-1 flex items-center gap-1"><Calendar className="w-3 h-3" />Shared Days</p>
+                                                {sharedDays.length > 0
+                                                    ? <div className="flex flex-wrap gap-1">{sharedDays.map((d: string) => <span key={d} className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{d}</span>)}</div>
+                                                    : <span className="text-slate-400 italic">None</span>}
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-400 mb-1 flex items-center gap-1"><MessageSquare className="w-3 h-3" />Comm.</p>
+                                                <span className={`px-2 py-0.5 rounded-full font-medium ${commMatch ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                                                    {commMatch ? "✓" : "✗"} {commLabel(match.mentee?.communication_preference)}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-400 mb-1 flex items-center gap-1"><Clock className="w-3 h-3" />Slots</p>
+                                                {sharedSlots.length > 0
+                                                    ? <div className="flex flex-wrap gap-1">{sharedSlots.map((s: string) => <span key={s} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{s}</span>)}</div>
+                                                    : <span className="text-slate-400 italic">None</span>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })()}
+
                             <div className="mt-4 pt-4 border-t">
                                 <h4 className="font-semibold text-gray-900 mb-2">Group Members</h4>
                                 <div className="flex flex-wrap gap-2">

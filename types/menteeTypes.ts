@@ -16,6 +16,7 @@ export type Matches = {
         experience: number
         available_days: string[]
         time_slot: string[]
+        communication_preference: CommunicationPreference | null
         prev_mentored_thesis: import("./mentorTypes").PrevMentoredThesis[]
     } | null
     mentee: {
@@ -28,6 +29,7 @@ export type Matches = {
         mentor_preference: string
         time_slot: string[]
         available_days: string[]
+        communication_preference: CommunicationPreference | null
     } | null
 }
 

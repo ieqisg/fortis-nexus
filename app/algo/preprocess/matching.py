@@ -228,6 +228,7 @@ def compute_dissatisfaction(assignment: dict, prefs: dict) -> float:
     """
     Measures average rank of matched partner in preference list.
     Lower = better (0 = everyone got their top choice).
+    assignment = {proposer_id: receiver_id}
     """
     total = 0
     for proposer_id, receiver_id in assignment.items():
@@ -235,6 +236,28 @@ def compute_dissatisfaction(assignment: dict, prefs: dict) -> float:
         rank      = pref_list.index(receiver_id) if receiver_id in pref_list else len(pref_list)
         total    += rank
     return total / max(len(assignment), 1)
+
+
+def _mentor_dissatisfaction(assignment: dict, mentor_prefs: dict) -> float:
+    """
+    Computes average mentor dissatisfaction over all assigned mentee slots.
+    Correctly handles capacity > 1 by grouping all mentees per mentor
+    instead of inverting the dict (which drops duplicates).
+    assignment = {mentee_id: mentor_id}
+    """
+    mentor_to_mentees: dict[str, list[str]] = {}
+    for mentee_id, mentor_id in assignment.items():
+        mentor_to_mentees.setdefault(mentor_id, []).append(mentee_id)
+
+    total, count = 0, 0
+    for mentor_id, mentee_ids in mentor_to_mentees.items():
+        pref_list = mentor_prefs.get(mentor_id, [])
+        for mentee_id in mentee_ids:
+            rank = pref_list.index(mentee_id) if mentee_id in pref_list else len(pref_list)
+            total += rank
+            count += 1
+
+    return total / max(count, 1)
 
 
 def pick_fairer_matching(
@@ -247,18 +270,17 @@ def pick_fairer_matching(
 ) -> tuple[dict, str]:
     """
     Picks the matching with lower combined dissatisfaction from both sides.
-    This minimizes unfairness rather than optimizing for only one side.
+    Returns (assignment, selected_variant) where selected_variant is
+    "mentee-optimal" or "mentor-optimal" — callers set the DB label separately.
     """
     # Mentee-optimal dissatisfaction
-    d_mentee_mo  = compute_dissatisfaction(assignment_mentee_optimal, mentee_prefs)
-    mentor_view_mo = {v: k for k, v in assignment_mentee_optimal.items()}
-    d_mentor_mo  = compute_dissatisfaction(mentor_view_mo, mentor_prefs)
-    total_mo     = d_mentee_mo + d_mentor_mo
+    d_mentee_mo = compute_dissatisfaction(assignment_mentee_optimal, mentee_prefs)
+    d_mentor_mo = _mentor_dissatisfaction(assignment_mentee_optimal, mentor_prefs)
+    total_mo    = d_mentee_mo + d_mentor_mo
 
     # Mentor-optimal dissatisfaction
     d_mentee_meo = compute_dissatisfaction(assignment_mentor_optimal, mentee_prefs)
-    mentor_view_meo = {v: k for k, v in assignment_mentor_optimal.items()}
-    d_mentor_meo = compute_dissatisfaction(mentor_view_meo, mentor_prefs)
+    d_mentor_meo = _mentor_dissatisfaction(assignment_mentor_optimal, mentor_prefs)
     total_meo    = d_mentee_meo + d_mentor_meo
 
     print(f"\n  ⚖️  Fairness Comparison:")
@@ -449,11 +471,12 @@ def run_matching(
 
     # ── Step 4: Fairness comparison ───────────────────────────────────────────
     print("\n⚖️  Step 4: Picking fairer matching...")
-    final_assignment, method = pick_fairer_matching(
+    final_assignment, selected_variant = pick_fairer_matching(
         mentors, mentees,
         assignment_mo, assignment_meo,
         mentee_prefs, mentor_prefs,
     )
+    method = "fair-matching"
 
     # ── Step 5: Stability verification ───────────────────────────────────────
     print("\n🔍 Step 5: Verifying stability...")

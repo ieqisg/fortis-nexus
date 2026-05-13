@@ -286,6 +286,47 @@ export default function MenteeDashboard() {
                                                     )}
                                                 </div>
 
+                                                {/* Match Criteria */}
+                                                {(() => {
+                                                    const sharedDays = (mentee?.available_days ?? []).filter((d: string) =>
+                                                        (matches.mentor?.available_days ?? []).includes(d))
+                                                    const sharedSlots = (mentee?.time_slot ?? []).filter((s: string) =>
+                                                        (matches.mentor?.time_slot ?? []).includes(s))
+                                                    const commMatch = !!mentee?.communication_preference &&
+                                                        mentee.communication_preference === matches.mentor?.communication_preference
+                                                    const commLabel = (p: string | null | undefined) => {
+                                                        if (p === "FACE_TO_FACE") return "Face to Face"
+                                                        if (p === "ONLINE_CHAT") return "Online — Chat"
+                                                        if (p === "ONLINE_CALL") return "Online — Call"
+                                                        return p ?? "—"
+                                                    }
+                                                    return (
+                                                        <div className="border-t border-slate-100 pt-3 space-y-2">
+                                                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Match Criteria</p>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                                                                <div>
+                                                                    <p className="text-slate-400 mb-1 flex items-center gap-1"><Calendar className="w-3 h-3" />Shared Days</p>
+                                                                    {sharedDays.length > 0
+                                                                        ? <div className="flex flex-wrap gap-1">{sharedDays.map((d: string) => <span key={d} className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{d}</span>)}</div>
+                                                                        : <span className="text-slate-400 italic">No shared days</span>}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-slate-400 mb-1 flex items-center gap-1"><MessageSquare className="w-3 h-3" />Communication</p>
+                                                                    <span className={`px-2 py-0.5 rounded-full font-medium ${commMatch ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                                                                        {commMatch ? "✓" : "✗"} {commLabel(mentee?.communication_preference)}
+                                                                    </span>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-slate-400 mb-1 flex items-center gap-1"><Clock className="w-3 h-3" />Shared Slots</p>
+                                                                    {sharedSlots.length > 0
+                                                                        ? <div className="flex flex-wrap gap-1">{sharedSlots.map((s: string) => <span key={s} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{s}</span>)}</div>
+                                                                        : <span className="text-slate-400 italic">No shared slots</span>}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })()}
+
                                                 {/* Forte & Skills */}
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                     <div>

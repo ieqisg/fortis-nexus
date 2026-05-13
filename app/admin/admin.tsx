@@ -51,7 +51,6 @@ import {
     Plus,
     X,
     Scale,
-    GraduationCap,
     Loader2,
     Crown,
 } from "lucide-react";
@@ -144,7 +143,8 @@ export default function Admin() {
     const [creatingUser, setCreatingUser] = useState(false)
     const [showCreatePassword, setShowCreatePassword] = useState(false)
 
-    const handleRunMatching = async (mode: string) => {
+    const handleRunMatching = async () => {
+        const mode = "fair-matching"
         setMatchingMode(mode)
         try {
             const res = await fetch("/api/run-matching", {
@@ -575,51 +575,11 @@ export default function Admin() {
                             <div className="flex flex-wrap gap-3">
                                 <div className="flex flex-col items-start gap-1">
                                     <Button
-                                        onClick={() => handleRunMatching("mentee-optimal")}
-                                        disabled={matching || rollingBack}
-                                        className="bg-emerald-600 hover:bg-emerald-700"
-                                    >
-                                        {matchingMode === "mentee-optimal" ? (
-                                            <>
-                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                Running...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Users className="w-4 h-4 mr-2" />
-                                                Mentee-Optimal
-                                            </>
-                                        )}
-                                    </Button>
-                                    <p className="text-xs text-slate-400">Mentees propose · best for mentees</p>
-                                </div>
-                                <div className="flex flex-col items-start gap-1">
-                                    <Button
-                                        onClick={() => handleRunMatching("mentor-optimal")}
-                                        disabled={matching || rollingBack}
-                                        className="bg-violet-600 hover:bg-violet-700"
-                                    >
-                                        {matchingMode === "mentor-optimal" ? (
-                                            <>
-                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                Running...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <GraduationCap className="w-4 h-4 mr-2" />
-                                                Mentor-Optimal
-                                            </>
-                                        )}
-                                    </Button>
-                                    <p className="text-xs text-slate-400">Mentors propose · best for mentors</p>
-                                </div>
-                                <div className="flex flex-col items-start gap-1">
-                                    <Button
-                                        onClick={() => handleRunMatching("fair-matching")}
+                                        onClick={() => handleRunMatching()}
                                         disabled={matching || rollingBack}
                                         className="bg-blue-600 hover:bg-blue-700"
                                     >
-                                        {matchingMode === "fair-matching" ? (
+                                        {matching ? (
                                             <>
                                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 Running...
@@ -627,11 +587,11 @@ export default function Admin() {
                                         ) : (
                                             <>
                                                 <Scale className="w-4 h-4 mr-2" />
-                                                Fair Matching
+                                                Run Matching
                                             </>
                                         )}
                                     </Button>
-                                    <p className="text-xs text-slate-400">Runs both · picks fairer result</p>
+                                    <p className="text-xs text-slate-400">Runs both HR variants · picks fairer result</p>
                                 </div>
                                 <div className="flex flex-col items-start gap-1">
                                     <Button
@@ -965,7 +925,7 @@ export default function Admin() {
                                                                     <DialogTitle>{mentor.first_name} {mentor.last_name}</DialogTitle>
                                                                     <DialogDescription>Mentor Profile Details</DialogDescription>
                                                                 </DialogHeader>
-                                                                <ScrollArea className="max-h-[60vh]">
+                                                                <ScrollArea className="max-h-[60vh] overflow-hidden">
                                                                     <div className="space-y-4 p-4">
                                                                         <div className="grid grid-cols-2 gap-4">
                                                                             <div>
@@ -1165,7 +1125,7 @@ export default function Admin() {
                                                                     <DialogTitle>{group.group_name}</DialogTitle>
                                                                     <DialogDescription>Mentee Group Profile</DialogDescription>
                                                                 </DialogHeader>
-                                                                <ScrollArea className="max-h-[60vh]">
+                                                                <ScrollArea className="max-h-[60vh] overflow-hidden">
                                                                     <div className="space-y-4 p-4">
                                                                         <div>
                                                                             <p className="font-bold">Members</p>
@@ -1914,7 +1874,7 @@ export default function Admin() {
                             {selectedMentorCard?.matches?.length ?? 0} assigned mentee group{(selectedMentorCard?.matches?.length ?? 0) !== 1 ? "s" : ""}
                         </DialogDescription>
                     </DialogHeader>
-                    <ScrollArea className="max-h-[60vh]">
+                    <ScrollArea className="max-h-[60vh] overflow-hidden">
                         {!selectedMentorCard?.matches?.length ? (
                             <div className="py-8 text-center text-slate-500 text-sm">No mentees assigned yet.</div>
                         ) : (
