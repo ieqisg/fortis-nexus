@@ -57,7 +57,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog, fetchPapersByORCID } from "@/lib/actions/adminActions"
+import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog, fetchPapersByORCID, fetchPapersByIEEE } from "@/lib/actions/adminActions"
 import type { PublishedPaper, PrevMentoredThesis } from "@/types/mentorTypes"
 import type { GroupMembers } from "@/types/menteeTypes"
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector"
@@ -218,6 +218,7 @@ export default function Admin() {
                 communication_preference: "",
                 profile_completed: "",
                 orcid: "",
+                ieee_id: "",
             })
             setEditMentorPapers([])
             setEditMentorSkills([])
@@ -235,6 +236,7 @@ export default function Admin() {
                     communication_preference: d.communication_preference ?? "",
                     profile_completed: d.profile_completed ? "true" : "false",
                     orcid: d.orcid ?? "",
+                    ieee_id: d.ieee_id ?? "",
                 }))
                 setEditMentorSkills(Array.isArray(d.technical_skills) ? d.technical_skills : [])
                 setEditMentorForte(Array.isArray(d.forte) ? d.forte : [])
@@ -300,6 +302,7 @@ export default function Admin() {
                 prev_mentored_thesis: editMentorTheses,
                 published_papers: editMentorPapers,
                 orcid: (editForm.orcid as string) || null,
+                ieee_id: (editForm.ieee_id as string) || null,
             })
         } else {
             result = await adminEditMentee(selectedUser.id, {
@@ -1592,6 +1595,14 @@ export default function Admin() {
                                                 onChange={e => setEditForm({ ...editForm, orcid: e.target.value })}
                                             />
                                         </div>
+                                        <div className="space-y-1">
+                                            <Label>IEEE Author ID or Profile URL</Label>
+                                            <Input
+                                                placeholder="e.g. 37089333571 or ieeexplore.ieee.org/author/..."
+                                                value={(editForm.ieee_id as string) ?? ""}
+                                                onChange={e => setEditForm({ ...editForm, ieee_id: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
 
                                     <div className="h-px bg-slate-100" />
@@ -1701,24 +1712,44 @@ export default function Admin() {
                                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Published Papers</p>
                                             <span className="text-xs text-slate-400">{editMentorPapers.length} entr{editMentorPapers.length !== 1 ? "ies" : "y"}</span>
                                         </div>
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="outline"
-                                            className="w-full text-xs"
-                                            disabled={fetchingPapers || !editForm.orcid}
-                                            onClick={async () => {
-                                                setFetchingPapers(true)
-                                                const res = await fetchPapersByORCID(editForm.orcid as string)
-                                                setFetchingPapers(false)
-                                                if (!res.success) { toast.error(res.message); return }
-                                                setEditMentorPapers(res.papers)
-                                                toast.success(`Fetched ${res.papers.length} paper${res.papers.length !== 1 ? "s" : ""}`)
-                                            }}
-                                        >
-                                            {fetchingPapers && <Loader2 className="w-3 h-3 animate-spin mr-2" />}
-                                            Auto-fetch via ORCID
-                                        </Button>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                className="flex-1 text-xs"
+                                                disabled={fetchingPapers || !editForm.orcid}
+                                                onClick={async () => {
+                                                    setFetchingPapers(true)
+                                                    const res = await fetchPapersByORCID(editForm.orcid as string)
+                                                    setFetchingPapers(false)
+                                                    if (!res.success) { toast.error(res.message); return }
+                                                    setEditMentorPapers(res.papers)
+                                                    toast.success(`Fetched ${res.papers.length} paper${res.papers.length !== 1 ? "s" : ""}`)
+                                                }}
+                                            >
+                                                {fetchingPapers && <Loader2 className="w-3 h-3 animate-spin mr-2" />}
+                                                Auto-fetch via ORCID
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                className="flex-1 text-xs"
+                                                disabled={fetchingPapers || !editForm.ieee_id}
+                                                onClick={async () => {
+                                                    setFetchingPapers(true)
+                                                    const res = await fetchPapersByIEEE(editForm.ieee_id as string)
+                                                    setFetchingPapers(false)
+                                                    if (!res.success) { toast.error(res.message); return }
+                                                    setEditMentorPapers(res.papers)
+                                                    toast.success(`Fetched ${res.papers.length} paper${res.papers.length !== 1 ? "s" : ""}`)
+                                                }}
+                                            >
+                                                {fetchingPapers && <Loader2 className="w-3 h-3 animate-spin mr-2" />}
+                                                Auto-fetch via IEEE
+                                            </Button>
+                                        </div>
                                         <div className="space-y-2">
                                             {editMentorPapers.map((paper, idx) => (
                                                 <div key={idx} className="flex gap-2 items-start p-3 rounded-lg border border-slate-200 bg-slate-50">
