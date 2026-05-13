@@ -42,6 +42,7 @@ import {
     Search,
     TrendingUp,
     Eye,
+    EyeOff,
     Edit,
     CheckCircle2,
     XCircle,
@@ -56,7 +57,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog, fetchPapersByORCID, fetchPapersByIEEE } from "@/lib/actions/adminActions"
+import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog, fetchPapersByORCID, fetchPapersByIEEE, setMentorAdminRole, adminUpdateMentorPassword, adminUpdateMentorEmail } from "@/lib/actions/adminActions"
 import type { PublishedPaper, PrevMentoredThesis } from "@/types/mentorTypes"
 import type { GroupMembers } from "@/types/menteeTypes"
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector"
@@ -155,6 +156,21 @@ export default function Admin() {
     const [createLeaderIndex, setCreateLeaderIndex] = useState(0)
     const [creatingUser, setCreatingUser] = useState(false)
     const [showCreatePassword, setShowCreatePassword] = useState(false)
+    const [togglingAdmin, setTogglingAdmin] = useState<string | null>(null)
+    const [editNewPassword, setEditNewPassword] = useState("")
+    const [showEditPassword, setShowEditPassword] = useState(false)
+
+    const handleToggleAdmin = async (mentorId: string, currentIsAdmin: boolean) => {
+        setTogglingAdmin(mentorId)
+        const result = await setMentorAdminRole(mentorId, !currentIsAdmin)
+        if (result.success) {
+            setMentors(prev => prev.map(m => m.id === mentorId ? { ...m, is_admin: !currentIsAdmin } : m))
+            toast.success(!currentIsAdmin ? "Mentor promoted to admin" : "Admin access removed")
+        } else {
+            toast.error(result.message ?? "Failed to update admin role")
+        }
+        setTogglingAdmin(null)
+    }
 
     const handleRunMatching = async () => {
         const mode = "fair-matching"
@@ -220,6 +236,8 @@ export default function Admin() {
         setSelectedUser(user)
         setSkillInput("")
         setForteInput("")
+        setEditNewPassword("")
+        setShowEditPassword(false)
         if (user.type === "mentor") {
             setEditForm({
                 first_name: user.first_name ?? "",
@@ -299,6 +317,15 @@ export default function Admin() {
         setSavingEdit(true)
         let result
         if (selectedUser.type === "mentor") {
+            if ((editForm.email as string) !== selectedUser.email) {
+                const emailResult = await adminUpdateMentorEmail(selectedUser.id, editForm.email as string)
+                if (!emailResult.success) {
+                    toast.error(emailResult.message ?? "Failed to update email")
+                    setSavingEdit(false)
+                    return
+                }
+            }
+
             result = await adminEditMentor(selectedUser.id, {
                 first_name: editForm.first_name as string,
                 last_name: editForm.last_name as string,
@@ -333,7 +360,14 @@ export default function Admin() {
             })
         }
         if (result.success) {
-            // update local state
+            if (selectedUser.type === "mentor" && editNewPassword.trim()) {
+                const pwResult = await adminUpdateMentorPassword(selectedUser.id, editNewPassword.trim())
+                if (!pwResult.success) {
+                    toast.error(pwResult.message ?? "Profile saved but password update failed")
+                    setSavingEdit(false)
+                    return
+                }
+            }
             if (selectedUser.type === "mentor") {
                 setMentors(prev => prev.map(m =>
                     m.id === selectedUser.id ? { ...m, ...editForm } : m
@@ -791,15 +825,36 @@ export default function Admin() {
                                                 </TableCell>
                                                 <TableCell>{user.email}</TableCell>
                                                 <TableCell>
-                                                    <Badge variant="outline" className={user.type === "mentor" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}>
-                                                        {user.type}
-                                                    </Badge>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <Badge variant="outline" className={user.type === "mentor" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}>
+                                                            {user.type}
+                                                        </Badge>
+                                                        {user.type === "mentor" && user.is_admin && (
+                                                            <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 gap-1">
+                                                                <Crown className="w-3 h-3" /> Admin
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex space-x-2">
+                                                        {user.type === "mentor" && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                title={user.is_admin ? "Remove admin access" : "Grant admin access"}
+                                                                disabled={togglingAdmin === user.id}
+                                                                className={user.is_admin ? "text-amber-500 hover:text-amber-700 hover:bg-amber-50" : "text-slate-400 hover:text-amber-500 hover:bg-amber-50"}
+                                                                onClick={() => handleToggleAdmin(user.id, !!user.is_admin)}
+                                                            >
+                                                                {togglingAdmin === user.id
+                                                                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                                                                    : <Crown className="w-4 h-4" />}
+                                                            </Button>
+                                                        )}
                                                         <Button variant="ghost" size="sm" onClick={() => openEditDialog(user)}>
                                                             <Edit className="w-4 h-4" />
                                                         </Button>
@@ -1612,6 +1667,33 @@ export default function Admin() {
                                                 value={(editForm.ieee_id as string) ?? ""}
                                                 onChange={e => setEditForm({ ...editForm, ieee_id: e.target.value })}
                                             />
+                                        </div>
+                                    </div>
+
+                                    <div className="h-px bg-slate-100" />
+
+                                    {/* ── Security ── */}
+                                    <div className="space-y-3">
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Security</p>
+                                        <div className="space-y-1">
+                                            <Label>New Password <span className="text-slate-400 font-normal">(leave blank to keep current)</span></Label>
+                                            <div className="relative">
+                                                <Input
+                                                    type={showEditPassword ? "text" : "password"}
+                                                    placeholder="Enter new password…"
+                                                    value={editNewPassword}
+                                                    onChange={e => setEditNewPassword(e.target.value)}
+                                                    className="pr-10"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                                    onClick={() => setShowEditPassword(v => !v)}
+                                                    tabIndex={-1}
+                                                >
+                                                    {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 

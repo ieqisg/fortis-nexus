@@ -30,12 +30,13 @@ export async function getUserRole(userId: string) {
 
     const [{ data: menteeData }, { data: mentorData }, { data: adminData }] = await Promise.all([
         supabase.from("MENTEE_GROUPS").select("role").eq("id", userId).maybeSingle(),
-        supabase.from("mentor").select("role").eq("id", userId).maybeSingle(),
+        supabase.from("mentor").select("role, is_admin").eq("id", userId).maybeSingle(),
         supabase.from("admin").select("role").eq("id", userId).maybeSingle()
     ])
 
     const role = menteeData?.role || mentorData?.role || adminData?.role
-    return { role }
+    const is_admin = mentorData?.is_admin === true
+    return { role, is_admin }
 }
 
 export async function checkEmailAvailable(email: string) {
