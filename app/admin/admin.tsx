@@ -1415,25 +1415,30 @@ export default function Admin() {
                                                 </div>
 
                                                 {/* Proposal Phase */}
-                                                {(matchLog.phase3.proposal_events_mo || matchLog.phase3.proposal_events_meo) && (() => {
-                                                    const events: any[] = matchLog.phase3.proposal_events_mo ?? matchLog.phase3.proposal_events_meo ?? []
-                                                    const label = matchLog.phase3.proposal_events_mo ? "Mentee-Optimal" : "Mentor-Optimal"
-                                                    const displayed = showAllProposals ? events : events.slice(0, 20)
+                                                {(() => {
                                                     const typeColors: Record<string, string> = {
                                                         propose: "bg-blue-100 text-blue-700",
                                                         accept: "bg-green-100 text-green-700",
                                                         reject: "bg-red-100 text-red-700",
                                                         replace: "bg-orange-100 text-orange-700",
                                                     }
-                                                    return (
-                                                        <div className="rounded-lg border border-slate-200 overflow-hidden">
+                                                    const blocks: { label: string; events: any[]; key: string }[] = []
+                                                    if (matchLog.phase3.proposal_events_mo?.length) {
+                                                        blocks.push({ label: "Mentee-Optimal", events: matchLog.phase3.proposal_events_mo, key: "mo" })
+                                                    }
+                                                    if (matchLog.phase3.proposal_events_meo?.length) {
+                                                        blocks.push({ label: "Mentor-Optimal", events: matchLog.phase3.proposal_events_meo, key: "meo" })
+                                                    }
+                                                    if (blocks.length === 0) return null
+                                                    return blocks.map(({ label, events, key }) => (
+                                                        <div key={key} className="rounded-lg border border-slate-200 overflow-hidden">
                                                             <div className="p-3 bg-slate-50 border-b border-slate-200">
                                                                 <p className="text-xs font-semibold text-slate-700">
                                                                     Proposal Phase · {label} ({events.length} events)
                                                                 </p>
                                                             </div>
                                                             <div className="p-3 space-y-1 max-h-72 overflow-y-auto">
-                                                                {displayed.map((ev: any, idx: number) => (
+                                                                {(showAllProposals ? events : events.slice(0, 20)).map((ev: any, idx: number) => (
                                                                     <div key={idx} className="flex items-center gap-2 text-xs font-mono">
                                                                         <span className="text-slate-400 w-8 text-right shrink-0">#{ev.round}</span>
                                                                         <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0 ${typeColors[ev.type] ?? "bg-slate-100 text-slate-600"}`}>
@@ -1457,7 +1462,7 @@ export default function Admin() {
                                                                 </button>
                                                             )}
                                                         </div>
-                                                    )
+                                                    ))
                                                 })()}
 
                                                 <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
