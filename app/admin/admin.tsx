@@ -66,6 +66,19 @@ import { Textarea } from "@/components/ui/textarea"
 import { Megaphone, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+function mergePapers(existing: PublishedPaper[], incoming: PublishedPaper[]): PublishedPaper[] {
+    const merged = [...existing]
+    for (const paper of incoming) {
+        const normTitle = paper.title.toLowerCase().trim()
+        const isDup = merged.some(p =>
+            (paper.url && p.url && p.url === paper.url) ||
+            p.title.toLowerCase().trim() === normTitle
+        )
+        if (!isDup) merged.push(paper)
+    }
+    return merged
+}
+
 export default function Admin() {
     const [mentors, setMentors] = useState<any[]>([])
     const [mentees, setMentees] = useState<any[]>([])
@@ -1582,7 +1595,7 @@ export default function Admin() {
                                         <div className="space-y-1">
                                             <Label>ORCID</Label>
                                             <Input
-                                                placeholder="0000-0000-0000-0000"
+                                                placeholder="e.g. 0000-0003-4870-8326"
                                                 value={(editForm.orcid as string) ?? ""}
                                                 onChange={e => setEditForm({ ...editForm, orcid: e.target.value })}
                                             />
@@ -1590,7 +1603,7 @@ export default function Admin() {
                                         <div className="space-y-1">
                                             <Label>IEEE Author ID or Profile URL</Label>
                                             <Input
-                                                placeholder="e.g. 37089333571 or ieeexplore.ieee.org/author/..."
+                                                placeholder="e.g. 37089333571"
                                                 value={(editForm.ieee_id as string) ?? ""}
                                                 onChange={e => setEditForm({ ...editForm, ieee_id: e.target.value })}
                                             />
@@ -1716,7 +1729,7 @@ export default function Admin() {
                                                     const res = await fetchPapersByORCID(editForm.orcid as string)
                                                     setFetchingPapers(false)
                                                     if (!res.success) { toast.error(res.message); return }
-                                                    setEditMentorPapers(res.papers)
+                                                    setEditMentorPapers(prev => mergePapers(prev, res.papers))
                                                     toast.success(`Fetched ${res.papers.length} paper${res.papers.length !== 1 ? "s" : ""}`)
                                                 }}
                                             >
@@ -1734,7 +1747,7 @@ export default function Admin() {
                                                     const res = await fetchPapersByIEEE(editForm.ieee_id as string)
                                                     setFetchingPapers(false)
                                                     if (!res.success) { toast.error(res.message); return }
-                                                    setEditMentorPapers(res.papers)
+                                                    setEditMentorPapers(prev => mergePapers(prev, res.papers))
                                                     toast.success(`Fetched ${res.papers.length} paper${res.papers.length !== 1 ? "s" : ""}`)
                                                 }}
                                             >
