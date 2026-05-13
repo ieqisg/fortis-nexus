@@ -13,6 +13,7 @@ This document contains technical analysis of the matching algorithm for use in t
    - [Empirical Scaling (Benchmark Results)](#23-empirical-scaling-benchmark-results)
    - [Is O(n) Achievable?](#24-is-on-achievable)
    - [Proposal Phase Complexity](#25-proposal-phase-complexity)
+   - [Complexity Reduction Alternatives](#26-complexity-reduction-alternatives-same-algorithm-different-approach)
 3. [Effectiveness Metrics](#3-effectiveness-metrics)
    - [Algorithmic Correctness](#31-algorithmic-correctness-metrics)
    - [Semantic Match Quality](#32-semantic-match-quality-metrics)
@@ -27,17 +28,16 @@ This document contains technical analysis of the matching algorithm for use in t
 
 ## 1. System Overview
 
-### 1.1 Three-Mode Execution
+### 1.1 Fair Matching
 
-The system supports three Gale-Shapley execution modes, selectable per run:
+The system always runs **fair matching**: both variants of the Hospital-Resident (Gale-Shapley) algorithm are executed on every run, and the result with lower combined dissatisfaction is selected as the final assignment.
 
-| Mode | Who Proposes | Optimality Guarantee | When to Use |
-|------|-------------|---------------------|-------------|
-| `mentee-optimal` | Mentees propose to mentors | Best possible outcome for mentees | Prioritize mentee research alignment |
-| `mentor-optimal` | Mentors propose to mentees | Best possible outcome for mentors | Prioritize mentor workload preferences |
-| `fair-matching` | Runs both; picks lower combined dissatisfaction | Balanced — neither side dominated | Default; recommended for production |
+| Internal Variant | Who Proposes | Optimality Guarantee |
+|-----------------|-------------|---------------------|
+| Mentee-proposing HR | Mentees propose to mentors | Best possible outcome for mentees (mentee-optimal) |
+| Mentor-proposing HR | Mentors propose to mentees | Best possible outcome for mentors (mentor-optimal) |
 
-All three modes produce *stable* matchings. The `fair-matching` mode adds a selection step (Section 2.1, Phase 3) that picks whichever of the two HR runs yields lower combined dissatisfaction.
+Both variants produce *stable* matchings. The fair-matching selection step (Section 2.1, Phase 3) picks whichever variant yields lower combined rank dissatisfaction across both sides, ensuring neither mentees nor mentors are systematically disadvantaged.
 
 ### 1.2 Pipeline
 
@@ -56,13 +56,13 @@ Phase 2: Compatibility Scoring
   ├─ Meeting frequency overlap matrix
   └─ Weighted combination → final score matrix (n × m), clipped to [0.70, 1.00]
 
-Phase 3: Stable Matching
+Phase 3: Stable Matching (Fair-Matching)
   ├─ Generate preference lists (mentees rank mentors, mentors rank mentees)
-  ├─ Run HR algorithm — mentee-proposing variant       [if mode = mentee-optimal or fair-matching]  [Roth, 1984]
-  ├─ Run HR algorithm — mentor-proposing variant       [if mode = mentor-optimal or fair-matching]  [Roth, 1984]
-  ├─ Select fairer result (minimize combined rank dissatisfaction) [if mode = fair-matching]
-  ├─ Collect proposal phase events (every propose/accept/reject/replace per round)
-  ├─ Verify stability (check for blocking pairs)
+  ├─ Run HR algorithm — mentee-proposing variant (mentee-optimal)   [Roth, 1984]
+  ├─ Run HR algorithm — mentor-proposing variant (mentor-optimal)   [Roth, 1984]
+  ├─ Select fairer result (minimize combined rank dissatisfaction across both sides)
+  ├─ Collect proposal phase events for both variants (propose/accept/reject/replace per round)
+  ├─ Verify stability of selected result (check for blocking pairs)
   └─ Write matches + full audit log to Supabase
 ```
 
@@ -249,6 +249,83 @@ The system logs every individual proposal event (propose / accept / reject / rep
 **Collection cost:** O(1) per event (list append). The total additional overhead of event collection is O(n · m) in the worst case, which is already within the existing O(n · m) bounds for the HR algorithm. No asymptotic regression.
 
 **Storage:** Stored as JSONB in `algorithm_logs`. For n = 100, m = 10, typical event count ≈ 120–200 events per HR run (two events per proposal — a "propose" and an outcome). At ~150 bytes per event, this is roughly 30–60 KB per algorithm_logs row, well within Supabase JSONB limits.
+
+---
+
+### 2.6 Complexity Reduction Alternatives (Same Algorithm, Different Approach)
+
+**Current bottleneck:** Phase 2 TF-IDF cosine matrix is **O(n · m · f)** (f ≤ 500 TF-IDF features). For n = 100, m = 50, f = 500 this means ~2.5 million scalar operations. The HR algorithm itself is O(n · m), which is absorbed by this dominant term. The fair-matching step runs HR twice, doubling the HR cost but not changing the complexity class.
+
+The question is: can we reduce complexity while keeping the HR (Gale-Shapley) stable matching algorithm? Yes — by reducing the work done *before* HR runs.
+
+---
+
+#### Approach A — Truncated Preference Lists (HR with Incomplete Lists)
+
+**How it works:** Instead of scoring all n × m pairs and generating full preference lists, compute only the top-k highest-scoring candidates per mentee/mentor (k ≈ 5–10) and run HR on those truncated lists. This is the approach used in the real NRMP (National Resident Matching Program) since 1998. [(Roth & Peranson, 1999)](https://doi.org/10.1257/aer.89.4.748)
+
+**Complexity improvement:**
+
+| Stage | Current | With top-k |
+|-------|---------|-----------|
+| TF-IDF cosine scoring | O(n · m · f) | O(n · k · f) — only score top-k candidates |
+| Preference generation | O((n+m) · m · log m) | O((n+m) · k · log k) |
+| HR algorithm | O(n · m) | O(n · k) |
+| **Total** | **O(n · m · f)** | **O(n · k · f), k << m** |
+
+**Trade-off:** Stability is guaranteed only within the retained top-k preferences. A mentee not appearing in a mentor's top-k list cannot be matched to that mentor even if no other stable match exists, potentially leaving more mentees unmatched. Empirically, for the NRMP with k ≥ 10, unmatched rates are near-identical to the full-list version. [(Roth & Peranson, 1999)](https://doi.org/10.1257/aer.89.4.748)
+
+**Applicability to this system:** With m ≤ 50 mentors at FEU Tech, k = m and this optimization is moot. It becomes relevant when m exceeds ~100. The current codebase already supports this as a future parameter: `generate_preferences()` in `matching.py` returns full ranked lists with no truncation — adding a `top_k` parameter requires only a `.[:top_k]` slice before the HR call.
+
+---
+
+#### Approach B — Approximate Nearest-Neighbor Pre-filtering (ANN)
+
+**How it works:** Compute dense profile embeddings (e.g., sentence-BERT or TF-IDF sparse vectors projected to lower dimensions via SVD/PCA), then use an ANN index (FAISS HNSW) to retrieve the top-k most similar mentors per mentee in O(log m) per query. Run exact TF-IDF scoring only on those k pairs.
+
+**Complexity improvement:**
+
+| Stage | Current | With ANN |
+|-------|---------|---------|
+| Embedding / index build | — | O((n+m) · d) once, cached |
+| ANN query (per mentee) | — | O(n · log m) |
+| Exact TF-IDF on shortlist | O(n · m · f) | O(n · k · f) |
+| **Total (cold)** | **O(n · m · f)** | **O((n+m)·d + n·k·f)** |
+| **Total (warm, cached index)** | **O(n · m · f)** | **O(n · k · f)** |
+
+**Trade-off:** Adds a dependency (FAISS or `hnswlib`), adds an index build step, and introduces approximate recall (top-k list may miss a true best match with low probability). ANN recall@10 is typically > 98% for text embeddings. Not worthwhile at FEU Tech's scale.
+
+---
+
+#### Approach C — Incremental / Cached Scoring
+
+**How it works:** Store TF-IDF vectors per profile in the database. On each re-run, only recompute scores for the Δ profiles that changed since the last run; reuse cached dot products for the rest.
+
+**Complexity improvement:**
+
+| Scenario | Complexity |
+|----------|-----------|
+| First run (cold) | O(n · m · f) — no savings |
+| Re-run with Δ changed profiles | O(Δ · m · f) — typically Δ ≈ 2–5 per week |
+| Re-run with no changes | O(1) — return cached result |
+
+**Trade-off:** Requires profile change tracking (e.g., `updated_at` timestamps) and cache invalidation logic. Adds operational complexity. Suitable if the matching algorithm is run frequently (e.g., daily) with few profile changes.
+
+---
+
+#### Summary Recommendation
+
+For the current FEU Tech deployment (n ≤ 100, m ≤ 50), **no optimization is needed** — the full pipeline runs in under 2 seconds empirically. The table below documents the path for each scaling scenario:
+
+| Faculty grows to… | Recommended approach | Expected complexity |
+|-------------------|---------------------|-------------------|
+| m ≤ 100 | No change needed | O(n) with fixed m |
+| m = 100–500 | Truncated preference lists (k = 15–20) | O(n · k · f) |
+| m > 500 | ANN pre-filtering + truncated lists | O(n · log m + n · k · f) |
+| Frequent re-runs (daily) | Incremental cached scoring | O(Δ · m · f) per re-run |
+
+**Formal claim for thesis:**
+> The system's O(n · m · f) scoring phase can be reduced to O(n · k · f) (k ≪ m) by truncating preference lists to the top-k highest-scoring candidates before the HR algorithm runs. This preserves the HR algorithm's stability guarantee within the retained preference set (Roth & Peranson, 1999) and reduces the HR runtime from O(n · m) to O(n · k). For FEU Tech's deployment scale (m ≤ 50), the full-list approach is optimal; preference truncation represents the primary scalability path for institutional growth beyond m = 100.
 
 ---
 
@@ -886,3 +963,5 @@ The benchmark confirms linear O(n) scaling and produces a plot of wall-clock tim
 - **Jaccard, P. (1901).** Étude comparative de la distribution florale dans une portion des Alpes et des Jura. *Bulletin de la Société Vaudoise des Sciences Naturelles*, 37, 547–579. — Jaccard similarity index used for availability overlap scoring. https://doi.org/10.2307/3771392
 
 - **Gini, C. (1912).** Variabilità e mutabilità. Reprinted in *Memorie di metodologica statistica* (1955). — Original Gini coefficient definition used for match fairness (metric #4). https://doi.org/10.2307/2223319
+
+- **Roth, A.E. & Peranson, E. (1999).** The Redesign of the Matching Market for American Physicians: Some Engineering Aspects of Economic Design. *American Economic Review*, 89(4), 748–780. — HR algorithm with incomplete (truncated) preference lists; basis for Section 2.6 complexity reduction discussion. https://doi.org/10.1257/aer.89.4.748

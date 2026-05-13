@@ -81,13 +81,13 @@ sequenceDiagram
     Python->>Python: expand_pair() [domain_expander.py]
 
     Python->>Python: compute_weighted_scores() [scoring.py]
-    Note over Python: keyword 60% · experience 20%<br/>availability 10% · communication 5% · frequency 5%
+    Note over Python: keyword 60% · experience 20% · availability 10%<br/>communication 5% · frequency 5% (weighted scoring)
 
     Python->>Python: generate_preferences() [matching.py]
-    Python->>Python: hospital_resident() — mentee-optimal [matching.py]
-    Python->>Python: hospital_resident_mentor_optimal() [matching.py]
-    Python->>Python: pick_fairer_matching() — min dissatisfaction
-    Python->>Python: verify_stability() — check blocking pairs
+    Python->>Python: hospital_resident() — mentee-proposing variant [matching.py]
+    Python->>Python: hospital_resident_mentor_optimal() — mentor-proposing variant [matching.py]
+    Python->>Python: pick_fairer_matching() — select lower combined dissatisfaction
+    Python->>Python: verify_stability() — check blocking pairs on selected result
 
     Python->>DB: clear_matches() → DELETE from matches
     Python->>DB: save_matches() → INSERT into matches
@@ -525,12 +525,12 @@ flowchart TD
         ├ communication mode   5%  (F2F / Online match)
         └ meeting frequency    5%  (shared days / 3)"]
 
-        Matching["matching.py — Gale-Shapley
-        hospital_resident()         mentee-optimal
-        hospital_resident_mentor_optimal()
-        pick_fairer_matching()      min dissatisfaction
-        verify_stability()          blocking pair check
-        _apply_safety_net()         unmatched fallback"]
+        Matching["matching.py — Gale-Shapley (Fair Matching)
+        hospital_resident()              mentee-proposing variant
+        hospital_resident_mentor_optimal() mentor-proposing variant
+        pick_fairer_matching()           select lower combined dissatisfaction
+        verify_stability()               blocking pair check on selected result
+        _apply_safety_net()              unmatched fallback"]
     end
 
     Browser <-->|"HTTPS"| MW
@@ -570,9 +570,11 @@ flowchart TD
 
 ## Algorithm Summary
 
-The system runs **two variants** of Gale-Shapley (Hospital-Resident):
+The system uses **fair matching**: both variants of Gale-Shapley (Hospital-Resident) are always run, and the result with lower combined dissatisfaction is selected.
 
-1. **Mentee-optimal** — mentees propose; guarantees best outcome for mentees
-2. **Mentor-optimal** — mentors propose; guarantees best outcome for mentors
+| Internal Variant | Who Proposes | Optimality |
+|-----------------|-------------|-----------|
+| Mentee-proposing HR | Mentees propose to mentors | Best for mentees |
+| Mentor-proposing HR | Mentors propose to mentors | Best for mentors |
 
-The final assignment is whichever variant produces **lower total dissatisfaction** (average rank in preference list). Stability is then verified by checking for blocking pairs — any mentor-mentee pair that would both prefer each other over their current assignments.
+The final assignment is whichever variant produces **lower combined rank dissatisfaction** across both sides (average rank in each party's preference list). Stability is then verified by checking for blocking pairs — any mentor-mentee pair that would both prefer each other over their current assignments.
