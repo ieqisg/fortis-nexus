@@ -122,7 +122,14 @@ export async function getMenteeData() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, message: "Not authenticated", data: null };
 
-    const { data: mentee, error } = await supabase
+    // Use admin client for the full query so that Supabase RLS on the
+    // `matches` table doesn't silently return an empty join for mentees.
+    const adminSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { data: mentee, error } = await adminSupabase
         .from("MENTEE_GROUPS")
         .select(`
         *,
