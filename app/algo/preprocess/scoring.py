@@ -692,7 +692,7 @@ def compute_weighted_scores(
     below_floor = final_scores < floor
     final_scores = np.where(
         below_floor,
-        floor + final_scores * 1e-4,
+        floor + final_scores * 1e-2,
         final_scores,
     ).astype(np.float32)
 
