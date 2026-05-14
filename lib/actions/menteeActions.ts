@@ -122,23 +122,29 @@ export async function getMenteeData() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, message: "Not authenticated", data: null };
 
-    // Use admin client for the full query so that Supabase RLS on the
-    // `matches` table doesn't silently return an empty join for mentees.
     const adminSupabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    const { data: mentee, error } = await adminSupabase
+    // Fetch mentee profile
+    const { data: mentee, error: menteeError } = await adminSupabase
         .from("MENTEE_GROUPS")
+        .select("*")
+        .eq("id", user.id)
+        .single()
+    if (menteeError || !mentee) return { success: false, message: menteeError?.message ?? "Not found", data: null }
+
+    // Fetch matches with mentor data in a direct query to avoid nested-join issues.
+    // Admin client bypasses RLS so the mentor rows are always returned.
+    const { data: matchRows } = await adminSupabase
+        .from("matches")
         .select(`
-        *,
-        matches (
             status,
             matched_at,
             compatibility_score,
             matched_keywords,
-            mentor:matches_mentor_id_fkey (
+            mentor:mentor_id (
                 id,
                 first_name,
                 last_name,
@@ -152,13 +158,10 @@ export async function getMenteeData() {
                 communication_preference,
                 prev_mentored_thesis
             )
-        )
-    `)
-        .eq("id", user.id)
-        .single()
-    if (error) return { success: false, message: error.message, data: null }
+        `)
+        .eq("mentee_group_id", user.id)
 
-    return { success: true, data: mentee }
+    return { success: true, data: { ...mentee, matches: matchRows ?? [] } }
 
 }
 
