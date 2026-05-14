@@ -677,6 +677,16 @@ def compute_weighted_scores(
         + weights.meeting_frequency * freq_matrix
     )
 
+    # ── Keyword match floor boost ─────────────────────────────────────────────
+    # >= 2 shared keywords → score floor of 0.5; >= 4 → floor of 0.8
+    kw_counts = np.array(
+        [[len(get_matched_keywords(mentor, mentee)) for mentor in mentors]
+         for mentee in mentees],
+        dtype=int,
+    )
+    floor = np.where(kw_counts >= 4, 0.8, np.where(kw_counts >= 2, 0.5, 0.0))
+    final_scores = np.maximum(final_scores, floor).astype(np.float32)
+
     # ── Breakdowns ────────────────────────────────────────────────────────────
     breakdowns = None
     if return_breakdowns:
