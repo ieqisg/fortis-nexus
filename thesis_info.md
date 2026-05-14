@@ -965,3 +965,5 @@ The benchmark confirms linear O(n) scaling and produces a plot of wall-clock tim
 - **Gini, C. (1912).** Variabilità e mutabilità. Reprinted in *Memorie di metodologica statistica* (1955). — Original Gini coefficient definition used for match fairness (metric #4). https://doi.org/10.2307/2223319
 
 - **Roth, A.E. & Peranson, E. (1999).** The Redesign of the Matching Market for American Physicians: Some Engineering Aspects of Economic Design. *American Economic Review*, 89(4), 748–780. — HR algorithm with incomplete (truncated) preference lists; basis for Section 2.6 complexity reduction discussion. https://doi.org/10.1257/aer.89.4.748
+
+- **Davis, F.D. (1989).** Perceived Usefulness, Perceived Ease of Use, and User Acceptance of Information Technology. *MIS Quarterly*, 13(3), 319–340. — Technology Acceptance Model (TAM); basis for T1–T12 constructs (Perceived Usefulness, Perceived Ease of Use, Behavioral Intention to Use) in the user satisfaction survey. https://doi.org/10.2307/249008
