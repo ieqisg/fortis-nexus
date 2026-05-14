@@ -21,8 +21,8 @@ export function MenteeProvider({ children }: { children: ReactNode }) {
         const result = await getMenteeData()
         if (result.success) {
             setMentee(result.data)
-            setLoading(false)
         }
+        setLoading(false)
     }
 
     const fetchMeeting = async () => {
