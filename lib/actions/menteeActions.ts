@@ -155,12 +155,14 @@ export async function getMenteeData() {
 
 }
 
-export async function getMenteePreferences(menteeGroupId: string) {
+export async function getMenteePreferences() {
     const supabase = await getSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, data: null }
     const { data, error } = await supabase
         .from("mentee_preferences")
         .select("ranked_mentors, created_at")
-        .eq("mentee_group_id", menteeGroupId)
+        .eq("mentee_group_id", user.id)
         .single()
     if (error) return { success: false, data: null }
     return { success: true, data: data.ranked_mentors as RankedMentor[] }

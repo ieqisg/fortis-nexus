@@ -93,10 +93,7 @@ export async function setRecurringMeetingForAll(payload: {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, message: "Not authenticated" }
 
-    const results: { id: string; ok: boolean; meeting?: Record<string, unknown> | null }[] = []
-
-    for (const mentee_group_id of payload.mentee_group_ids) {
-        // check if a recurring meeting already exists for this mentee
+    const results = await Promise.all(payload.mentee_group_ids.map(async (mentee_group_id) => {
         const { data: existing } = await supabase
             .from("meetings")
             .select("id")
@@ -118,7 +115,7 @@ export async function setRecurringMeetingForAll(payload: {
                 .eq("id", existing.id)
                 .select()
                 .single()
-            results.push({ id: mentee_group_id, ok: !error, meeting: data })
+            return { id: mentee_group_id, ok: !error, meeting: data }
         } else {
             const { data, error } = await supabase
                 .from("meetings")
@@ -136,9 +133,9 @@ export async function setRecurringMeetingForAll(payload: {
                 })
                 .select()
                 .single()
-            results.push({ id: mentee_group_id, ok: !error, meeting: data })
+            return { id: mentee_group_id, ok: !error, meeting: data }
         }
-    }
+    }))
 
     const allOk = results.every(r => r.ok)
     return { success: allOk, results }

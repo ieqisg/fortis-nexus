@@ -1,6 +1,39 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { createHmac, timingSafeEqual } from "crypto";
+
+const ROLE_CACHE_COOKIE = "x-role-cache";
+const ROLE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+type RoleCache = {
+    uid: string;
+    role: string | undefined;
+    profileCompleted: boolean | undefined;
+    isMentorAdmin: boolean;
+    exp: number;
+};
+
+function signRoleCache(data: RoleCache, secret: string): string {
+    const payload = JSON.stringify(data);
+    const sig = createHmac("sha256", secret).update(payload).digest("hex");
+    return Buffer.from(payload).toString("base64url") + "." + sig;
+}
+
+function verifyRoleCache(value: string, secret: string): RoleCache | null {
+    const dot = value.indexOf(".");
+    if (dot === -1) return null;
+    const b64 = value.slice(0, dot);
+    const sig = value.slice(dot + 1);
+    try {
+        const payload = Buffer.from(b64, "base64url").toString("utf8");
+        const expected = createHmac("sha256", secret).update(payload).digest("hex");
+        if (!timingSafeEqual(Buffer.from(sig, "hex"), Buffer.from(expected, "hex"))) return null;
+        return JSON.parse(payload) as RoleCache;
+    } catch {
+        return null;
+    }
+}
 
 async function getRole(supabase: ReturnType<typeof createServerClient>, userId: string) {
     const [{ data: menteeData }, { data: mentorData }, { data: adminData }] = await Promise.all([
@@ -50,7 +83,33 @@ export async function proxy(request: NextRequest) {
     }
 
     try {
-        const { role, profileCompleted, isMentorAdmin } = await getRole(supabase, user.id)
+        let role: string | undefined;
+        let profileCompleted: boolean | undefined;
+        let isMentorAdmin: boolean;
+
+        const secret = process.env.ROLE_CACHE_SECRET;
+        const cached = secret ? request.cookies.get(ROLE_CACHE_COOKIE) : null;
+        const cachedData = cached && secret ? verifyRoleCache(cached.value, secret) : null;
+
+        if (cachedData && cachedData.uid === user.id && cachedData.exp > Date.now()) {
+            role = cachedData.role;
+            profileCompleted = cachedData.profileCompleted;
+            isMentorAdmin = cachedData.isMentorAdmin;
+        } else {
+            ({ role, profileCompleted, isMentorAdmin } = await getRole(supabase, user.id));
+            if (secret) {
+                const cacheValue = signRoleCache(
+                    { uid: user.id, role, profileCompleted, isMentorAdmin, exp: Date.now() + ROLE_CACHE_TTL_MS },
+                    secret
+                );
+                response.cookies.set(ROLE_CACHE_COOKIE, cacheValue, {
+                    httpOnly: true,
+                    sameSite: "lax",
+                    path: "/",
+                    maxAge: ROLE_CACHE_TTL_MS / 1000,
+                });
+            }
+        }
 
         if (path === "/" || path === "/login" || path === "/register") {
             if (role === "mentee") return NextResponse.redirect(new URL("/mentee/mentee-dashboard", request.url))

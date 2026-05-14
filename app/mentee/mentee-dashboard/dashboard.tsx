@@ -47,18 +47,12 @@ export default function MenteeDashboard() {
         getAnnouncements("mentee").then(r => { if (r.success) setAnnouncements(r.data) })
         getMentorAnnouncements().then(r => { if (r.success) setMentorAnnouncements(r.data) })
         getMilestonesForCurrentMentee().then(r => { if (r.success) setMilestones(r.data) })
-    }, [])
-
-    useEffect(() => {
-        if (!mentee?.id) return
-        async function load() {
-            setRankingsLoading(true)
-            const r = await getMenteePreferences(mentee!.id)
+        setRankingsLoading(true)
+        getMenteePreferences().then(r => {
             if (r.success && r.data) setRankings(r.data)
             setRankingsLoading(false)
-        }
-        load()
-    }, [mentee?.id])
+        })
+    }, [])
 
     const visibleAnnouncements = announcements.filter(a => !dismissedIds.has(a.id))
     const visibleMentorAnnouncements = mentorAnnouncements.filter(a => !dismissedIds.has(a.id))
