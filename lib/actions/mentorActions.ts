@@ -1,17 +1,12 @@
 // lib/actions/menteeActions.ts
 "use server"
 import { getSupabaseClient } from "@/app/config/getSupabaseClient"
-import { createClient } from "@supabase/supabase-js"
+import { cookies } from "next/headers"
 import { MentorInsert, MentorUpdate } from "@/types/modelTypes"
 
 export async function createMentorProfile(payload: Omit<MentorInsert, 'id' | 'profile_completed'>) {
     const supabase = await getSupabaseClient()
 
-
-    const adminSupabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, message: "Not authenticated" }
 
@@ -24,9 +19,11 @@ export async function createMentorProfile(payload: Omit<MentorInsert, 'id' | 'pr
         .eq("id", user.id)
 
     if (error) {
-
         return { success: false, message: "Failed to create profile, signup has been rolled back." }
     }
+
+    // Invalidate the middleware role cache so the next request re-reads profile_completed=true
+    ;(await cookies()).delete("x-role-cache")
 
     return { success: true }
 }

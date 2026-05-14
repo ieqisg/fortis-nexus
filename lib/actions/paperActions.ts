@@ -42,12 +42,10 @@ export async function submitPaper(formData: FormData) {
 
     // Delete previously reviewed paper(s) before inserting the new one
     const reviewedPapers = existing?.filter(p => p.status === "reviewed") ?? []
-    for (const old of reviewedPapers) {
-        if (old.file_path) {
-            await adminSupabase.storage.from("papers").remove([old.file_path])
-        }
-        await supabase.from("papers").delete().eq("id", old.id)
-    }
+    await Promise.all(reviewedPapers.map(old => Promise.all([
+        old.file_path ? adminSupabase.storage.from("papers").remove([old.file_path]) : Promise.resolve(),
+        supabase.from("papers").delete().eq("id", old.id),
+    ])))
 
     let file_path: string | null = null
     let file_name: string | null = null
