@@ -322,7 +322,11 @@ def _kw_similarity_matched_vocab(mentor: dict, mentee: dict) -> float:
         return 0.0
     mentor_vocab = set(_extract_vocab_matches(_build_direct_mentor_str(mentor)))
     mentee_vocab = set(_extract_vocab_matches(_build_direct_mentee_str(mentee)))
-    ref = max(len(mentor_vocab), len(mentee_vocab), 1)
+    ref = max(len(mentor_vocab), len(mentee_vocab))
+    if ref == 0:
+        # Neither profile has recognized CS vocabulary — don't inflate score
+        # via bigram-only matches where denominator would otherwise be 1.
+        return 0.0
     return min(len(matched) / ref, 1.0)
 
 

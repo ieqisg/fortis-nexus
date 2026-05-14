@@ -282,8 +282,8 @@ if __name__ == "__main__":
     print(f"\n{SEP}")
     print("  STEP 3 · Compatibility Scoring")
     print(SEP)
-    print("  Weights → keyword 60%  ·  experience 20%  ·  availability 10%")
-    print("            communication 5%  ·  meeting frequency 5%")
+    print("  Weights → keyword 75%  ·  experience 10%  ·  availability 10%")
+    print("            communication 2.5%  ·  meeting frequency 2.5%")
     print()
 
     scores, breakdowns = compute_weighted_scores(mentors, mentees, return_breakdowns=True)
