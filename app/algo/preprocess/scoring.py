@@ -679,8 +679,10 @@ def compute_weighted_scores(
 
     # ── Keyword match floor boost ─────────────────────────────────────────────
     # >= 2 shared keywords → floor 0.5; >= 4 → floor 0.8.
-    # Scores below the floor are remapped into [floor, 1.0] proportionally
-    # (floor + score * (1 - floor)) so weighted ordering is preserved — no ties.
+    # For pairs below the floor the weighted score is still fully computed first;
+    # the floor is then applied as a hard minimum. The original score is added
+    # back at a 1e-4 scale purely as a tiebreaker so no two pairs land on the
+    # exact same value — it has no meaningful effect on the score itself.
     kw_counts = np.array(
         [[len(get_matched_keywords(mentor, mentee)) for mentor in mentors]
          for mentee in mentees],
@@ -690,7 +692,7 @@ def compute_weighted_scores(
     below_floor = final_scores < floor
     final_scores = np.where(
         below_floor,
-        floor + final_scores * (1.0 - floor),
+        floor + final_scores * 1e-4,
         final_scores,
     ).astype(np.float32)
 
