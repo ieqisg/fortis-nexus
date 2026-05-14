@@ -431,7 +431,10 @@ def run_matching(
         9. Build match records
     """
     # ── Guard ─────────────────────────────────────────────────────────────────
-    total_capacity = sum(m.get("mentor_capacity") or 1 for m in mentors)
+    total_capacity = sum(
+        m["mentor_capacity"] if m.get("mentor_capacity") is not None else 1
+        for m in mentors
+    )
     if total_capacity < len(mentees):
         raise ValueError(
             f"Insufficient mentor capacity: {total_capacity} total slots "
@@ -441,7 +444,10 @@ def run_matching(
 
     mentee_index    = {m["id"]: i for i, m in enumerate(mentees)}
     mentor_index    = {m["id"]: j for j, m in enumerate(mentors)}
-    hospital_capacity = {m["id"]: m.get("mentor_capacity") or 1 for m in mentors}
+    hospital_capacity = {
+        m["id"]: (m["mentor_capacity"] if m.get("mentor_capacity") is not None else 1)
+        for m in mentors
+    }
 
     # ── Step 1: Scores ────────────────────────────────────────────────────────
     print("\n📊 Step 1: Computing compatibility scores...")

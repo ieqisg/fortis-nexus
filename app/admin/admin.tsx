@@ -217,7 +217,7 @@ export default function Admin() {
 
     const handleCapacitySave = async (mentorId: string) => {
         const newCap = capacityEdits[mentorId]
-        if (newCap === undefined || newCap < 1) return
+        if (newCap === undefined || newCap < 0) return
         setSavingCapacity(mentorId)
         const result = await overrideMentorCapacity(mentorId, newCap)
         if (result.success) {
@@ -943,24 +943,37 @@ export default function Admin() {
                                             const isDirty = capacityEdits[mentor.id] !== undefined && capacityEdits[mentor.id] !== capacity
                                             const isSaving = savingCapacity === mentor.id
                                             return (
-                                                <TableRow key={mentor.id}>
+                                                <TableRow key={mentor.id} className={capacity === 0 ? "bg-amber-50" : ""}>
                                                     <TableCell className="font-medium">{mentor.first_name} {mentor.last_name}</TableCell>
-                                                    <TableCell>{capacity}</TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-1.5">
+                                                            {capacity}
+                                                            {capacity === 0 && (
+                                                                <span className="text-xs font-medium text-amber-700 bg-amber-100 border border-amber-300 rounded px-1.5 py-0.5">Excluded</span>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
                                                     <TableCell>{assigned}</TableCell>
                                                     <TableCell>
-                                                        <span className={remaining === 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>{remaining}</span>
+                                                        {capacity === 0
+                                                            ? <span className="text-xs text-amber-600 font-medium">—</span>
+                                                            : <span className={remaining <= 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>{remaining}</span>
+                                                        }
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="w-32">
-                                                            <Progress value={utilizationPercent} className={`h-2 ${utilizationPercent === 100 ? "[&>div]:bg-red-500" : "[&>div]:bg-emerald-500"}`} />
-                                                            <span className="text-xs text-slate-500">{Math.round(utilizationPercent)}% filled</span>
-                                                        </div>
+                                                        {capacity === 0
+                                                            ? <span className="text-xs text-amber-600">Excluded from matching</span>
+                                                            : <div className="w-32">
+                                                                <Progress value={utilizationPercent} className={`h-2 ${utilizationPercent === 100 ? "[&>div]:bg-red-500" : "[&>div]:bg-emerald-500"}`} />
+                                                                <span className="text-xs text-slate-500">{Math.round(utilizationPercent)}% filled</span>
+                                                            </div>
+                                                        }
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
                                                             <Input
                                                                 type="number"
-                                                                min={assigned}
+                                                                min={0}
                                                                 max={20}
                                                                 value={draftCap}
                                                                 onChange={(e) =>
@@ -1640,7 +1653,7 @@ export default function Admin() {
                                             </div>
                                             <div className="space-y-1">
                                                 <Label>Mentor Capacity</Label>
-                                                <Input type="number" min={1} max={20} value={editForm.mentor_capacity as number ?? 1} onChange={(e) => setEditForm({ ...editForm, mentor_capacity: Number(e.target.value) })} />
+                                                <Input type="number" min={0} max={20} value={editForm.mentor_capacity as number ?? 1} onChange={(e) => setEditForm({ ...editForm, mentor_capacity: Number(e.target.value) })} />
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
