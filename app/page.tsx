@@ -10,7 +10,7 @@ type Role = "mentor" | "mentee";
 import { Eye, EyeOff, ArrowLeft, Mail, Crown, GraduationCap, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { getEmailByGroupName, checkLoginRateLimit, checkResetRateLimit } from "@/lib/actions/authActions";
+import { getEmailByGroupName, checkLoginRateLimit, checkResetRateLimit, recordFailedLoginAttempt } from "@/lib/actions/authActions";
 import { supabase } from "@/app/config/supabaseClient";
 import { createClient } from "@supabase/supabase-js"
 
@@ -144,6 +144,7 @@ export default function Home() {
                 }
                 const { error } = await supabase.auth.signInWithPassword({ email: result.email!, password })
                 if (error) {
+                    await recordFailedLoginAttempt()
                     toast.error("Incorrect password.")
                     return
                 }
@@ -155,7 +156,10 @@ export default function Home() {
 
             if (!email || !password) return
             const userSignIn = await signIn()
-            if (!userSignIn.success) return
+            if (!userSignIn.success) {
+                await recordFailedLoginAttempt()
+                return
+            }
             const userRole = userSignIn?.data?.role
             const isAdminMentor = userSignIn?.data?.is_admin === true
             if (userRole === "mentor" && isAdminMentor) {

@@ -3,7 +3,7 @@
 
 import { createClient } from "@supabase/supabase-js"
 import { headers } from "next/headers"
-import { rateLimit } from "@/lib/rateLimit"
+import { rateLimit, rateLimitCheck, rateLimitRecord } from "@/lib/rateLimit"
 
 const adminSupabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -52,12 +52,12 @@ function getClientIp(headersList: Awaited<ReturnType<typeof headers>>): string {
 }
 
 /**
- * Login: 5 attempts per 5 minutes per IP.
- * Returns { allowed, message } — call before every sign-in attempt.
+ * Login: 5 failed attempts per 5 minutes per IP.
+ * Checks without incrementing — only failed attempts count.
  */
 export async function checkLoginRateLimit() {
     const ip = getClientIp(await headers())
-    const result = rateLimit(`login:${ip}`, 5, 5 * 60 * 1000)
+    const result = rateLimitCheck(`login:${ip}`, 5)
     if (!result.allowed) {
         const mins = Math.ceil(result.retryAfterMs / 60000)
         return {
@@ -66,6 +66,12 @@ export async function checkLoginRateLimit() {
         }
     }
     return { allowed: true, message: "" }
+}
+
+/** Record a failed login attempt against the rate limit for this IP. */
+export async function recordFailedLoginAttempt() {
+    const ip = getClientIp(await headers())
+    rateLimitRecord(`login:${ip}`, 5 * 60 * 1000)
 }
 
 /**
