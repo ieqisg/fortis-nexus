@@ -57,9 +57,9 @@ export default function MenteeDashboard() {
     const visibleAnnouncements = announcements.filter(a => !dismissedIds.has(a.id))
     const visibleMentorAnnouncements = mentorAnnouncements.filter(a => !dismissedIds.has(a.id))
 
-    const hasMatch = !!mentee?.matches
-    const matches = mentee?.matches
-    const scorePercentage = Math.round((matches?.compatibility_score ?? 0) * 100)
+    const matchRecord = mentee?.matches?.[0] ?? null
+    const hasMatch = !!matchRecord
+    const scorePercentage = Math.round((matchRecord?.compatibility_score ?? 0) * 100)
     const reviewedCount = papers.filter(p => p.status === "reviewed").length
     const hasPendingPaper = papers.some(p => p.status === "pending")
     const pendingMilestones = milestones.filter(m => !m.completed).length
@@ -228,7 +228,7 @@ export default function MenteeDashboard() {
 
                                 {/* Mentor Card */}
                                 <div className="lg:col-span-2">
-                                    {matches ? (
+                                    {matchRecord ? (
                                         <Card className="h-full border-0 shadow-sm">
                                             <CardHeader className="pb-3 border-b border-slate-100">
                                                 <div className="flex items-center justify-between">
@@ -245,13 +245,13 @@ export default function MenteeDashboard() {
                                                 {/* Mentor identity */}
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
-                                                        {(matches.mentor?.first_name?.[0] ?? "") + (matches.mentor?.last_name?.[0] ?? "")}
+                                                        {(matchRecord.mentor?.first_name?.[0] ?? "") + (matchRecord.mentor?.last_name?.[0] ?? "")}
                                                     </div>
                                                     <div>
                                                         <h3 className="text-lg font-bold text-slate-900">
-                                                            {matches.mentor?.first_name} {matches.mentor?.last_name}
+                                                            {matchRecord.mentor?.first_name} {matchRecord.mentor?.last_name}
                                                         </h3>
-                                                        <p className="text-sm text-slate-500">{matches.mentor?.email}</p>
+                                                        <p className="text-sm text-slate-500">{matchRecord.mentor?.email}</p>
                                                     </div>
                                                 </div>
 
@@ -269,9 +269,9 @@ export default function MenteeDashboard() {
                                                             style={{ width: `${scorePercentage}%` }}
                                                         />
                                                     </div>
-                                                    {matches.matched_keywords && matches.matched_keywords.length > 0 && (
+                                                    {matchRecord.matched_keywords && matchRecord.matched_keywords.length > 0 && (
                                                         <div className="flex flex-wrap gap-1 mt-2">
-                                                            {matches.matched_keywords.map((kw: string, i: number) => (
+                                                            {matchRecord.matched_keywords.map((kw: string, i: number) => (
                                                                 <span key={i} className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
                                                                     {kw}
                                                                 </span>
@@ -283,11 +283,11 @@ export default function MenteeDashboard() {
                                                 {/* Match Criteria */}
                                                 {(() => {
                                                     const sharedDays = (mentee?.available_days ?? []).filter((d: string) =>
-                                                        (matches.mentor?.available_days ?? []).includes(d))
+                                                        (matchRecord.mentor?.available_days ?? []).includes(d))
                                                     const sharedSlots = (mentee?.time_slot ?? []).filter((s: string) =>
-                                                        (matches.mentor?.time_slot ?? []).includes(s))
+                                                        (matchRecord.mentor?.time_slot ?? []).includes(s))
                                                     const commMatch = !!mentee?.communication_preference &&
-                                                        mentee.communication_preference === matches.mentor?.communication_preference
+                                                        mentee.communication_preference === matchRecord.mentor?.communication_preference
                                                     const commLabel = (p: string | null | undefined) => {
                                                         if (p === "FACE_TO_FACE") return "Face to Face"
                                                         if (p === "ONLINE_CHAT") return "Online — Chat"
@@ -326,7 +326,7 @@ export default function MenteeDashboard() {
                                                     <div>
                                                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Expertise</p>
                                                         <div className="flex flex-wrap gap-1">
-                                                            {matches.mentor?.forte.map((f: string, i: number) => (
+                                                            {matchRecord.mentor?.forte.map((f: string, i: number) => (
                                                                 <Badge key={i} variant="outline" className="text-xs border-blue-200 text-blue-700 bg-blue-50">
                                                                     {f}
                                                                 </Badge>
@@ -336,7 +336,7 @@ export default function MenteeDashboard() {
                                                     <div>
                                                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Skills</p>
                                                         <div className="flex flex-wrap gap-1">
-                                                            {matches.mentor?.technical_skills.slice(0, 4).map((s: string, i: number) => (
+                                                            {matchRecord.mentor?.technical_skills.slice(0, 4).map((s: string, i: number) => (
                                                                 <Badge key={i} variant="outline" className="text-xs border-slate-200 text-slate-600">
                                                                     {s}
                                                                 </Badge>
@@ -346,18 +346,18 @@ export default function MenteeDashboard() {
                                                 </div>
 
                                                 {/* About */}
-                                                {matches.mentor?.self_description && (
+                                                {matchRecord.mentor?.self_description && (
                                                     <div>
                                                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">About</p>
                                                         <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">
-                                                            {matches.mentor.self_description}
+                                                            {matchRecord.mentor.self_description}
                                                         </p>
                                                     </div>
                                                 )}
 
                                                 {/* Prev Theses */}
-                                                {matches.mentor?.prev_mentored_thesis &&
-                                                    (matches.mentor.prev_mentored_thesis as PrevMentoredThesis[]).length > 0 && (
+                                                {matchRecord.mentor?.prev_mentored_thesis &&
+                                                    (matchRecord.mentor.prev_mentored_thesis as PrevMentoredThesis[]).length > 0 && (
                                                         <div>
                                                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1">
                                                                 <BookOpen className="w-3 h-3" /> Previously Mentored Theses
@@ -373,7 +373,7 @@ export default function MenteeDashboard() {
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody className="divide-y divide-slate-100">
-                                                                        {(matches.mentor.prev_mentored_thesis as PrevMentoredThesis[]).map((t, i) => (
+                                                                        {(matchRecord.mentor.prev_mentored_thesis as PrevMentoredThesis[]).map((t, i) => (
                                                                             <tr key={i} className="hover:bg-slate-50">
                                                                                 <td className="px-3 py-2 text-slate-400">{t.title_no}</td>
                                                                                 <td className="px-3 py-2 text-slate-800 font-medium">{t.title}</td>
@@ -452,7 +452,7 @@ export default function MenteeDashboard() {
                                     </Card>
 
                                     {/* Mentor Availability */}
-                                    {matches?.mentor && (matches.mentor.available_days?.length > 0 || matches.mentor.time_slot?.length > 0) && (
+                                    {matchRecord?.mentor && (matchRecord.mentor.available_days?.length > 0 || matchRecord.mentor.time_slot?.length > 0) && (
                                         <Card className="border-0 shadow-sm">
                                             <CardHeader className="pb-3 border-b border-slate-100">
                                                 <CardTitle className="text-base font-semibold text-slate-700 flex items-center gap-2">
@@ -461,11 +461,11 @@ export default function MenteeDashboard() {
                                                 </CardTitle>
                                             </CardHeader>
                                             <CardContent className="pt-4 space-y-3">
-                                                {matches.mentor.available_days?.length > 0 && (
+                                                {matchRecord.mentor.available_days?.length > 0 && (
                                                     <div>
                                                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Available Days</p>
                                                         <div className="flex flex-wrap gap-1">
-                                                            {matches.mentor.available_days.map((day: string) => (
+                                                            {matchRecord.mentor.available_days.map((day: string) => (
                                                                 <Badge key={day} variant="outline" className="text-xs border-emerald-200 text-emerald-700 bg-emerald-50">
                                                                     {day}
                                                                 </Badge>
@@ -473,11 +473,11 @@ export default function MenteeDashboard() {
                                                         </div>
                                                     </div>
                                                 )}
-                                                {matches.mentor.time_slot?.length > 0 && (
+                                                {matchRecord.mentor.time_slot?.length > 0 && (
                                                     <div>
                                                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Time Slots</p>
                                                         <div className="flex flex-wrap gap-1">
-                                                            {matches.mentor.time_slot.map((slot: string) => (
+                                                            {matchRecord.mentor.time_slot.map((slot: string) => (
                                                                 <span key={slot} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
                                                                     {slot}
                                                                 </span>
@@ -568,7 +568,7 @@ export default function MenteeDashboard() {
                                             ) : (
                                                 <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
                                                     {rankings.map((r) => {
-                                                        const isMatch = r.mentor_id === matches?.mentor?.id
+                                                        const isMatch = r.mentor_id === matchRecord?.mentor?.id
                                                         const pct = Math.round(r.score * 100)
                                                         return (
                                                             <div

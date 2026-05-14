@@ -144,6 +144,8 @@ ACADEMIC_STOP_WORDS: frozenset[str] = frozenset({
     "stack", "developer", "developers", "engineer", "engineers",
     "scientist", "scientists", "analyst", "analysts",
     "routing", "route", "routes",
+    # ── Algorithm-name components that produce nonsense bigrams ───────────
+    "hospital", "resident", "gale", "shapley",
 })
 
 

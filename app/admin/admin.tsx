@@ -1373,7 +1373,7 @@ export default function Admin() {
                                                     <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
                                                     <div>
                                                         <p className="font-medium text-sm">Weighted scores applied</p>
-                                                        <p className="text-xs text-slate-500">Keyword similarity (60%), experience (20%), availability (10%), communication (5%), meeting frequency (5%)</p>
+                                                        <p className="text-xs text-slate-500">Keyword similarity (75%), experience (10%), availability (10%), communication (2.5%), meeting frequency (2.5%)</p>
                                                     </div>
                                                 </div>
 
