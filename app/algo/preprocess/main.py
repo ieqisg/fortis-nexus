@@ -378,7 +378,10 @@ if __name__ == "__main__":
         print(f"    {entry['mentor_name']:<28}:  {ranked_str}")
 
     # ── Step 5: Matching ──────────────────────────────────────────────────────
-    hospital_capacity = {m["id"]: m.get("mentor_capacity") or 1 for m in mentors}
+    hospital_capacity = {
+        m["id"]: (m["mentor_capacity"] if m.get("mentor_capacity") is not None else 1)
+        for m in mentors
+    }
 
     print(f"\n{SEP}")
     print("  STEP 5 · Gale-Shapley Hospital-Resident Matching")
