@@ -114,8 +114,6 @@ export async function proxy(request: NextRequest) {
         if (path === "/" || path === "/login" || path === "/register") {
             if (role === "mentee") return NextResponse.redirect(new URL("/mentee/mentee-dashboard", request.url))
             if (role === "mentor") {
-                // Mentor-admins skip profile completion and go straight to admin
-                if (isMentorAdmin) return NextResponse.redirect(new URL("/admin", request.url))
                 if (!profileCompleted) return NextResponse.redirect(new URL("/mentor/complete-profile", request.url))
                 return NextResponse.redirect(new URL("/mentor/mentor-dashboard", request.url))
             }
