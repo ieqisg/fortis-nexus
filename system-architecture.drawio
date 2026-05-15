@@ -1,0 +1,360 @@
+<mxfile host="Electron" modified="2026-05-16T00:00:00.000Z" agent="Claude" version="21.0.0" type="device">
+  <diagram name="Fortis Nexus — System Architecture" id="fortis-arch">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1300" math="0" shadow="1">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- TITLE                                                          -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <mxCell id="title" value="Fortis Nexus — System Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=20;fontStyle=1;fontColor=#1A1A2E;" vertex="1" parent="1">
+          <mxGeometry x="20" y="0" width="1600" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- ZONE 1 — CLIENTS                                              -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <mxCell id="z1" value="&lt;b style=&apos;font-size:12px;&apos;&gt;CLIENTS&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1E88E5;strokeWidth=2;fontSize=11;fontColor=#1565C0;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;arcSize=3;" vertex="1" parent="1">
+          <mxGeometry x="20" y="35" width="1600" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="p1" value="&lt;b&gt;Admin&lt;/b&gt;&lt;br/&gt;Browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1E88E5;strokeWidth=2;fontSize=11;fontColor=#1565C0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="185" y="58" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" value="&lt;b&gt;Mentor&lt;/b&gt;&lt;br/&gt;Browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1E88E5;strokeWidth=2;fontSize=11;fontColor=#1565C0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="720" y="58" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" value="&lt;b&gt;Mentee&lt;/b&gt;&lt;br/&gt;Browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1E88E5;strokeWidth=2;fontSize=11;fontColor=#1565C0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="1255" y="58" width="150" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- ZONE 2 — NEXT.JS APPLICATION LAYER (Vercel)                   -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <mxCell id="z2" value="&lt;b style=&apos;font-size:12px;&apos;&gt;NEXT.JS APPLICATION LAYER&lt;/b&gt;  ·  Vercel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#7E57C2;strokeWidth=2;fontSize=11;fontColor=#4527A0;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;arcSize=2;" vertex="1" parent="1">
+          <mxGeometry x="20" y="155" width="1600" height="435" as="geometry" />
+        </mxCell>
+
+        <!-- Middleware -->
+        <mxCell id="p4" value="&lt;b&gt;Middleware · proxy.ts&lt;/b&gt;     Auth check · Role cache (5-min TTL, HMAC-signed cookie) · Route guard · Profile-completion redirect" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#7E57C2;strokeWidth=2;fontSize=11;fontColor=#311B92;arcSize=5;" vertex="1" parent="1">
+          <mxGeometry x="40" y="185" width="1560" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Pages sub-group label -->
+        <mxCell id="lbl_pages" value="App Router Pages" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontColor=#4527A0;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="42" y="244" width="140" height="18" as="geometry" />
+        </mxCell>
+
+        <!-- Pages -->
+        <mxCell id="p5" value="&lt;b&gt;Admin Dashboard&lt;/b&gt;&lt;br/&gt;/admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7E57C2;strokeWidth=1.5;fontSize=11;fontColor=#4527A0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="40" y="262" width="165" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p6" value="&lt;b&gt;Mentor Pages&lt;/b&gt;&lt;br/&gt;/mentor/*" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7E57C2;strokeWidth=1.5;fontSize=11;fontColor=#4527A0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="225" y="262" width="165" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p7" value="&lt;b&gt;Mentee Pages&lt;/b&gt;&lt;br/&gt;/mentee/*" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7E57C2;strokeWidth=1.5;fontSize=11;fontColor=#4527A0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="410" y="262" width="165" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p8" value="&lt;b&gt;Login / Register&lt;/b&gt;&lt;br/&gt;/  ·  /register/*  ·  /reset-password" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7E57C2;strokeWidth=1.5;fontSize=11;fontColor=#4527A0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="595" y="262" width="210" height="52" as="geometry" />
+        </mxCell>
+
+        <!-- API Route -->
+        <mxCell id="p9" value="&lt;b&gt;/api/run-matching&lt;/b&gt;&lt;br/&gt;HTTP proxy to Express backend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;strokeWidth=2;fontSize=11;fontColor=#E65100;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="860" y="262" width="210" height="52" as="geometry" />
+        </mxCell>
+
+        <!-- React Context -->
+        <mxCell id="p10" value="&lt;b&gt;React Context&lt;/b&gt;&lt;br/&gt;authContext · mentorContext · menteeContext" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7E57C2;strokeWidth=1.5;fontSize=11;fontColor=#4527A0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="1125" y="262" width="215" height="52" as="geometry" />
+        </mxCell>
+
+        <!-- Server Actions label -->
+        <mxCell id="lbl_sa" value="Server Actions · /lib/actions/  —  sole Supabase interface from the Next.js layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=10;fontColor=#4527A0;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="42" y="330" width="560" height="18" as="geometry" />
+        </mxCell>
+
+        <!-- Server Actions row -->
+        <mxCell id="p11" value="authActions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#7E57C2;strokeWidth=1.5;fontSize=10;fontColor=#4527A0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="40" y="352" width="143" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="p12" value="mentorActions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#7E57C2;strokeWidth=1.5;fontSize=10;fontColor=#4527A0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="198" y="352" width="143" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="p13" value="menteeActions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#7E57C2;strokeWidth=1.5;fontSize=10;fontColor=#4527A0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="356" y="352" width="143" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="p14" value="adminActions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#7E57C2;strokeWidth=1.5;fontSize=10;fontColor=#4527A0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="514" y="352" width="143" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="p15" value="meetingActions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#7E57C2;strokeWidth=1.5;fontSize=10;fontColor=#4527A0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="672" y="352" width="143" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="p16" value="paperActions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#7E57C2;strokeWidth=1.5;fontSize=10;fontColor=#4527A0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="830" y="352" width="143" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="p17" value="milestoneActions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#7E57C2;strokeWidth=1.5;fontSize=10;fontColor=#4527A0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="988" y="352" width="143" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="p18" value="announcementActions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#7E57C2;strokeWidth=1.5;fontSize=10;fontColor=#4527A0;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="1146" y="352" width="155" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- Rate limiting note -->
+        <mxCell id="lbl_rl" value="Rate limiting (in-memory): login 5 / 5 min · password reset 3 / hr" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=9;fontColor=#7E57C2;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="408" width="460" height="16" as="geometry" />
+        </mxCell>
+
+        <!-- Profile validators note -->
+        <mxCell id="p_val" value="&lt;b&gt;profile_validators.ts&lt;/b&gt;&lt;br/&gt;Form validation · profile_utils.ts · rateLimit.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B39DDB;strokeWidth=1;fontSize=10;fontColor=#4527A0;arcSize=50;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="428" width="310" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- Types note -->
+        <mxCell id="p_types" value="&lt;b&gt;TypeScript types&lt;/b&gt;&lt;br/&gt;/types/ · MentorData · MenteeData · ModelTypes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B39DDB;strokeWidth=1;fontSize=10;fontColor=#4527A0;arcSize=50;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="380" y="428" width="310" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- Supabase SSR client note -->
+        <mxCell id="p_supa_client" value="&lt;b&gt;Supabase SSR clients&lt;/b&gt;&lt;br/&gt;Browser client (anon key) · Server client (service role)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B39DDB;strokeWidth=1;fontSize=10;fontColor=#4527A0;arcSize=50;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="428" width="310" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- ZONE 3 — EXPRESS BACKEND (Railway)                            -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <mxCell id="z3" value="&lt;b style=&apos;font-size:12px;&apos;&gt;EXPRESS BACKEND&lt;/b&gt;  ·  Railway  ·  :8000" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;strokeWidth=2;fontSize=11;fontColor=#E65100;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;arcSize=2;" vertex="1" parent="1">
+          <mxGeometry x="20" y="605" width="1600" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="p19" value="&lt;b&gt;Express Server&lt;/b&gt;&lt;br/&gt;app.js · CORS · /health" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F9A825;strokeWidth=2;fontSize=11;fontColor=#E65100;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="130" y="635" width="210" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="p20" value="&lt;b&gt;Matching Controller&lt;/b&gt;&lt;br/&gt;POST /api/matching/run&lt;br/&gt;GET /api/matching/status" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F9A825;strokeWidth=2;fontSize=11;fontColor=#E65100;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="560" y="629" width="210" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="p21" value="&lt;b&gt;Matching Service&lt;/b&gt;&lt;br/&gt;Spawn subprocess · parse stdout&lt;br/&gt;__MATCHING_LOG_START/END__  ·  409 guard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#F9A825;strokeWidth=2;fontSize=11;fontColor=#E65100;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="990" y="629" width="270" height="68" as="geometry" />
+        </mxCell>
+
+        <!-- Express internal flow -->
+        <mxCell id="ae1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#F9A825;strokeWidth=1.5;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="p19" target="p20" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ae2" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#F9A825;strokeWidth=1.5;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="p20" target="p21" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- ZONE 4 — PYTHON MATCHING ENGINE                               -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <mxCell id="z4" value="&lt;b style=&apos;font-size:12px;&apos;&gt;PYTHON MATCHING ENGINE&lt;/b&gt;  ·  subprocess  ·  /app/algo/preprocess/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#43A047;strokeWidth=2;fontSize=11;fontColor=#1B5E20;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;arcSize=2;" vertex="1" parent="1">
+          <mxGeometry x="20" y="735" width="1600" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="p22" value="&lt;b&gt;text_processing.py&lt;/b&gt;&lt;br/&gt;Keyword extraction&lt;br/&gt;TF-IDF residuals" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#43A047;strokeWidth=1.5;fontSize=10;fontColor=#1B5E20;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="40" y="765" width="195" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="p23" value="&lt;b&gt;domain_expander.py&lt;/b&gt;&lt;br/&gt;Related tech domain&lt;br/&gt;expansion" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#43A047;strokeWidth=1.5;fontSize=10;fontColor=#1B5E20;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="285" y="765" width="195" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="p24" value="&lt;b&gt;scoring.py&lt;/b&gt;&lt;br/&gt;5-pillar weighted scoring&lt;br/&gt;TF-IDF cosine · 0.75 weight" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#43A047;strokeWidth=1.5;fontSize=10;fontColor=#1B5E20;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="530" y="765" width="210" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="p25" value="&lt;b&gt;matching.py&lt;/b&gt;&lt;br/&gt;Hospital-Resident&lt;br/&gt;Gale-Shapley · verify_stability()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#43A047;strokeWidth=1.5;fontSize=10;fontColor=#1B5E20;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="790" y="765" width="210" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="p26" value="&lt;b&gt;main.py&lt;/b&gt;&lt;br/&gt;Orchestrator — fetch profiles&lt;br/&gt;write results · emit log markers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#43A047;strokeWidth=2;fontSize=10;fontColor=#1B5E20;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="765" width="215" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Python pipeline arrows -->
+        <mxCell id="ap1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#43A047;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" source="p22" target="p23" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ap2" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#43A047;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" source="p23" target="p24" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ap3" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#43A047;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" source="p24" target="p25" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ap4" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#43A047;strokeWidth=1.5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" source="p25" target="p26" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- ZONE 5 — SUPABASE                                             -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <mxCell id="z5" value="&lt;b style=&apos;font-size:12px;&apos;&gt;SUPABASE&lt;/b&gt;  ·  Auth + PostgreSQL + Storage  ·  Cloud-hosted" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#E91E63;strokeWidth=2;fontSize=11;fontColor=#880E4F;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;arcSize=2;" vertex="1" parent="1">
+          <mxGeometry x="20" y="865" width="1600" height="230" as="geometry" />
+        </mxCell>
+
+        <!-- Supabase Auth -->
+        <mxCell id="p27" value="&lt;b&gt;Supabase Auth&lt;/b&gt;&lt;br/&gt;JWT in SSR cookies&lt;br/&gt;Sign in · Sign out&lt;br/&gt;Password reset" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E91E63;strokeWidth=2;fontSize=11;fontColor=#880E4F;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="900" width="160" height="175" as="geometry" />
+        </mxCell>
+
+        <!-- PostgreSQL container -->
+        <mxCell id="z5db" value="&lt;b&gt;PostgreSQL&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#E91E63;strokeWidth=1.5;fontSize=11;fontColor=#880E4F;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;arcSize=3;" vertex="1" parent="1">
+          <mxGeometry x="230" y="895" width="1150" height="185" as="geometry" />
+        </mxCell>
+
+        <!-- DB table cells -->
+        <mxCell id="p28" value="mentor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E91E63;strokeWidth=1;fontSize=10;fontColor=#880E4F;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="248" y="930" width="125" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p29" value="MENTEE_GROUPS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E91E63;strokeWidth=1;fontSize=10;fontColor=#880E4F;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="393" y="930" width="130" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p30" value="matches" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E91E63;strokeWidth=1;fontSize=10;fontColor=#880E4F;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="543" y="930" width="125" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p31" value="meetings" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E91E63;strokeWidth=1;fontSize=10;fontColor=#880E4F;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="688" y="930" width="125" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p32" value="papers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E91E63;strokeWidth=1;fontSize=10;fontColor=#880E4F;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="833" y="930" width="125" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p33" value="milestones" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E91E63;strokeWidth=1;fontSize=10;fontColor=#880E4F;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="978" y="930" width="125" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p34" value="announcements" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E91E63;strokeWidth=1;fontSize=10;fontColor=#880E4F;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="248" y="1000" width="140" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p35" value="algorithm_logs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E91E63;strokeWidth=1;fontSize=10;fontColor=#880E4F;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="408" y="1000" width="140" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p36" value="mentee_preferences&lt;br/&gt;mentor_preferences" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E91E63;strokeWidth=1;fontSize=10;fontColor=#880E4F;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="568" y="1000" width="160" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="p37_admin" value="admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E91E63;strokeWidth=1;fontSize=10;fontColor=#880E4F;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="748" y="1000" width="125" height="42" as="geometry" />
+        </mxCell>
+
+        <!-- Supabase Storage -->
+        <mxCell id="p37" value="&lt;b&gt;Supabase Storage&lt;/b&gt;&lt;br/&gt;papers bucket&lt;br/&gt;Signed URLs · 1-hr expiry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E91E63;strokeWidth=2;fontSize=11;fontColor=#880E4F;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1410" y="900" width="165" height="175" as="geometry" />
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- ZONE 6 — EXTERNAL APIs                                        -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <mxCell id="z6" value="&lt;b style=&apos;font-size:12px;&apos;&gt;EXTERNAL APIs&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFEBE9;strokeColor=#795548;strokeWidth=2;fontSize=11;fontColor=#3E2723;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;arcSize=2;" vertex="1" parent="1">
+          <mxGeometry x="20" y="1110" width="1600" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="p38" value="&lt;b&gt;ORCID API&lt;/b&gt;&lt;br/&gt;pub.orcid.org/v3.0" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#795548;strokeWidth=2;fontSize=10;fontColor=#3E2723;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1128" width="190" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="p39" value="&lt;b&gt;Crossref API&lt;/b&gt;&lt;br/&gt;api.crossref.org/works/{doi}" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#795548;strokeWidth=2;fontSize=10;fontColor=#3E2723;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1128" width="210" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="p40" value="&lt;b&gt;IEEE Xplore API&lt;/b&gt;&lt;br/&gt;ieeexplore.ieee.org/rest/search" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#795548;strokeWidth=2;fontSize=10;fontColor=#3E2723;" vertex="1" parent="1">
+          <mxGeometry x="680" y="1128" width="210" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="p41" value="&lt;b&gt;HuggingFace&lt;/b&gt;&lt;br/&gt;ML Embeddings · HF_TOKEN" style="ellipse;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#795548;strokeWidth=2;fontSize=10;fontColor=#3E2723;" vertex="1" parent="1">
+          <mxGeometry x="980" y="1128" width="200" height="68" as="geometry" />
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- CROSS-ZONE ARROWS                                             -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <!-- Clients → Middleware -->
+        <mxCell id="a1" value="request" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#1E88E5;strokeWidth=1.5;fontColor=#1E88E5;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.18;entryY=0;entryDx=0;entryDy=0;" edge="1" source="p1" target="p4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" value="request" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#1E88E5;strokeWidth=1.5;fontColor=#1E88E5;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="p2" target="p4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="request" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#1E88E5;strokeWidth=1.5;fontColor=#1E88E5;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.82;entryY=0;entryDx=0;entryDy=0;" edge="1" source="p3" target="p4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Middleware → Pages (role redirects) -->
+        <mxCell id="a4" value="role: admin" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#7E57C2;strokeWidth=1.5;fontColor=#4527A0;fontSize=9;" edge="1" source="p4" target="p5" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" value="role: mentor" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#7E57C2;strokeWidth=1.5;fontColor=#4527A0;fontSize=9;" edge="1" source="p4" target="p6" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a6" value="role: mentee" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#7E57C2;strokeWidth=1.5;fontColor=#4527A0;fontSize=9;" edge="1" source="p4" target="p7" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Middleware ↔ Supabase Auth (JWT validation, left-side route) -->
+        <mxCell id="a7" value="JWT validation" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E91E63;strokeWidth=1.5;fontColor=#880E4F;fontSize=9;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" edge="1" source="p4" target="p27" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="10" y="210" />
+              <mxPoint x="10" y="900" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Admin Dashboard → /api/run-matching -->
+        <mxCell id="a8" value="trigger matching" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#F9A825;strokeWidth=1.5;fontColor=#E65100;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" source="p5" target="p9" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- /api/run-matching → Express Server -->
+        <mxCell id="a9" value="POST /api/matching/run" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#F9A825;strokeWidth=1.5;fontColor=#E65100;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" source="p9" target="p19" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Matching Service → Python text_processing (subprocess) -->
+        <mxCell id="a10" value="python3 main.py (subprocess)" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#43A047;strokeWidth=1.5;fontColor=#1B5E20;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" source="p21" target="p26" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Python main.py reads mentors/mentees from Supabase -->
+        <mxCell id="a11" value="fetch mentors + mentee groups" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#43A047;strokeWidth=1.5;fontColor=#1B5E20;fontSize=9;exitX=0.5;exitY=1;entryX=0.75;entryY=0;" edge="1" source="p26" target="z5db" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Python main.py writes matches -->
+        <mxCell id="a11b" value="write matches + prefs + logs" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#43A047;strokeWidth=1.5;fontColor=#1B5E20;fontSize=9;exitX=0;exitY=1;entryX=0.55;entryY=0;" edge="1" source="p26" target="p30" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Server Actions → Supabase Auth -->
+        <mxCell id="a12" value="sign in · sign out · reset" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E91E63;strokeWidth=1.5;fontColor=#880E4F;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" source="p11" target="p27" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Server Actions (representative) → PostgreSQL -->
+        <mxCell id="a13" value="CRUD (all actions)" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E91E63;strokeWidth=1.5;fontColor=#880E4F;fontSize=9;exitX=0.5;exitY=1;entryX=0.25;entryY=0;" edge="1" source="p15" target="z5db" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- paperActions → Supabase Storage (right-edge route) -->
+        <mxCell id="a14" value="upload file · get signed URL" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E91E63;strokeWidth=1.5;fontColor=#880E4F;fontSize=9;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;" edge="1" source="p16" target="p37" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1630" y="376" />
+              <mxPoint x="1630" y="900" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- adminActions → ORCID API -->
+        <mxCell id="a15" value="fetch papers by ORCID" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#795548;strokeWidth=1.5;fontColor=#3E2723;fontSize=9;exitX=0.3;exitY=1;entryX=0.5;entryY=0;" edge="1" source="p14" target="p38" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- adminActions → Crossref API -->
+        <mxCell id="a16" value="enrich DOIs" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#795548;strokeWidth=1.5;fontColor=#3E2723;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" source="p14" target="p39" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- adminActions → IEEE API -->
+        <mxCell id="a17" value="fetch IEEE papers" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#795548;strokeWidth=1.5;fontColor=#3E2723;fontSize=9;exitX=0.7;exitY=1;entryX=0.5;entryY=0;" edge="1" source="p14" target="p40" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- scoring.py → HuggingFace -->
+        <mxCell id="a18" value="embeddings (HF_TOKEN)" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#795548;strokeWidth=1.5;fontColor=#3E2723;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" source="p24" target="p41" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
