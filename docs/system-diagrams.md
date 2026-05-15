@@ -8,6 +8,8 @@
 
 ### 1A. User Login & Role-Based Routing
 
+This diagram shows how users sign into the system and get directed to the right page based on their role. When a user enters their email and password, the system checks who they are and whether their profile is set up. It then automatically sends them to their personal area — the mentor dashboard, mentee dashboard, admin panel, or the profile completion page if they haven't finished setting up yet.
+
 ```mermaid
 sequenceDiagram
     actor User as User (any role)
@@ -50,6 +52,8 @@ sequenceDiagram
 ---
 
 ### 1B. Admin Runs the Matching Algorithm
+
+This diagram shows what happens when an admin triggers the matching process. The request travels from the admin's browser through the web application to a dedicated backend service, which starts the matching engine. The engine loads all mentor and mentee profiles, scores how well each pair fits together, runs the pairing algorithm from both sides, and saves the final results — all without any further manual input.
 
 ```mermaid
 sequenceDiagram
@@ -103,6 +107,8 @@ sequenceDiagram
 ---
 
 ### 1C. Mentee Submits a Paper — Mentor Reviews
+
+This diagram shows how research paper submissions flow between a mentee group and their assigned mentor. A mentee uploads a paper through the system, which stores it and records its status as pending. The mentor can then view all submitted papers, download them, leave written feedback, and mark each one as reviewed. Once a paper is reviewed, the mentee's submission slot opens up again for the next paper.
 
 ```mermaid
 sequenceDiagram
@@ -170,6 +176,8 @@ sequenceDiagram
 
 ### 1D. Mentor Creates a Milestone — Mentee Views It
 
+This diagram shows how mentors set goals for their mentee groups and how mentees track their progress. A mentor creates a milestone with a title, description, and due date, and can mark it as complete at any time — typically during a meeting. Mentees see a read-only view of all their assigned milestones, with clear labels showing which are done, which are overdue, and which are still upcoming.
+
 ```mermaid
 sequenceDiagram
     actor Mentor
@@ -206,6 +214,8 @@ sequenceDiagram
 ---
 
 ## 2. Use-Case Diagram
+
+This diagram shows everything each type of user can do in the system. Mentees can register, build their profile, view their matched mentor and compatibility score, track meetings and milestones, submit research papers, and read announcements. Mentors can manage their profile, view their assigned mentee groups, review and comment on submitted papers, schedule recurring meetings, create milestones, and post announcements. Admins can run the matching algorithm, manage all mentor and mentee accounts, override capacity limits, roll back matches, and review system logs. The matching engine operates automatically in the background — analyzing skills, scoring compatibility, running the pairing algorithm, and saving the results.
 
 ```mermaid
 flowchart LR
@@ -273,6 +283,8 @@ flowchart LR
 ---
 
 ## 3. Class Diagram
+
+This diagram shows the data model behind the system — what information is stored and how each piece connects to the others. Every mentor and mentee group has a profile. A match connects one mentor to one mentee group, and from that match, meetings, papers, milestones, and announcements all flow. Comments are attached to submitted papers, and both sides record their ranked preferences to support the matching process. Algorithm logs capture the outcome of each matching run for admin review.
 
 ```mermaid
 classDiagram
@@ -442,6 +454,8 @@ classDiagram
 ---
 
 ## 4. System Architecture Diagram
+
+This diagram shows how the different parts of the system are connected and how they communicate. Users interact through a browser-based interface that routes them to the correct page and securely handles all data operations through a cloud platform, which stores accounts, profiles, matches, meetings, papers, and uploaded documents. When an admin triggers the matching process, the web application passes the request to a separate backend service, which starts the matching engine. The engine analyzes mentor and mentee profiles, scores compatibility across five factors, runs the pairing algorithm from both sides to ensure fairness, and saves the final assignments back to the database.
 
 ```mermaid
 flowchart TD
