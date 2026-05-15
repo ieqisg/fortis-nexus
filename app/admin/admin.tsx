@@ -1449,19 +1449,21 @@ export default function Admin() {
                                                         <div className="space-y-3">
                                                             {matchLog.phase2.mentor_scores.slice(0, visibleMentorScores).map((entry: any) => (
                                                                 <div key={entry.mentor_id} className="border rounded-lg p-3 bg-white">
-                                                                    <p className="font-semibold text-sm text-gray-800 mb-2">{entry.mentor_name}</p>
+                                                                    <p className="font-semibold text-sm text-gray-800 mb-1">{entry.mentor_name}</p>
+                                                                    {entry.experience_score != null && (
+                                                                        <p className="text-xs text-slate-500 mb-2">exp: <strong>{entry.experience_score}</strong></p>
+                                                                    )}
                                                                     <div className="space-y-1">
                                                                         {entry.top_matches.map((match: any, idx: number) => (
                                                                             <div key={idx} className="flex flex-wrap items-center justify-between text-xs bg-gray-50 rounded px-3 py-2 gap-2">
                                                                                 <span className="font-medium w-32 shrink-0">{match.mentee_name}</span>
                                                                                 <div className="flex gap-2 text-slate-500 flex-wrap">
                                                                                     <span>keyword: <strong>{match.keyword_score}</strong></span>
-                                                                                    <span>exp: <strong>{match.experience_score}</strong></span>
                                                                                     <span>avail: <strong>{match.availability_score}</strong></span>
                                                                                     <span>comm: <strong>{match.communication_score}</strong></span>
                                                                                     <span>freq: <strong>{match.meeting_frequency_score}</strong></span>
                                                                                     <span className="text-blue-600 font-semibold">
-                                                                                        final: {(match.final_score * 100).toFixed(1)}%
+                                                                                        final: {(match.final_score * 100).toFixed(2)}%
                                                                                     </span>
                                                                                 </div>
                                                                                 {match.communication_mode && (
