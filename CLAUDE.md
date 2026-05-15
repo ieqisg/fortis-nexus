@@ -34,147 +34,93 @@ This is a three-process application:
 
 The Next.js API route `/api/run-matching` proxies to the Express backend, which runs `python3 app/algo/preprocess/main.py` as a subprocess. The Python script signals completion with `__MATCHING_LOG_START__`/`__MATCHING_LOG_END__` markers in stdout.
 
-## Sequence Diagrams
-
-### 1. Auth & Role-Based Routing
-
-```mermaid
-sequenceDiagram
-    actor User
-    participant Browser
-    participant Middleware as proxy.ts (Middleware)
-    participant AuthCtx as AuthContext
-    participant Action as lib/actions/authActions.ts
-    participant Supabase
-
-    User->>Browser: Enter email + password
-    Browser->>AuthCtx: signIn(email, password)
-    AuthCtx->>Supabase: signInWithPassword()
-    Supabase-->>AuthCtx: JWT + session cookie
-
-    Browser->>Middleware: Next request (any protected route)
-    Middleware->>Middleware: Check x-role-cache cookie (HMAC + expiry)
-    alt Cache miss or expired
-        Middleware->>Action: getUserRole(userId)
-        Action->>Supabase: SELECT from mentor / MENTEE_GROUPS / admin
-        Supabase-->>Action: role + profile_completed
-        Action-->>Middleware: { role, profileCompleted }
-        Middleware->>Middleware: Set signed x-role-cache cookie (5 min TTL)
-    end
-
-    alt role = mentee
-        Middleware-->>Browser: Redirect → /mentee/mentee-dashboard
-    else role = mentor, profileCompleted = false
-        Middleware-->>Browser: Redirect → /mentor/complete-profile
-    else role = mentor, profileCompleted = true
-        Middleware-->>Browser: Redirect → /mentor/mentor-dashboard
-    else role = admin
-        Middleware-->>Browser: Redirect → /admin
-    else unauthenticated
-        Middleware-->>Browser: Redirect → / (login)
-    end
-```
-
-### 2. Mentor Onboarding
+## Sequence Diagram
 
 ```mermaid
 sequenceDiagram
     actor Admin
     actor Mentor
+    actor Mentee
     participant Browser
-    participant Action as lib/actions/mentorActions.ts
-    participant Supabase
-    participant Middleware as proxy.ts
+    participant Middleware
+    participant API Layer
+    participant Backend Service
+    participant Matching Engine
+    participant Database
 
-    Admin->>Action: registerMentor(email, password)
-    Action->>Supabase: auth.admin.createUser()
-    Action->>Supabase: mentor.insert({ profile_completed: false })
+    rect rgb(230, 240, 255)
+        Note over Browser, Database: Authentication & Role Routing
+        Mentor->>Browser: Sign in
+        Browser->>API Layer: signInWithPassword(email, password)
+        API Layer->>Database: Validate credentials
+        Database-->>API Layer: JWT + session
+        API Layer-->>Browser: Session cookie
 
-    Mentor->>Browser: Log in
-    Browser->>Middleware: Request /mentor/*
-    Middleware->>Supabase: getUserRole() → profile_completed = false
-    Middleware-->>Browser: Redirect → /mentor/complete-profile
+        Browser->>Middleware: Request protected route
+        Middleware->>Middleware: Check role cache (5 min TTL)
+        Middleware->>Database: Lookup role (mentor / mentee / admin)
+        Database-->>Middleware: role + profile_completed
+        Middleware->>Middleware: Cache signed role cookie
 
-    Mentor->>Browser: Fill out profile form
-    Browser->>Action: createMentorProfile(payload)
-    Action->>Supabase: mentor.update(payload, { profile_completed: true })
-    Action->>Action: Delete x-role-cache cookie
-    Action-->>Browser: { success: true }
-
-    Browser->>Browser: signOut() → router.push("/")
-    Mentor->>Browser: Log in again
-    Browser->>Middleware: Request /mentor/*
-    Middleware->>Supabase: getUserRole() → profile_completed = true
-    Middleware-->>Browser: Redirect → /mentor/mentor-dashboard
-```
-
-### 3. Matching Pipeline
-
-```mermaid
-sequenceDiagram
-    actor Admin
-    participant Browser
-    participant NextAPI as app/api/run-matching/route.ts
-    participant Express as Express (port 8000)
-    participant Service as matchingService.js
-    participant Python as app/algo/preprocess/main.py
-    participant Supabase
-
-    Admin->>Browser: Click "Run Matching"
-    Browser->>NextAPI: POST /api/run-matching
-    NextAPI->>Express: POST BACKEND_URL/api/matching/run
-
-    Express->>Service: runMatchingScript(mode)
-    alt Already running
-        Service-->>Express: 409 { error: "Already running" }
+        alt Mentor — profile incomplete
+            Middleware-->>Browser: Redirect → Complete Profile
+        else Mentor — profile complete
+            Middleware-->>Browser: Redirect → Mentor Dashboard
+        else Mentee
+            Middleware-->>Browser: Redirect → Mentee Dashboard
+        else Admin
+            Middleware-->>Browser: Redirect → Admin Panel
+        end
     end
-    Service->>Service: Set isRunning = true
-    Service->>Python: spawn python3 main.py
 
-    Python->>Supabase: mentor.select("*")
-    Python->>Supabase: MENTEE_GROUPS.select("*")
-    Supabase-->>Python: mentors[], menteeGroups[]
+    rect rgb(230, 255, 240)
+        Note over Mentor, Database: Mentor Onboarding
+        Admin->>API Layer: Register mentor account
+        API Layer->>Database: Create auth user + mentor row (incomplete)
 
-    Python->>Python: text_processing.py — keyword extraction
-    Python->>Python: domain_expander.py — domain expansion
-    Python->>Python: scoring.py — weighted TF-IDF compatibility scores
-    Python->>Python: matching.py — Gale-Shapley stable matching
+        Mentor->>Browser: Submit profile form
+        Browser->>API Layer: Save profile
+        API Layer->>Database: Update mentor (profile_completed = true)
+        API Layer->>API Layer: Invalidate role cache
+        API Layer-->>Browser: Success
+        Browser->>Browser: Sign out → redirect to login
+    end
 
-    Python->>Supabase: matches.upsert(results)
-    Python->>Python: Print JSON between __MATCHING_LOG_START__ / __MATCHING_LOG_END__
-    Python-->>Service: stdout (log JSON + matched/unmatched counts)
+    rect rgb(255, 248, 230)
+        Note over Browser, Database: Data Mutations (Profile & Meetings)
+        Mentor->>Browser: Edit profile / schedule meeting
+        Browser->>API Layer: Submit changes
+        API Layer->>Database: Update mentor or meetings record
+        Database-->>API Layer: Updated data
+        API Layer-->>Browser: Success + fresh data
+        Browser->>Browser: Re-render with updated state
+    end
 
-    Service->>Service: Parse log markers, set isRunning = false
-    Service-->>Express: { success, log }
-    Express-->>NextAPI: { success, message, log }
-    NextAPI-->>Browser: { success, log }
-    Browser->>Browser: Display match summary
-```
+    rect rgb(255, 230, 230)
+        Note over Admin, Database: Matching Pipeline
+        Admin->>Browser: Trigger matching run
+        Browser->>API Layer: POST /api/run-matching
+        API Layer->>Backend Service: Forward request
 
-### 4. Server Actions Pattern (Client → Supabase)
+        alt Already running
+            Backend Service-->>API Layer: 409 — Already in progress
+        end
 
-```mermaid
-sequenceDiagram
-    participant ClientComp as Client Component
-    participant Action as lib/actions/*.ts (Server Action)
-    participant SupabaseSSR as @supabase/ssr
-    participant Supabase
-    participant Context as React Context
+        Backend Service->>Matching Engine: Spawn matching process
+        Matching Engine->>Database: Fetch all mentor profiles
+        Matching Engine->>Database: Fetch all mentee groups
+        Database-->>Matching Engine: Profiles + groups
 
-    ClientComp->>Action: await someAction(payload)
-    Action->>SupabaseSSR: createServerClient() reads JWT from cookie
-    SupabaseSSR-->>Action: authenticated Supabase client
-    Action->>Supabase: .from("table").select/update/insert
-    Supabase-->>Action: { data, error }
-    Action-->>ClientComp: { success, data?, message? }
+        Matching Engine->>Matching Engine: Extract & normalize keywords
+        Matching Engine->>Matching Engine: Expand domains
+        Matching Engine->>Matching Engine: Score compatibility (TF-IDF)
+        Matching Engine->>Matching Engine: Run Gale-Shapley stable matching
 
-    alt Context-managed data
-        ClientComp->>Context: trigger refetch()
-        Context->>Action: getMentorData() / getMenteeData()
-        Action->>Supabase: select with joins (e.g., mentor + matches)
-        Supabase-->>Action: full profile data
-        Action-->>Context: updated state
-        Context-->>ClientComp: re-render with fresh data
+        Matching Engine->>Database: Write match results
+        Matching Engine-->>Backend Service: Log output (matched / unmatched counts)
+        Backend Service-->>API Layer: Result summary
+        API Layer-->>Browser: Match summary
+        Browser->>Browser: Display results
     end
 ```
 
