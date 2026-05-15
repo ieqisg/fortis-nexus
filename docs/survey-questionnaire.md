@@ -1,8 +1,10 @@
-# Fortis Nexus — User Satisfaction Survey
+# Fortis Nexus — End-User Satisfaction Survey
 
-**Standard:** ISO/IEC 25010 Software Product Quality  
-**Target Respondents:** Mentor, Mentee, Admin (Sections 1–7) · External Developer Evaluator (Sections 8–9)  
-**Estimated Completion Time:** 5–10 minutes (end users) · 10–15 minutes (developer evaluators)
+**Standard:** ISO/IEC 25010 Software Product Quality · Technology Acceptance Model (TAM)  
+**Target Respondents:** Mentor, Mentee, Admin  
+**Estimated Completion Time:** 5–10 minutes
+
+> **Note:** Developer / technical evaluator questions are in a separate instrument — see `survey-questionnaire-developer.md`.
 
 ---
 
@@ -153,41 +155,6 @@ Please answer briefly in your own words.
 
    _________________________________________________________________________
 
----
-
-## Section 8 — Maintainability
-
-*The degree to which the system can be modified to correct, improve, or adapt it. Intended for external developer evaluators.*
-
-Rate each statement using the 1–5 scale defined in the Instructions.
-
-| # | Statement | Sub-Characteristic |
-|---|-----------|-------------------|
-| M1 | The codebase is organized into clearly separated modules or layers that can be understood independently. | Modularity |
-| M2 | Existing components (e.g., UI components, server actions, algorithm stages) appear reusable across different parts of the system. | Reusability |
-| M3 | I can identify where a given feature or behavior is implemented without excessive difficulty. | Analysability |
-| M4 | The separation of concerns between the frontend, backend, and matching algorithm is clear and logical. | Analysability |
-| M5 | Making changes to one part of the system is unlikely to introduce unintended side effects in unrelated parts. | Modifiability |
-| M6 | The code follows consistent naming conventions and style that make it readable to a new developer. | Analysability |
-| M7 | The system's test coverage is sufficient to verify that changes do not introduce regressions. | Testability |
-| M8 | The project documentation (CLAUDE.md, inline comments, architecture notes) adequately supports developer onboarding. | Analysability |
-
----
-
-## Section 9 — Portability
-
-*The degree to which the system can be transferred to and used in different environments. Intended for external developer evaluators.*
-
-| # | Statement | Sub-Characteristic |
-|---|-----------|-------------------|
-| Po1 | The installation and local setup process is clearly documented and can be followed without prior system knowledge. | Installability |
-| Po2 | The system's dependencies and runtime configuration are well-isolated (e.g., via environment variables, virtual environments). | Adaptability |
-| Po3 | The system could be adapted to run in a different hosting environment without significant rework. | Adaptability |
-| Po4 | Individual components (e.g., the database, auth provider, or matching algorithm) could be replaced with alternatives without requiring a full rewrite. | Replaceability |
-| Po5 | The Python matching pipeline is portable and can be run independently of the Next.js/Express layer. | Adaptability |
-
----
-
 ## Item Summary by Role
 
 | Role | Applicable Items | Total Items |
@@ -195,21 +162,18 @@ Rate each statement using the 1–5 scale defined in the Instructions.
 | Mentor | F1–F5, P1–P3, U1–U7, R1–R5, S1–S3, S5, T1–T12 + open-ended | 34 + 3 |
 | Mentee | F1–F5, P1–P3, U1–U7, R1–R5, S1–S3, S5, T1–T12 + open-ended | 34 + 3 |
 | Admin | F1, F6–F7, P1–P4, U1–U6, U8, R1–R2, R4–R5, S1–S2, S4–S5, T1–T2, T4–T12 + open-ended | 31 + 3 |
-| Developer Evaluator | M1–M8, Po1–Po5 + open-ended | 13 + 3 |
 
 ---
 
 ## ISO/IEC 25010 Characteristic Mapping
 
-| Characteristic | Items | Sub-Characteristics Covered | Respondents |
-|----------------|-------|-----------------------------|-------------|
-| Functional Suitability | F1–F7 | Functional Completeness, Correctness, Appropriateness | End users |
-| Performance Efficiency | P1–P4 | Time Behaviour, Capacity | End users |
-| Usability | U1–U8 | Learnability, Operability, Error Protection, Aesthetics, Accessibility | End users |
-| Reliability | R1–R5 | Availability, Fault Tolerance, Recoverability | End users |
-| Security | S1–S5 | Confidentiality, Integrity, Authenticity | End users |
-| Maintainability | M1–M8 | Modularity, Reusability, Analysability, Modifiability, Testability | Developer Evaluators |
-| Portability | Po1–Po5 | Adaptability, Installability, Replaceability | Developer Evaluators |
+| Characteristic | Items | Sub-Characteristics Covered |
+|----------------|-------|-----------------------------|
+| Functional Suitability | F1–F7 | Functional Completeness, Correctness, Appropriateness |
+| Performance Efficiency | P1–P4 | Time Behaviour, Capacity |
+| Usability | U1–U8 | Learnability, Operability, Error Protection, Aesthetics, Accessibility |
+| Reliability | R1–R5 | Availability, Fault Tolerance, Recoverability |
+| Security | S1–S5 | Confidentiality, Integrity, Authenticity |
 
 ## TAM Construct Mapping
 
