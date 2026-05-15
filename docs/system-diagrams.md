@@ -459,16 +459,13 @@ This diagram shows how the different parts of the system are connected and how t
 
 > **View the interactive diagram:** Open `docs/system-architecture.drawio` in [draw.io](https://app.diagrams.net) or the VS Code draw.io extension.
 
-The diagram is organized into four horizontal layers:
+The diagram follows the classic three-tier architecture:
 
-| Layer | Color | What it contains |
+| Tier | Color | What it contains |
 |---|---|---|
-| **Presentation** | Blue | Login Page · Mentor Dashboard · Mentee Dashboard · Admin Panel |
-| **Business** | Green | Auth Module · Profile Manager · Paper Review · Meeting Scheduler · Milestone Tracker · Announcement Manager · Matching Engine pipeline |
-| **Persistence** | Yellow | User Store · Match Store · Paper Store · Meeting Store · Document Store |
-| **Database** | Red | Supabase Database · Supabase Auth · File Storage |
-
-The Matching Engine row within the Business layer shows the internal pipeline: **Matching Trigger → Skill Analyzer → Domain Mapper → Compatibility Scorer → Fair Pairing Engine**, connected left to right with directional arrows.
+| **Presentation Tier** | Blue | The pages users see and interact with — Login Page · Mentor Dashboard · Mentee Dashboard · Admin Panel |
+| **Application Tier** | Green | All business logic — user management, content, scheduling, and the full matching engine pipeline (Matching Trigger → Skill Analyzer → Domain Mapper → Compatibility Scorer → Fair Pairing Engine) |
+| **Data Tier** | Purple | Supabase (database + auth) and File Storage for uploaded papers |
 
 ---
 
