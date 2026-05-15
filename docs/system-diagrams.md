@@ -445,103 +445,97 @@ classDiagram
 
 ```mermaid
 flowchart TD
-    Browser["🌐 **Browser**
-    React 19 · Tailwind CSS · Radix UI
-    Auth · Mentor · Mentee state contexts"]
+    Browser["🌐 **User Interface**
+    Accessible web app for mentors, mentees, and admins
+    Updates in real time as data changes"]
 
-    subgraph NextJS ["Next.js Application — port 3000"]
+    subgraph NextJS ["Web Application"]
         direction TB
-        MW["Auth Middleware
-        Session validation · role-based routing
-        Unauthenticated → /  |  Incomplete profile → Complete Profile"]
+        MW["Access Guard
+        Checks who is logged in
+        Sends each user to the right page"]
 
-        AppRouter["App Router
-        /mentor/*  ·  /mentee/*  ·  /admin/*
-        /register/mentee-register  ·  /reset-password"]
+        AppRouter["Page Router
+        Mentor · Mentee · Admin areas
+        Registration · Password reset"]
 
-        ServerActions["Server Actions
-        Auth · Mentor · Mentee · Admin
-        Meetings · Papers · Announcements
-        Milestones · Mentor Announcements"]
+        ServerActions["Data Operations
+        Handles all reads and writes
+        Profiles · Meetings · Papers
+        Announcements · Milestones"]
 
-        APIRoute["Matching API Route
-        POST /api/run-matching
-        GET  /api/run-matching
-        HTTP proxy to Backend Service"]
+        APIRoute["Matching Trigger
+        Accepts run requests from Admin
+        Forwards them to the Backend Service"]
     end
 
-    subgraph Supabase ["☁ Supabase Platform"]
+    subgraph Supabase ["☁ Cloud Platform"]
         direction TB
-        SupaAuth["Auth Provider
-        JWT tokens · session cookies
+        SupaAuth["Identity Service
+        Manages user accounts and sessions
         Sign-in · sign-up · sign-out · password reset"]
 
-        SupaDB["Database (PostgreSQL)
-        mentor · MENTEE_GROUPS · admin
-        matches · meetings (+ notes)
-        papers · paper_comments
-        announcements · mentor_announcements
-        milestones
-        mentee_preferences · mentor_preferences
-        algorithm_logs"]
+        SupaDB["Database
+        Stores all application data
+        Profiles · matches · meetings
+        Papers · announcements · milestones
+        Preferences · matching history"]
 
-        SupaStorage["File Storage
-        Papers bucket
-        PDF uploads · signed download URLs"]
+        SupaStorage["Document Storage
+        Stores uploaded research papers
+        Generates secure download links"]
     end
 
-    subgraph Express ["Backend Service — port 8000"]
+    subgraph Express ["Backend Service"]
         direction TB
-        Routes["Matching Routes
-        POST /api/matching/run
-        GET  /api/matching/status"]
-        Controller["Matching Controller"]
+        Routes["Matching Endpoints
+        Accepts run and status requests"]
+        Controller["Request Handler"]
         Service["Process Manager
-        Spawns matching subprocess
-        Parses structured result log"]
+        Starts the matching engine
+        Collects and returns results"]
     end
 
     subgraph Python ["Matching Engine"]
         direction TB
-        MainPy["Orchestrator
-        Fetch → Score → Match → Persist"]
+        MainPy["Algorithm Coordinator
+        Loads data → scores → matches → saves"]
 
-        TextProc["Keyword Extractor
-        CS vocab longest-match · TF-IDF · bigrams
-        Academic stop-word filtering"]
+        TextProc["Skill & Interest Analyzer
+        Reads mentor skills and mentee research topics
+        Identifies the most relevant terms"]
 
-        DomainExp["Domain Expander
-        Semantic domain expansion
-        AI · NLP · CV · ML · Cybersecurity · IoT …"]
+        DomainExp["Research Topic Mapper
+        Expands keywords into related fields
+        AI · Cybersecurity · Networking · IoT …"]
 
-        Scoring["Compatibility Scorer
-        Weighted compatibility scoring
-        ├ keyword similarity  60%  (TF-IDF cosine)
-        ├ experience score    20%  (publications · certs)
-        ├ availability score  10%  (Jaccard: days + slots)
-        ├ communication mode   5%  (F2F / Online match)
-        └ meeting frequency    5%  (shared days / 3)"]
+        Scoring["Match Scorer
+        Ranks mentor-mentee fit across five factors
+        ├ Research overlap      60%
+        ├ Mentoring experience  20%
+        ├ Schedule overlap      10%
+        ├ Communication style    5%
+        └ Meeting frequency      5%"]
 
-        Matching["Gale-Shapley Engine (Fair Matching)
-        Run mentee-proposing variant
-        Run mentor-proposing variant
-        Select lower combined dissatisfaction
-        Verify stability — blocking pair check
-        Apply safety net for unmatched fallback"]
+        Matching["Fair Pairing Engine
+        Runs matching from both sides
+        Picks the most balanced outcome
+        Checks that no better swap exists
+        Assigns fallbacks for unmatched groups"]
     end
 
-    Browser <-->|"HTTPS"| MW
+    Browser <-->|"secure connection"| MW
     MW --> AppRouter
     AppRouter --> ServerActions
     AppRouter --> APIRoute
 
-    ServerActions <-->|"authenticated requests"| SupaAuth
-    ServerActions <-->|"authenticated requests"| SupaDB
-    ServerActions <-->|"authenticated requests"| SupaStorage
+    ServerActions <-->|"secure data requests"| SupaAuth
+    ServerActions <-->|"secure data requests"| SupaDB
+    ServerActions <-->|"secure data requests"| SupaStorage
 
-    APIRoute -->|"HTTP"| Routes
+    APIRoute -->|"triggers"| Routes
     Routes --> Controller --> Service
-    Service -->|"spawn subprocess"| MainPy
+    Service -->|"starts"| MainPy
 
     MainPy --> TextProc
     MainPy --> DomainExp
@@ -549,8 +543,8 @@ flowchart TD
     Scoring --> DomainExp
     MainPy --> Matching
 
-    MainPy <-->|"REST"| SupaDB
-    Service <-->|"stdout / stderr"| MainPy
+    MainPy <-->|"reads & writes data"| SupaDB
+    Service <-->|"receives results"| MainPy
 ```
 
 ---
