@@ -8,6 +8,8 @@
 
 ### 1A. User Login & Role-Based Routing
 
+This diagram shows how users sign into the system and get directed to the right page based on their role. When a user enters their email and password, the system checks who they are and whether their profile is set up. It then automatically sends them to their personal area — the mentor dashboard, mentee dashboard, admin panel, or the profile completion page if they haven't finished setting up yet.
+
 ```mermaid
 sequenceDiagram
     actor User as User (any role)
@@ -50,6 +52,8 @@ sequenceDiagram
 ---
 
 ### 1B. Admin Runs the Matching Algorithm
+
+This diagram shows what happens when an admin triggers the matching process. The request travels from the admin's browser through the web application to a dedicated backend service, which starts the matching engine. The engine loads all mentor and mentee profiles, scores how well each pair fits together, runs the pairing algorithm from both sides, and saves the final results — all without any further manual input.
 
 ```mermaid
 sequenceDiagram
@@ -103,6 +107,8 @@ sequenceDiagram
 ---
 
 ### 1C. Mentee Submits a Paper — Mentor Reviews
+
+This diagram shows how research paper submissions flow between a mentee group and their assigned mentor. A mentee uploads a paper through the system, which stores it and records its status as pending. The mentor can then view all submitted papers, download them, leave written feedback, and mark each one as reviewed. Once a paper is reviewed, the mentee's submission slot opens up again for the next paper.
 
 ```mermaid
 sequenceDiagram
@@ -170,6 +176,8 @@ sequenceDiagram
 
 ### 1D. Mentor Creates a Milestone — Mentee Views It
 
+This diagram shows how mentors set goals for their mentee groups and how mentees track their progress. A mentor creates a milestone with a title, description, and due date, and can mark it as complete at any time — typically during a meeting. Mentees see a read-only view of all their assigned milestones, with clear labels showing which are done, which are overdue, and which are still upcoming.
+
 ```mermaid
 sequenceDiagram
     actor Mentor
@@ -206,6 +214,8 @@ sequenceDiagram
 ---
 
 ## 2. Use-Case Diagram
+
+This diagram shows everything each type of user can do in the system. Mentees can register, build their profile, view their matched mentor and compatibility score, track meetings and milestones, submit research papers, and read announcements. Mentors can manage their profile, view their assigned mentee groups, review and comment on submitted papers, schedule recurring meetings, create milestones, and post announcements. Admins can run the matching algorithm, manage all mentor and mentee accounts, override capacity limits, roll back matches, and review system logs. The matching engine operates automatically in the background — analyzing skills, scoring compatibility, running the pairing algorithm, and saving the results.
 
 ```mermaid
 flowchart LR
@@ -273,6 +283,8 @@ flowchart LR
 ---
 
 ## 3. Class Diagram
+
+This diagram shows the data model behind the system — what information is stored and how each piece connects to the others. Every mentor and mentee group has a profile. A match connects one mentor to one mentee group, and from that match, meetings, papers, milestones, and announcements all flow. Comments are attached to submitted papers, and both sides record their ranked preferences to support the matching process. Algorithm logs capture the outcome of each matching run for admin review.
 
 ```mermaid
 classDiagram
@@ -443,105 +455,101 @@ classDiagram
 
 ## 4. System Architecture Diagram
 
+This diagram shows how the different parts of the system are connected and how they communicate. Users interact through a browser-based interface that routes them to the correct page and securely handles all data operations through a cloud platform, which stores accounts, profiles, matches, meetings, papers, and uploaded documents. When an admin triggers the matching process, the web application passes the request to a separate backend service, which starts the matching engine. The engine analyzes mentor and mentee profiles, scores compatibility across five factors, runs the pairing algorithm from both sides to ensure fairness, and saves the final assignments back to the database.
+
 ```mermaid
 flowchart TD
-    Browser["🌐 **Browser**
-    React 19 · Tailwind CSS · Radix UI
-    Auth · Mentor · Mentee state contexts"]
+    Browser["🌐 **User Interface**
+    Accessible web app for mentors, mentees, and admins
+    Updates in real time as data changes"]
 
-    subgraph NextJS ["Next.js Application — port 3000"]
+    subgraph NextJS ["Web Application"]
         direction TB
-        MW["Auth Middleware
-        Session validation · role-based routing
-        Unauthenticated → /  |  Incomplete profile → Complete Profile"]
+        MW["Access Guard
+        Checks who is logged in
+        Sends each user to the right page"]
 
-        AppRouter["App Router
-        /mentor/*  ·  /mentee/*  ·  /admin/*
-        /register/mentee-register  ·  /reset-password"]
+        AppRouter["Page Router
+        Mentor · Mentee · Admin areas
+        Registration · Password reset"]
 
-        ServerActions["Server Actions
-        Auth · Mentor · Mentee · Admin
-        Meetings · Papers · Announcements
-        Milestones · Mentor Announcements"]
+        ServerActions["Data Operations
+        Handles all reads and writes
+        Profiles · Meetings · Papers
+        Announcements · Milestones"]
 
-        APIRoute["Matching API Route
-        POST /api/run-matching
-        GET  /api/run-matching
-        HTTP proxy to Backend Service"]
+        APIRoute["Matching Trigger
+        Accepts run requests from Admin
+        Forwards them to the Backend Service"]
     end
 
-    subgraph Supabase ["☁ Supabase Platform"]
+    subgraph Supabase ["☁ Cloud Platform"]
         direction TB
-        SupaAuth["Auth Provider
-        JWT tokens · session cookies
+        SupaAuth["Identity Service
+        Manages user accounts and sessions
         Sign-in · sign-up · sign-out · password reset"]
 
-        SupaDB["Database (PostgreSQL)
-        mentor · MENTEE_GROUPS · admin
-        matches · meetings (+ notes)
-        papers · paper_comments
-        announcements · mentor_announcements
-        milestones
-        mentee_preferences · mentor_preferences
-        algorithm_logs"]
+        SupaDB["Database
+        Stores all application data
+        Profiles · matches · meetings
+        Papers · announcements · milestones
+        Preferences · matching history"]
 
-        SupaStorage["File Storage
-        Papers bucket
-        PDF uploads · signed download URLs"]
+        SupaStorage["Document Storage
+        Stores uploaded research papers
+        Generates secure download links"]
     end
 
-    subgraph Express ["Backend Service — port 8000"]
+    subgraph Express ["Backend Service"]
         direction TB
-        Routes["Matching Routes
-        POST /api/matching/run
-        GET  /api/matching/status"]
-        Controller["Matching Controller"]
+        Routes["Matching Endpoints
+        Accepts run and status requests"]
+        Controller["Request Handler"]
         Service["Process Manager
-        Spawns matching subprocess
-        Parses structured result log"]
+        Starts the matching engine
+        Collects and returns results"]
     end
 
     subgraph Python ["Matching Engine"]
         direction TB
-        MainPy["Orchestrator
-        Fetch → Score → Match → Persist"]
+        MainPy["Algorithm Coordinator
+        Loads data → scores → matches → saves"]
 
-        TextProc["Keyword Extractor
-        CS vocab longest-match · TF-IDF · bigrams
-        Academic stop-word filtering"]
+        TextProc["Skill & Interest Analyzer
+        Reads mentor skills and mentee research topics
+        Identifies the most relevant terms"]
 
-        DomainExp["Domain Expander
-        Semantic domain expansion
-        AI · NLP · CV · ML · Cybersecurity · IoT …"]
+        DomainExp["Research Topic Mapper
+        Expands keywords into related fields
+        AI · Cybersecurity · Networking · IoT …"]
 
-        Scoring["Compatibility Scorer
-        Weighted compatibility scoring
-        ├ keyword similarity  60%  (TF-IDF cosine)
-        ├ experience score    20%  (publications · certs)
-        ├ availability score  10%  (Jaccard: days + slots)
-        ├ communication mode   5%  (F2F / Online match)
-        └ meeting frequency    5%  (shared days / 3)"]
+        Scoring["Match Scorer
+        Ranks mentor-mentee fit across five factors
+        ├ Research overlap      60%
+        ├ Mentoring experience  20%
+        ├ Schedule overlap      10%
+        ├ Communication style    5%
+        └ Meeting frequency      5%"]
 
-        Matching["Gale-Shapley Engine (Fair Matching)
-        Run mentee-proposing variant
-        Run mentor-proposing variant
-        Select lower combined dissatisfaction
-        Verify stability — blocking pair check
-        Apply safety net for unmatched fallback"]
+        Matching["Fair Pairing Engine
+        Runs matching from both sides
+        Picks the most balanced outcome
+        Checks that no better swap exists
+        Assigns fallbacks for unmatched groups"]
     end
 
-    Browser <-->|"HTTPS"| MW
+    Browser <-->|"secure connection"| MW
     MW --> AppRouter
     AppRouter --> ServerActions
     AppRouter --> APIRoute
 
-    ServerActions <-->|"authenticated requests"| SupaAuth
-    ServerActions <-->|"authenticated requests"| SupaDB
-    ServerActions <-->|"authenticated requests"| SupaStorage
+    ServerActions <-->|"secure data requests"| SupaAuth
+    ServerActions <-->|"secure data requests"| SupaDB
+    ServerActions <-->|"secure data requests"| SupaStorage
 
-    APIRoute -->|"HTTP"| Routes
+    APIRoute -->|"triggers"| Routes
     Routes --> Controller --> Service
-    Service -->|"spawn subprocess"| MainPy
+    Service -->|"starts"| MainPy
 
     MainPy --> TextProc
     MainPy --> DomainExp
@@ -549,8 +557,8 @@ flowchart TD
     Scoring --> DomainExp
     MainPy --> Matching
 
-    MainPy <-->|"REST"| SupaDB
-    Service <-->|"stdout / stderr"| MainPy
+    MainPy <-->|"reads & writes data"| SupaDB
+    Service <-->|"receives results"| MainPy
 ```
 
 ---
