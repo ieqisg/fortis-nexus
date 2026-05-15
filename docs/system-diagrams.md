@@ -457,109 +457,18 @@ classDiagram
 
 This diagram shows how the different parts of the system are connected and how they communicate. Users interact through a browser-based interface that routes them to the correct page and securely handles all data operations through a cloud platform, which stores accounts, profiles, matches, meetings, papers, and uploaded documents. When an admin triggers the matching process, the web application passes the request to a separate backend service, which starts the matching engine. The engine analyzes mentor and mentee profiles, scores compatibility across five factors, runs the pairing algorithm from both sides to ensure fairness, and saves the final assignments back to the database.
 
-```mermaid
-flowchart TD
-    Browser["🌐 **User Interface**
-    Accessible web app for mentors, mentees, and admins
-    Updates in real time as data changes"]
+> **View the interactive diagram:** Open `docs/system-architecture.drawio` in [draw.io](https://app.diagrams.net) or the VS Code draw.io extension.
 
-    subgraph NextJS ["Web Application"]
-        direction TB
-        MW["Access Guard
-        Checks who is logged in
-        Sends each user to the right page"]
+The diagram is organized into four horizontal layers:
 
-        AppRouter["Page Router
-        Mentor · Mentee · Admin areas
-        Registration · Password reset"]
+| Layer | Color | What it contains |
+|---|---|---|
+| **Presentation** | Blue | Login Page · Mentor Dashboard · Mentee Dashboard · Admin Panel |
+| **Business** | Green | Auth Module · Profile Manager · Paper Review · Meeting Scheduler · Milestone Tracker · Announcement Manager · Matching Engine pipeline |
+| **Persistence** | Yellow | User Store · Match Store · Paper Store · Meeting Store · Document Store |
+| **Database** | Red | Supabase Database · Supabase Auth · File Storage |
 
-        ServerActions["Data Operations
-        Handles all reads and writes
-        Profiles · Meetings · Papers
-        Announcements · Milestones"]
-
-        APIRoute["Matching Trigger
-        Accepts run requests from Admin
-        Forwards them to the Backend Service"]
-    end
-
-    subgraph Supabase ["☁ Cloud Platform"]
-        direction TB
-        SupaAuth["Identity Service
-        Manages user accounts and sessions
-        Sign-in · sign-up · sign-out · password reset"]
-
-        SupaDB["Database
-        Stores all application data
-        Profiles · matches · meetings
-        Papers · announcements · milestones
-        Preferences · matching history"]
-
-        SupaStorage["Document Storage
-        Stores uploaded research papers
-        Generates secure download links"]
-    end
-
-    subgraph Express ["Backend Service"]
-        direction TB
-        Routes["Matching Endpoints
-        Accepts run and status requests"]
-        Controller["Request Handler"]
-        Service["Process Manager
-        Starts the matching engine
-        Collects and returns results"]
-    end
-
-    subgraph Python ["Matching Engine"]
-        direction TB
-        MainPy["Algorithm Coordinator
-        Loads data → scores → matches → saves"]
-
-        TextProc["Skill & Interest Analyzer
-        Reads mentor skills and mentee research topics
-        Identifies the most relevant terms"]
-
-        DomainExp["Research Topic Mapper
-        Expands keywords into related fields
-        AI · Cybersecurity · Networking · IoT …"]
-
-        Scoring["Match Scorer
-        Ranks mentor-mentee fit across five factors
-        ├ Research overlap      60%
-        ├ Mentoring experience  20%
-        ├ Schedule overlap      10%
-        ├ Communication style    5%
-        └ Meeting frequency      5%"]
-
-        Matching["Fair Pairing Engine
-        Runs matching from both sides
-        Picks the most balanced outcome
-        Checks that no better swap exists
-        Assigns fallbacks for unmatched groups"]
-    end
-
-    Browser <-->|"secure connection"| MW
-    MW --> AppRouter
-    AppRouter --> ServerActions
-    AppRouter --> APIRoute
-
-    ServerActions <-->|"secure data requests"| SupaAuth
-    ServerActions <-->|"secure data requests"| SupaDB
-    ServerActions <-->|"secure data requests"| SupaStorage
-
-    APIRoute -->|"triggers"| Routes
-    Routes --> Controller --> Service
-    Service -->|"starts"| MainPy
-
-    MainPy --> TextProc
-    MainPy --> DomainExp
-    MainPy --> Scoring
-    Scoring --> DomainExp
-    MainPy --> Matching
-
-    MainPy <-->|"reads & writes data"| SupaDB
-    Service <-->|"receives results"| MainPy
-```
+The Matching Engine row within the Business layer shows the internal pipeline: **Matching Trigger → Skill Analyzer → Domain Mapper → Compatibility Scorer → Fair Pairing Engine**, connected left to right with directional arrows.
 
 ---
 
