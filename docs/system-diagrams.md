@@ -11,41 +11,39 @@
 ```mermaid
 sequenceDiagram
     actor User as User (any role)
-    participant Browser as Browser
-    participant MW as middleware.ts
-    participant AuthCtx as authContext.tsx
-    participant AuthActions as authActions.ts
-    participant SupaAuth as Supabase Auth
-    participant DB as Supabase DB (PostgreSQL)
+    participant Browser
+    participant Auth Middleware
+    participant Auth Context
+    participant Auth Service
+    participant Auth Provider
+    participant Database
 
     User->>Browser: Navigate to /
-    Browser->>MW: HTTP request
-    MW->>SupaAuth: Validate JWT (cookie)
-    SupaAuth-->>MW: Session result
+    Browser->>Auth Middleware: HTTP request
+    Auth Middleware->>Auth Provider: Validate session token
+    Auth Provider-->>Auth Middleware: Session result
 
     alt No valid session
-        MW-->>Browser: Redirect → / (login page)
+        Auth Middleware-->>Browser: Redirect → / (login page)
     end
 
     User->>Browser: Submit credentials (email + password)
-    Browser->>AuthCtx: signIn(email, password)
-    AuthCtx->>SupaAuth: signInWithPassword(email, password)
-    SupaAuth-->>AuthCtx: JWT + session cookie
+    Browser->>Auth Context: Sign in
+    Auth Context->>Auth Provider: Authenticate credentials
+    Auth Provider-->>Auth Context: JWT + session cookie
 
-    AuthCtx->>AuthActions: getUserRole(userId)
-    AuthActions->>DB: SELECT from mentor WHERE id = userId
-    AuthActions->>DB: SELECT from MENTEE_GROUPS WHERE id = userId
-    AuthActions->>DB: SELECT from admin WHERE id = userId
-    DB-->>AuthActions: matched role record
+    Auth Context->>Auth Service: Resolve user role
+    Auth Service->>Database: Look up role (mentor / mentee / admin)
+    Database-->>Auth Service: Matched role record
 
-    alt mentor AND profile_completed = false
-        AuthCtx-->>Browser: Redirect → /mentor/complete-profile
-    else mentor
-        AuthCtx-->>Browser: Redirect → /mentor/mentor-dashboard
-    else mentee
-        AuthCtx-->>Browser: Redirect → /mentee/mentee-dashboard
-    else admin
-        AuthCtx-->>Browser: Redirect → /admin
+    alt Mentor — profile incomplete
+        Auth Context-->>Browser: Redirect → Complete Profile
+    else Mentor — profile complete
+        Auth Context-->>Browser: Redirect → Mentor Dashboard
+    else Mentee
+        Auth Context-->>Browser: Redirect → Mentee Dashboard
+    else Admin
+        Auth Context-->>Browser: Redirect → Admin Panel
     end
 ```
 
@@ -55,50 +53,50 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    actor Admin as Admin
-    participant Browser as Browser
-    participant NextAPI as Next.js /api/run-matching
-    participant Express as Express Backend (port 8000)
-    participant Service as matchingService.js
-    participant Python as Python Engine (main.py)
-    participant DB as Supabase DB
+    actor Admin
+    participant Browser
+    participant Matching API
+    participant Backend Service
+    participant Process Manager
+    participant Matching Engine
+    participant Database
 
     Admin->>Browser: Click "Run Matching"
-    Browser->>NextAPI: POST /api/run-matching
+    Browser->>Matching API: POST /api/run-matching
 
-    NextAPI->>Express: POST /api/matching/run
-    Express->>Service: runMatchingScript()
-    Service->>Python: child_process.spawn("python3 main.py")
+    Matching API->>Backend Service: Forward request
+    Backend Service->>Process Manager: Delegate matching run
+    Process Manager->>Matching Engine: Spawn matching process
 
-    Python->>DB: fetch_mentors() → SELECT from mentor
-    DB-->>Python: mentor records
+    Matching Engine->>Database: Fetch mentor profiles
+    Database-->>Matching Engine: Mentor records
 
-    Python->>DB: fetch_mentees() → SELECT from MENTEE_GROUPS
-    DB-->>Python: mentee group records
+    Matching Engine->>Database: Fetch mentee groups
+    Database-->>Matching Engine: Mentee group records
 
-    Python->>Python: get_mentor_keywords() [text_processing.py]
-    Python->>Python: get_mentee_keywords() [text_processing.py]
-    Python->>Python: expand_pair() [domain_expander.py]
+    Matching Engine->>Matching Engine: Extract mentor keywords
+    Matching Engine->>Matching Engine: Extract mentee keywords
+    Matching Engine->>Matching Engine: Expand research domains
 
-    Python->>Python: compute_weighted_scores() [scoring.py]
-    Note over Python: keyword 60% · experience 20% · availability 10%<br/>communication 5% · frequency 5% (weighted scoring)
+    Matching Engine->>Matching Engine: Compute weighted compatibility scores
+    Note over Matching Engine: keyword 60% · experience 20% · availability 10%<br/>communication 5% · frequency 5%
 
-    Python->>Python: generate_preferences() [matching.py]
-    Python->>Python: hospital_resident() — mentee-proposing variant [matching.py]
-    Python->>Python: hospital_resident_mentor_optimal() — mentor-proposing variant [matching.py]
-    Python->>Python: pick_fairer_matching() — select lower combined dissatisfaction
-    Python->>Python: verify_stability() — check blocking pairs on selected result
+    Matching Engine->>Matching Engine: Generate preference rankings
+    Matching Engine->>Matching Engine: Run Gale-Shapley (mentee-proposing)
+    Matching Engine->>Matching Engine: Run Gale-Shapley (mentor-proposing)
+    Matching Engine->>Matching Engine: Select fairer result (lower combined dissatisfaction)
+    Matching Engine->>Matching Engine: Verify stability (blocking pair check)
 
-    Python->>DB: clear_matches() → DELETE from matches
-    Python->>DB: save_matches() → INSERT into matches
-    Python->>DB: save_preferences() → UPSERT mentee_preferences, mentor_preferences
-    Python->>DB: INSERT into algorithm_logs
-    DB-->>Python: OK
+    Matching Engine->>Database: Clear previous matches
+    Matching Engine->>Database: Save match results
+    Matching Engine->>Database: Save preference rankings
+    Matching Engine->>Database: Log algorithm run
+    Database-->>Matching Engine: OK
 
-    Python-->>Service: stdout: __MATCHING_LOG_START__ {JSON} __MATCHING_LOG_END__
-    Service-->>Express: parsed JSON (matched pairs, stability, algorithm)
-    Express-->>NextAPI: HTTP 200 + JSON
-    NextAPI-->>Browser: matching results
+    Matching Engine-->>Process Manager: Emit structured result log
+    Process Manager-->>Backend Service: Parsed results (matched pairs, stability, algorithm)
+    Backend Service-->>Matching API: HTTP 200 + results
+    Matching API-->>Browser: Match summary
     Browser-->>Admin: Display results, stability status, algorithm used
 ```
 
@@ -108,62 +106,62 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    actor Mentee as Mentee
-    actor Mentor as Mentor
-    participant Browser as Browser
-    participant PaperActions as paperActions.ts
-    participant Storage as Supabase Storage (papers bucket)
-    participant DB as Supabase DB
+    actor Mentee
+    actor Mentor
+    participant Browser
+    participant Paper Service
+    participant File Storage
+    participant Database
 
     Mentee->>Browser: Open Paper Submission tab
-    Browser->>PaperActions: getPapers()
-    PaperActions->>DB: SELECT papers WHERE mentee_group_id = me
-    DB-->>PaperActions: papers list
+    Browser->>Paper Service: Load submitted papers
+    Paper Service->>Database: Fetch papers for mentee group
+    Database-->>Paper Service: Papers list
 
     alt Pending paper exists
-        PaperActions-->>Browser: hasPendingPaper = true
-        Browser-->>Mentee: Submit form is locked — "awaiting review" message
+        Paper Service-->>Browser: hasPendingPaper = true
+        Browser-->>Mentee: Submit form locked — "awaiting review" message
     else No pending paper
-        Browser-->>Mentee: Submit form is available
+        Browser-->>Mentee: Submit form available
         Mentee->>Browser: Fill form (title + PDF ≤ 5 MB)
-        Browser->>PaperActions: submitPaper(formData)
+        Browser->>Paper Service: Submit paper
 
-        PaperActions->>DB: SELECT papers WHERE mentee_group_id = me AND status = 'pending'
-        DB-->>PaperActions: (none)
+        Paper Service->>Database: Check for existing pending paper
+        Database-->>Paper Service: (none)
 
         alt Reviewed paper exists
-            PaperActions->>DB: SELECT reviewed paper (file_path)
-            PaperActions->>Storage: delete old file
-            PaperActions->>DB: DELETE old paper row
+            Paper Service->>Database: Fetch reviewed paper reference
+            Paper Service->>File Storage: Delete old file
+            Paper Service->>Database: Remove old paper record
         end
 
-        PaperActions->>DB: getMenteeData() → get mentor_id from matches
-        DB-->>PaperActions: match record
-        PaperActions->>Storage: upload PDF → papers/{mentee_id}/{filename}
-        Storage-->>PaperActions: file_path
-        PaperActions->>DB: INSERT into papers (mentee_group_id, mentor_id, title, file_path, status='pending')
-        DB-->>PaperActions: OK
-        PaperActions-->>Browser: success
+        Paper Service->>Database: Resolve matched mentor ID
+        Database-->>Paper Service: Match record
+        Paper Service->>File Storage: Upload PDF
+        File Storage-->>Paper Service: File path
+        Paper Service->>Database: Create paper record (status = pending)
+        Database-->>Paper Service: OK
+        Paper Service-->>Browser: Success
         Browser-->>Mentee: "Paper submitted" · form locks
     end
 
     Mentor->>Browser: Open Papers tab
-    Browser->>PaperActions: getMenteesPapers()
-    PaperActions->>DB: SELECT papers + paper_comments WHERE mentor_id = me
-    DB-->>PaperActions: papers list with comments
+    Browser->>Paper Service: Load mentee papers
+    Paper Service->>Database: Fetch papers + comments for mentor
+    Database-->>Paper Service: Papers list with comments
     Browser-->>Mentor: Papers list
 
     Mentor->>Browser: Click "Download"
-    Browser->>PaperActions: getPaperDownloadUrl(filePath)
-    PaperActions->>Storage: createSignedUrl(filePath)
-    Storage-->>PaperActions: signed URL (time-limited)
-    Browser->>Storage: GET PDF via signed URL
-    Storage-->>Browser: PDF file
+    Browser->>Paper Service: Request download link
+    Paper Service->>File Storage: Generate signed URL
+    File Storage-->>Paper Service: Time-limited signed URL
+    Browser->>File Storage: GET PDF via signed URL
+    File Storage-->>Browser: PDF file
 
     Mentor->>Browser: Add comment + mark reviewed
-    Browser->>PaperActions: addComment(paperId, comment)
-    PaperActions->>DB: INSERT into paper_comments · UPDATE papers status='reviewed'
-    DB-->>PaperActions: OK
+    Browser->>Paper Service: Submit comment
+    Paper Service->>Database: Save comment · update paper status to reviewed
+    Database-->>Paper Service: OK
     Browser-->>Mentor: Comment posted · paper marked reviewed
     Note over Browser,Mentee: Mentee's submit form unlocks on next page load
 ```
@@ -174,34 +172,34 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    actor Mentor as Mentor
-    actor Mentee as Mentee
-    participant Browser as Browser
-    participant MilestoneActions as milestoneActions.ts
-    participant DB as Supabase DB
+    actor Mentor
+    actor Mentee
+    participant Browser
+    participant Milestone Service
+    participant Database
 
     Mentor->>Browser: Open Milestones tab · select mentee group
-    Browser->>MilestoneActions: getMilestones(menteeGroupId)
-    MilestoneActions->>DB: SELECT milestones WHERE mentee_group_id = X AND mentor_id = me
-    DB-->>MilestoneActions: milestones list
+    Browser->>Milestone Service: Load milestones
+    Milestone Service->>Database: Fetch milestones for mentee group
+    Database-->>Milestone Service: Milestones list
     Browser-->>Mentor: Milestone list
 
     Mentor->>Browser: Fill form (title, description, due date)
-    Browser->>MilestoneActions: createMilestone({ menteeGroupId, title, description, dueDate })
-    MilestoneActions->>DB: INSERT into milestones
-    DB-->>MilestoneActions: new milestone
+    Browser->>Milestone Service: Create milestone
+    Milestone Service->>Database: Insert milestone record
+    Database-->>Milestone Service: New milestone
     Browser-->>Mentor: Milestone appears in list
 
     Mentor->>Browser: Tick checkbox during meeting
-    Browser->>MilestoneActions: toggleMilestone(milestoneId, true)
-    MilestoneActions->>DB: UPDATE milestones SET completed=true, completed_at=now()
-    DB-->>MilestoneActions: OK
+    Browser->>Milestone Service: Mark milestone complete
+    Milestone Service->>Database: Update milestone (completed = true, completed_at = now)
+    Database-->>Milestone Service: OK
     Browser-->>Mentor: Milestone marked done
 
     Mentee->>Browser: Open Tasks & Milestones tab
-    Browser->>MilestoneActions: getMilestonesForCurrentMentee()
-    MilestoneActions->>DB: SELECT milestones JOIN matches WHERE mentee_group_id = me
-    DB-->>MilestoneActions: milestones list
+    Browser->>Milestone Service: Load milestones for mentee
+    Milestone Service->>Database: Fetch milestones via match record
+    Database-->>Milestone Service: Milestones list
     Browser-->>Mentee: Read-only checklist (done · overdue · upcoming badges)
 ```
 
@@ -214,7 +212,7 @@ flowchart LR
     MenteeActor(["👤 Mentee"])
     MentorActor(["👤 Mentor"])
     AdminActor(["👤 Admin"])
-    SystemActor(["⚙️ Python Engine"])
+    SystemActor(["⚙️ Matching Engine"])
 
     subgraph MenteeUC ["Mentee"]
         direction TB
@@ -256,13 +254,13 @@ flowchart LR
         UC23["Cleanup Orphaned Accounts"]
     end
 
-    subgraph SystemUC ["Python Matching Engine"]
+    subgraph SystemUC ["Matching Engine"]
         direction TB
         UC24["Extract Keywords\n(TF-IDF, CS vocab)"]
         UC25["Score Compatibility\n(5-pillar weighted)"]
         UC26["Run Gale-Shapley\nStable Matching"]
         UC27["Verify Stability\n(blocking pair check)"]
-        UC28["Persist Results\nto Supabase"]
+        UC28["Persist Results\nto Database"]
     end
 
     MenteeActor --- UC1 & UC2 & UC3 & UC4 & UC5 & UC6 & UC7 & UC7b & UC8 & UC8b & UC8c
@@ -449,75 +447,74 @@ classDiagram
 flowchart TD
     Browser["🌐 **Browser**
     React 19 · Tailwind CSS · Radix UI
-    Context API: authContext · mentorContext · menteeContext"]
+    Auth · Mentor · Mentee state contexts"]
 
     subgraph NextJS ["Next.js Application — port 3000"]
         direction TB
-        MW["middleware.ts
-        JWT validation · role-based routing
-        Unauthenticated → /  |  Incomplete profile → /mentor/complete-profile"]
+        MW["Auth Middleware
+        Session validation · role-based routing
+        Unauthenticated → /  |  Incomplete profile → Complete Profile"]
 
         AppRouter["App Router
         /mentor/*  ·  /mentee/*  ·  /admin/*
         /register/mentee-register  ·  /reset-password"]
 
-        ServerActions["Server Actions — lib/actions/
-        authActions · mentorActions · menteeActions · adminActions
-        meetingActions · paperActions · announcementActions
-        milestoneActions · mentorAnnouncementActions"]
+        ServerActions["Server Actions
+        Auth · Mentor · Mentee · Admin
+        Meetings · Papers · Announcements
+        Milestones · Mentor Announcements"]
 
-        APIRoute["API Route
+        APIRoute["Matching API Route
         POST /api/run-matching
         GET  /api/run-matching
-        HTTP proxy to Express"]
+        HTTP proxy to Backend Service"]
     end
 
     subgraph Supabase ["☁ Supabase Platform"]
         direction TB
-        SupaAuth["Auth Service
+        SupaAuth["Auth Provider
         JWT tokens · session cookies
-        sign-in · sign-up · sign-out · password reset"]
+        Sign-in · sign-up · sign-out · password reset"]
 
-        SupaDB["PostgreSQL (pg 17)
+        SupaDB["Database (PostgreSQL)
         mentor · MENTEE_GROUPS · admin
-        matches · meetings (+ notes column)
+        matches · meetings (+ notes)
         papers · paper_comments
         announcements · mentor_announcements
         milestones
         mentee_preferences · mentor_preferences
         algorithm_logs"]
 
-        SupaStorage["Object Storage
-        papers bucket
+        SupaStorage["File Storage
+        Papers bucket
         PDF uploads · signed download URLs"]
     end
 
-    subgraph Express ["Express Backend — port 8000"]
+    subgraph Express ["Backend Service — port 8000"]
         direction TB
-        Routes["matchingRoutes.js
+        Routes["Matching Routes
         POST /api/matching/run
         GET  /api/matching/status"]
-        Controller["matchingController.js"]
-        Service["matchingService.js
-        Spawns Python subprocess
-        Parses __MATCHING_LOG_START__ … __MATCHING_LOG_END__"]
+        Controller["Matching Controller"]
+        Service["Process Manager
+        Spawns matching subprocess
+        Parses structured result log"]
     end
 
-    subgraph Python ["Python Matching Engine — app/algo/preprocess/"]
+    subgraph Python ["Matching Engine"]
         direction TB
-        MainPy["main.py — Orchestrator
+        MainPy["Orchestrator
         Fetch → Score → Match → Persist"]
 
-        TextProc["text_processing.py
-        Keyword extraction
+        TextProc["Keyword Extractor
         CS vocab longest-match · TF-IDF · bigrams
         Academic stop-word filtering"]
 
-        DomainExp["domain_expander.py
+        DomainExp["Domain Expander
         Semantic domain expansion
         AI · NLP · CV · ML · Cybersecurity · IoT …"]
 
-        Scoring["scoring.py
+        Scoring["Compatibility Scorer
         Weighted compatibility scoring
         ├ keyword similarity  60%  (TF-IDF cosine)
         ├ experience score    20%  (publications · certs)
@@ -525,12 +522,12 @@ flowchart TD
         ├ communication mode   5%  (F2F / Online match)
         └ meeting frequency    5%  (shared days / 3)"]
 
-        Matching["matching.py — Gale-Shapley (Fair Matching)
-        hospital_resident()              mentee-proposing variant
-        hospital_resident_mentor_optimal() mentor-proposing variant
-        pick_fairer_matching()           select lower combined dissatisfaction
-        verify_stability()               blocking pair check on selected result
-        _apply_safety_net()              unmatched fallback"]
+        Matching["Gale-Shapley Engine (Fair Matching)
+        Run mentee-proposing variant
+        Run mentor-proposing variant
+        Select lower combined dissatisfaction
+        Verify stability — blocking pair check
+        Apply safety net for unmatched fallback"]
     end
 
     Browser <-->|"HTTPS"| MW
@@ -538,13 +535,13 @@ flowchart TD
     AppRouter --> ServerActions
     AppRouter --> APIRoute
 
-    ServerActions <-->|"supabase-js SSR"| SupaAuth
-    ServerActions <-->|"supabase-js SSR"| SupaDB
-    ServerActions <-->|"supabase-js SSR"| SupaStorage
+    ServerActions <-->|"authenticated requests"| SupaAuth
+    ServerActions <-->|"authenticated requests"| SupaDB
+    ServerActions <-->|"authenticated requests"| SupaStorage
 
     APIRoute -->|"HTTP"| Routes
     Routes --> Controller --> Service
-    Service -->|"child_process.spawn()"| MainPy
+    Service -->|"spawn subprocess"| MainPy
 
     MainPy --> TextProc
     MainPy --> DomainExp
@@ -552,7 +549,7 @@ flowchart TD
     Scoring --> DomainExp
     MainPy --> Matching
 
-    MainPy <-->|"supabase-py (REST)"| SupaDB
+    MainPy <-->|"REST"| SupaDB
     Service <-->|"stdout / stderr"| MainPy
 ```
 
