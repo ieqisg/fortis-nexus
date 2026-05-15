@@ -27,6 +27,15 @@ This document contains technical analysis of the matching algorithm for use in t
 4. [Comparison Baselines](#4-comparison-baselines)
 5. [Research Questions Mapped to Metrics](#5-research-questions-mapped-to-metrics)
 6. [How to Run the Benchmark](#6-how-to-run-the-benchmark)
+7. [Proposal Explanation](#7-proposal-explanation)
+   - [Step 1 — Compatibility Scoring](#step-1--compatibility-scoring)
+   - [Step 2 — Preference Lists](#step-2--preference-lists)
+   - [Step 3a — Mentee-Optimal Run](#step-3a--mentee-optimal-run-hospital_resident)
+   - [Step 3b — Mentor-Optimal Run](#step-3b--mentor-optimal-run-hospital_resident_mentor_optimal)
+   - [Step 4 — Fairness Comparison](#step-4--fairness-comparison-pick_fairer_matching)
+   - [Step 5 — Stability Verification](#step-5--stability-verification-verify_stability)
+   - [Step 6 — Safety Net](#step-6--safety-net-_apply_safety_net)
+   - [Step 7 — Build Match Records](#step-7--build-match-records)
 
 ---
 
@@ -1084,6 +1093,194 @@ python3 metrics.py --save metrics_output.json
 | `metrics.py` | Live Supabase | Computes all thesis effectiveness metrics | For thesis results chapter |
 
 The benchmark confirms linear O(n) scaling and produces a plot of wall-clock time vs. n with a linear regression overlay and R² score. The `metrics.py` script reports real-world performance on actual FEU Tech profiles and provides the numbers to include directly in the thesis.
+
+---
+
+## 7. Proposal Explanation
+
+This section walks through the complete execution of the fair-matching pipeline — from raw profiles to final match records — in the exact order the code runs. It is written to be readable as a standalone explanation suitable for the thesis methodology chapter.
+
+---
+
+### Step 1 — Compatibility Scoring
+
+Before any matching happens, every possible mentor–mentee pair receives a single compatibility score between 0 and 1. The formula combines five weighted components:
+
+```
+final_score = 0.75 × keyword_similarity
+            + 0.10 × experience
+            + 0.10 × availability
+            + 0.025 × communication_preference
+            + 0.025 × meeting_frequency
+```
+
+**Keyword similarity** is the dominant signal. For each pair, the algorithm extracts shared technical vocabulary from the mentor's skills/forte/thesis history and the mentee's research description, then applies TF-IDF cosine similarity to measure how semantically close the two profiles are.
+
+Two score floor boosts are then applied:
+- ≥ 2 matched keywords → final score is raised to at least **0.50**
+- ≥ 4 matched keywords → final score is raised to at least **0.80**
+
+The result is a complete **n × m score matrix** (n mentee groups × m mentors). All subsequent steps derive from this matrix.
+
+---
+
+### Step 2 — Preference Lists
+
+Both sides build a fully ranked list from the score matrix:
+
+- **Each mentee group** sorts all mentors by `scores[i][j]` descending — producing their personal ranked list of mentors from most to least preferred.
+- **Each mentor** sorts all mentees by `scores[i][j]` descending — producing their personal ranked list of mentee groups from most to least preferred.
+
+These are **complete, untruncated lists**. Truncating preference lists is intentionally avoided because it causes mentees to go unmatched when their top-choice mentors fill up — any mentee not on a mentor's retained list can never be assigned to them, even if no other stable match exists.
+
+The output is two dictionaries:
+- `mentee_prefs`: `{ mentee_id → [mentor_id, ...] }` ranked best → worst
+- `mentor_prefs`: `{ mentor_id → [mentee_id, ...] }` ranked best → worst
+
+---
+
+### Step 3a — Mentee-Optimal Run (`hospital_resident`)
+
+This is the **mentees-propose** variant of the Hospital-Resident (Gale-Shapley) algorithm. Mentees hold the proposing role; mentors hold and compare offers.
+
+**Setup:**
+- All mentee groups are placed in a free queue.
+- Each mentor pre-computes a rank dictionary `hospital_rank[mentor_id][mentee_id]` for O(1) preference comparisons.
+- Each mentor tracks their current tentative roster up to their stated capacity.
+
+**Round-by-round execution:**
+
+1. A free mentee is dequeued and proposes to the next mentor on their preference list (tracked by `next_proposal[mentee_id]` — a mentee never proposes to the same mentor twice).
+2. The mentor evaluates the proposal:
+
+| Outcome | Condition | Effect |
+|---------|-----------|--------|
+| **Accept** | Mentor has a free slot | Mentee joins the roster; both are tentatively matched |
+| **Reject** | Mentor is full AND ranks all current mentees above the proposer | Proposer is re-queued and advances to their next choice |
+| **Replace** | Mentor is full BUT ranks the proposer above their current worst-held mentee | Worst-held mentee is freed and re-queued; proposer takes the slot |
+
+3. Freed or rejected mentees continue proposing down their list.
+4. The algorithm terminates when the free queue is empty.
+
+**Guarantee:** The result is **mentee-optimal** — every mentee group receives the best mentor they could get in any stable matching. No other stable matching exists where any mentee would prefer their assignment. This is simultaneously the worst stable matching for mentors.
+
+**Data structures:** `free_residents` deque, `next_proposal` index dict, `hospital_rank` rank dict, `hospital_assignments` roster list per mentor.
+
+---
+
+### Step 3b — Mentor-Optimal Run (`hospital_resident_mentor_optimal`)
+
+This is the **mentors-propose** variant — the same algorithm with roles inverted. Mentors hold the proposing role; mentees hold and compare offers.
+
+**Setup:**
+- All mentors with available capacity are placed in an active queue.
+- Each mentee pre-computes a rank dictionary `resident_rank[mentee_id][mentor_id]` for O(1) comparisons.
+- Each mentee tracks their single best-held offer (`resident_holding[mentee_id]`).
+
+**Round-by-round execution:**
+
+1. An active mentor is dequeued and proposes to the next mentee on their preference list (tracked by `hospital_proposal_index[mentor_id]`).
+2. The mentee evaluates the proposal:
+
+| Outcome | Condition | Effect |
+|---------|-----------|--------|
+| **Accept** | Mentee holds no offer yet | Mentee tentatively accepts; mentor's remaining slots decrement |
+| **Reject** | Mentee already holds a preferred offer | Proposing mentor is re-queued to try their next mentee |
+| **Replace** | Mentee holds an offer but prefers the new proposer | Previous mentor's slot is restored and they re-enter the active queue; new mentor takes the slot |
+
+3. A mentor stays active (re-enters the queue) until all their capacity slots are filled or their preference list is exhausted.
+4. The algorithm terminates when the active-mentor queue is empty.
+
+**Guarantee:** The result is **mentor-optimal** — every mentor receives the best set of mentees they could get in any stable matching. This is simultaneously the worst stable matching for mentees.
+
+Both runs are fully independent and produce a different, internally stable assignment. The two assignments are passed to the fairness comparison step.
+
+---
+
+### Step 4 — Fairness Comparison (`pick_fairer_matching`)
+
+Both assignments are stable, but they systematically favor opposite sides. The system selects the fairer result by measuring **combined dissatisfaction** from both sides.
+
+**Dissatisfaction definition:** For a matched pair, the dissatisfaction of one party equals the **rank position** of their assigned partner in their own preference list (0-indexed: rank 0 = top choice, rank 1 = second choice, etc.). Lower is always better.
+
+**Computation for each of the two assignments:**
+
+```
+mentee_dissatisfaction  = average rank of assigned mentor across all mentees
+mentor_dissatisfaction  = average rank of each assigned mentee across all mentor slots
+                          (capacity > 1 handled by summing across every assigned mentee per mentor)
+
+total_dissatisfaction   = mentee_dissatisfaction + mentor_dissatisfaction
+```
+
+**Selection rule:**
+
+```
+total_mo  = total dissatisfaction for the mentee-optimal result
+total_meo = total dissatisfaction for the mentor-optimal result
+
+selected  = mentee-optimal  if  total_mo ≤ total_meo
+            mentor-optimal  otherwise
+```
+
+Ties break in favor of mentee-optimal.
+
+**Why this is fair:** The mentee-optimal result gives mentees their best possible outcome at mentors' expense; the mentor-optimal result gives mentors their best at mentees' expense. The combined dissatisfaction sum quantifies the total "unhappiness" imposed on the entire system. Selecting the minimum ensures neither side is systematically disadvantaged across runs.
+
+| Variant | Favors | Combined dissatisfaction selected when |
+|---------|--------|---------------------------------------|
+| Mentee-optimal | Mentees | `total_mo ≤ total_meo` (tie → mentee-optimal wins) |
+| Mentor-optimal | Mentors | `total_meo < total_mo` |
+| **Fair-matching output** | **Neither systematically** | **One of the above is chosen per run** |
+
+Both sets of proposal events (`proposal_events_mo` and `proposal_events_meo`) are retained in `algorithm_logs` regardless of which variant is selected, providing full auditability.
+
+---
+
+### Step 5 — Stability Verification (`verify_stability`)
+
+The selected assignment is checked for **blocking pairs** — any (mentee, mentor) pair where both would mutually prefer each other over their current match.
+
+A blocking pair `(mentee m, mentor M)` exists when **all three** conditions hold:
+1. Mentee `m` prefers mentor `M` over their currently assigned mentor.
+2. Either mentor `M` has a spare capacity slot, **or** mentor `M` would rank `m` above their current worst-held mentee.
+
+The verifier iterates over every possible (mentee, mentor) combination — O(n × m) checks — using precomputed rank dictionaries for O(1) per-pair evaluation.
+
+**Expected result:** Zero blocking pairs. Both HR variants are mathematically proven to produce stable matchings [(Gale & Shapley, 1962)](https://doi.org/10.2307/2300560); any blocking pair found in practice indicates a capacity constraint violation or a data integrity issue.
+
+The stability flag (`is_stable: true/false`) is stored in both the `matches` table and `algorithm_logs` for every run.
+
+---
+
+### Step 6 — Safety Net (`_apply_safety_net`)
+
+After the HR algorithm terminates, any mentee that remains unmatched — which only occurs when total mentor capacity is less than the number of mentee groups — is force-assigned to the mentor with the **most remaining capacity**.
+
+This is a fallback mechanism, not part of the stable matching:
+- It produces warnings in the log for every forced assignment.
+- The resulting assignments are not guaranteed stable (no blocking-pair check is performed for safety-net pairs).
+- Frequent warnings indicate that the sum of all `mentor.mentor_capacity` values needs to be increased to meet demand.
+
+Under normal operation (total capacity ≥ n), this step completes immediately with no assignments made.
+
+---
+
+### Step 7 — Build Match Records
+
+For every pair in the final assignment, one record is written to the `matches` table:
+
+| Field | Value | Source |
+|-------|-------|--------|
+| `mentee_group_id` | Mentee's UUID | Assignment dict key |
+| `mentor_id` | Mentor's UUID | Assignment dict value |
+| `compatibility_score` | `scores[mentee_i][mentor_j]` | Score matrix from Step 1 |
+| `matched_keywords` | Shared technical vocabulary | `get_matched_keywords(mentor, mentee)` |
+| `status` | `"active"` | Fixed |
+| `algorithm` | `"fair-matching"` | Fixed for this mode |
+| `is_stable` | `True` / `False` | From Step 5 |
+
+The `compatibility_score` is the **raw pair score from the Phase 2 matrix** — not recalculated, not averaged. It reflects the actual five-pillar weighted compatibility between that specific mentor and mentee group as computed before any matching logic ran.
 
 ---
 

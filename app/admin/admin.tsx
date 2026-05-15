@@ -116,6 +116,7 @@ export default function Admin() {
     const [visibleMentorGrid, setVisibleMentorGrid] = useState(6)
     const [visibleMentees, setVisibleMentees] = useState(8)
     const [visibleScores, setVisibleScores] = useState(5)
+    const [visibleMentorScores, setVisibleMentorScores] = useState(5)
     const [visibleMatches, setVisibleMatches] = useState(5)
     const [showAllProposals, setShowAllProposals] = useState(false)
     const [rollingBack, setRollingBack] = useState(false)
@@ -1435,6 +1436,57 @@ export default function Admin() {
                                                                     {visibleScores >= matchLog.phase2.scores.length
                                                                         ? "Show Less"
                                                                         : `Show More (${matchLog.phase2.scores.length - visibleScores} remaining)`}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Score table per mentor */}
+                                                {matchLog.phase2.mentor_scores?.length > 0 && (
+                                                    <div className="mt-4">
+                                                        <p className="font-medium text-sm mb-3">Top compatibility scores per mentor:</p>
+                                                        <div className="space-y-3">
+                                                            {matchLog.phase2.mentor_scores.slice(0, visibleMentorScores).map((entry: any) => (
+                                                                <div key={entry.mentor_id} className="border rounded-lg p-3 bg-white">
+                                                                    <p className="font-semibold text-sm text-gray-800 mb-2">{entry.mentor_name}</p>
+                                                                    <div className="space-y-1">
+                                                                        {entry.top_matches.map((match: any, idx: number) => (
+                                                                            <div key={idx} className="flex flex-wrap items-center justify-between text-xs bg-gray-50 rounded px-3 py-2 gap-2">
+                                                                                <span className="font-medium w-32 shrink-0">{match.mentee_name}</span>
+                                                                                <div className="flex gap-2 text-slate-500 flex-wrap">
+                                                                                    <span>keyword: <strong>{match.keyword_score}</strong></span>
+                                                                                    <span>exp: <strong>{match.experience_score}</strong></span>
+                                                                                    <span>avail: <strong>{match.availability_score}</strong></span>
+                                                                                    <span>comm: <strong>{match.communication_score}</strong></span>
+                                                                                    <span>freq: <strong>{match.meeting_frequency_score}</strong></span>
+                                                                                    <span className="text-blue-600 font-semibold">
+                                                                                        final: {(match.final_score * 100).toFixed(1)}%
+                                                                                    </span>
+                                                                                </div>
+                                                                                {match.communication_mode && (
+                                                                                    <Badge variant="outline" className="text-xs">
+                                                                                        {match.communication_mode}
+                                                                                    </Badge>
+                                                                                )}
+                                                                                <div className="flex gap-1 flex-wrap">
+                                                                                    {match.matched_keywords?.map((kw: string) => (
+                                                                                        <Badge key={kw} variant="outline" className="text-xs">{kw}</Badge>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                            {matchLog.phase2.mentor_scores.length > 5 && (
+                                                                <button
+                                                                    onClick={() => setVisibleMentorScores(v => v >= matchLog.phase2.mentor_scores.length ? 5 : Math.min(v + 5, matchLog.phase2.mentor_scores.length))}
+                                                                    className="text-sm text-blue-600 hover:underline mt-1 w-full text-center py-2"
+                                                                >
+                                                                    {visibleMentorScores >= matchLog.phase2.mentor_scores.length
+                                                                        ? "Show Less"
+                                                                        : `Show More (${matchLog.phase2.mentor_scores.length - visibleMentorScores} remaining)`}
                                                                 </button>
                                                             )}
                                                         </div>

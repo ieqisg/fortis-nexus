@@ -336,6 +336,52 @@ if __name__ == "__main__":
             })
         print(THIN)
 
+    mentor_score_log = []
+    if breakdowns:
+        print("\n  Top scores per mentor:")
+        THIN = "  " + "┄" * 58
+        for j, mentor in enumerate(mentors):
+            mentor_name = f"{mentor.get('first_name', '')} {mentor.get('last_name', '')}".strip()
+            mentor_bds  = [breakdowns[i][j] for i in range(len(mentees))]
+            top_matches = sorted(mentor_bds, key=lambda b: b.final_score, reverse=True)[:3]
+            print(THIN)
+            print(f"  {mentor_name}:")
+            for rank, bd in enumerate(top_matches, start=1):
+                mentee_name = mentee_map.get(bd.mentee_id, {}).get("group_name", "")
+                pct = bd.final_score * 100
+                print(
+                    f"    {rank}. {mentee_name:<22} {pct:>5.1f}%  "
+                    f"kw={bd.keyword_score:.3f} exp={bd.experience_score:.3f} "
+                    f"avail={bd.availability_score:.3f} comm={bd.communication_score:.3f} "
+                    f"freq={bd.meeting_frequency_score:.3f}"
+                )
+            if top_matches and top_matches[0].matched_keywords:
+                kw_preview = ", ".join(top_matches[0].matched_keywords[:6])
+                print(f"    shared keywords (top match): {kw_preview}")
+
+            mentor_score_log.append({
+                "mentor_id":   mentor["id"],
+                "mentor_name": mentor_name,
+                "top_matches": [
+                    {
+                        "mentee_id":               bd.mentee_id,
+                        "mentee_name":             mentee_map.get(bd.mentee_id, {}).get("group_name", ""),
+                        "keyword_score":           round(bd.keyword_score, 4),
+                        "availability_score":      round(bd.availability_score, 4),
+                        "experience_score":        round(bd.experience_score, 4),
+                        "communication_score":     round(bd.communication_score, 4),
+                        "meeting_frequency_score": round(bd.meeting_frequency_score, 4),
+                        "communication_mode":      bd.communication_mode,
+                        "final_score":             round(bd.final_score, 4),
+                        "matched_keywords":        bd.matched_keywords,
+                        "shared_domains":          bd.shared_domains,
+                        "matching_hints":          bd.matching_hints,
+                    }
+                    for bd in top_matches
+                ],
+            })
+        print(THIN)
+
     # ── Step 4: Preferences ───────────────────────────────────────────────────
     print(f"\n{SEP}")
     print("  STEP 4 · Preference Lists")
@@ -513,6 +559,7 @@ if __name__ == "__main__":
         },
         "phase2": {
             "scores":                score_log,
+            "mentor_scores":         mentor_score_log,
             "availability_computed": True,
             "experience_computed":   True,
         },
