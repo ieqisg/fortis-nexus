@@ -1,358 +1,383 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mxfile host="app.diagrams.net" modified="2026-05-15" agent="Claude" version="21.6.5" type="device">
-  <diagram name="System Architecture" id="system-arch-fortis-nexus">
-    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+  <diagram name="System Architecture" id="fortis-nexus-3tier">
+    <mxGraphModel dx="1422" dy="762" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
         <!-- ═══════════════════════════════════════════════════ -->
-        <!--                 LAYER BACKGROUNDS                   -->
+        <!--                    TITLE BAR                        -->
         <!-- ═══════════════════════════════════════════════════ -->
 
-        <mxCell id="bg_pres" value="" style="fillColor=#dae8fc;strokeColor=none;opacity=60;" vertex="1" parent="1">
-          <mxGeometry x="0" y="10" width="1200" height="185" as="geometry" />
-        </mxCell>
-
-        <mxCell id="bg_biz" value="" style="fillColor=#d5e8d4;strokeColor=none;opacity=60;" vertex="1" parent="1">
-          <mxGeometry x="0" y="205" width="1200" height="365" as="geometry" />
-        </mxCell>
-
-        <mxCell id="bg_pers" value="" style="fillColor=#fff2cc;strokeColor=none;opacity=60;" vertex="1" parent="1">
-          <mxGeometry x="0" y="580" width="1200" height="160" as="geometry" />
-        </mxCell>
-
-        <mxCell id="bg_db" value="" style="fillColor=#f8cecc;strokeColor=none;opacity=60;" vertex="1" parent="1">
-          <mxGeometry x="0" y="750" width="1200" height="165" as="geometry" />
+        <mxCell id="title" value="Fortis Nexus — System Architecture"
+          style="fillColor=#1A1A2E;strokeColor=none;fontColor=#FFFFFF;fontStyle=1;fontSize=18;align=center;verticalAlign=middle;"
+          vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="1400" height="50" as="geometry" />
         </mxCell>
 
         <!-- ═══════════════════════════════════════════════════ -->
-        <!--                  LAYER LABELS                       -->
+        <!--                  TIER BANDS                         -->
         <!-- ═══════════════════════════════════════════════════ -->
 
-        <mxCell id="lbl_pres" value="Presentation Layer" style="fillColor=#0066CC;strokeColor=none;fontColor=#FFFFFF;fontStyle=1;fontSize=13;align=center;verticalAlign=middle;horizontal=0;" vertex="1" parent="1">
-          <mxGeometry x="0" y="10" width="60" height="185" as="geometry" />
+        <mxCell id="bg_pres" value="" style="fillColor=#DEECF9;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="0" y="60" width="1400" height="185" as="geometry" />
         </mxCell>
 
-        <mxCell id="lbl_biz" value="Business Layer" style="fillColor=#2D6A4F;strokeColor=none;fontColor=#FFFFFF;fontStyle=1;fontSize=13;align=center;verticalAlign=middle;horizontal=0;" vertex="1" parent="1">
-          <mxGeometry x="0" y="205" width="60" height="365" as="geometry" />
+        <mxCell id="bg_app" value="" style="fillColor=#E8F5E9;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="0" y="255" width="1400" height="390" as="geometry" />
         </mxCell>
 
-        <mxCell id="lbl_pers" value="Persistence Layer" style="fillColor=#9E6A00;strokeColor=none;fontColor=#FFFFFF;fontStyle=1;fontSize=13;align=center;verticalAlign=middle;horizontal=0;" vertex="1" parent="1">
-          <mxGeometry x="0" y="580" width="60" height="160" as="geometry" />
-        </mxCell>
-
-        <mxCell id="lbl_db" value="Database Layer" style="fillColor=#8B1A1A;strokeColor=none;fontColor=#FFFFFF;fontStyle=1;fontSize=13;align=center;verticalAlign=middle;horizontal=0;" vertex="1" parent="1">
-          <mxGeometry x="0" y="750" width="60" height="165" as="geometry" />
-        </mxCell>
-
-        <!-- Business Layer divider between App Services and Matching Engine -->
-        <mxCell id="biz_divider" value="" style="line;strokeColor=#2D6A4F;strokeWidth=1;dashed=1;fillColor=none;" vertex="1" parent="1">
-          <mxGeometry x="70" y="388" width="1120" height="10" as="geometry" />
-        </mxCell>
-
-        <mxCell id="biz_divider_lbl" value="Matching Engine" style="text;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=3;fontSize=11;fontColor=#2D6A4F;" vertex="1" parent="1">
-          <mxGeometry x="75" y="393" width="140" height="20" as="geometry" />
+        <mxCell id="bg_data" value="" style="fillColor=#F3E5F5;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="0" y="655" width="1400" height="200" as="geometry" />
         </mxCell>
 
         <!-- ═══════════════════════════════════════════════════ -->
-        <!--              PRESENTATION LAYER                     -->
-        <!--   Login Page | Mentor Dashboard | Mentee Dashboard | Admin Panel  -->
-        <!--   x positions: 80, 350, 620, 890                   -->
+        <!--              TIER LABELS (vertical text)            -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <mxCell id="lbl_pres" value="Presentation Tier"
+          style="fillColor=#1565C0;strokeColor=none;fontColor=#FFFFFF;fontStyle=1;fontSize=13;align=center;verticalAlign=middle;horizontal=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="0" y="60" width="80" height="185" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lbl_app" value="Application Tier"
+          style="fillColor=#1B5E20;strokeColor=none;fontColor=#FFFFFF;fontStyle=1;fontSize=13;align=center;verticalAlign=middle;horizontal=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="0" y="255" width="80" height="390" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lbl_data" value="Data Tier"
+          style="fillColor=#4A148C;strokeColor=none;fontColor=#FFFFFF;fontStyle=1;fontSize=13;align=center;verticalAlign=middle;horizontal=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="0" y="655" width="80" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- Application Tier internal divider (App Services / Matching Engine) -->
+        <mxCell id="app_divider" value=""
+          style="line;strokeColor=#2E7D32;strokeWidth=1;dashed=1;fillColor=none;"
+          vertex="1" parent="1">
+          <mxGeometry x="90" y="433" width="1295" height="10" as="geometry" />
+        </mxCell>
+
+        <mxCell id="app_divider_lbl" value="Matching Engine Pipeline"
+          style="text;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=3;fontSize=11;fontColor=#1B5E20;"
+          vertex="1" parent="1">
+          <mxGeometry x="96" y="438" width="210" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!--            PRESENTATION TIER — MODULES              -->
+        <!--  card y=95  icon y=103  step-x=290                 -->
+        <!--  x: 110, 400, 690, 980                             -->
         <!-- ═══════════════════════════════════════════════════ -->
 
         <!-- Login Page -->
-        <mxCell id="icon_login" value="" style="shape=mxgraph.cisco.computers_and_peripherals.workstation;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#0066CC;strokeColor=#0066CC;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="95" y="40" width="90" height="80" as="geometry" />
+        <mxCell id="card_login" value="Login Page"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#1976D2;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=12;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="110" y="95" width="130" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_login" value="Login Page" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="75" y="125" width="130" height="35" as="geometry" />
+        <mxCell id="icon_login" value=""
+          style="shape=mxgraph.cisco.computers_and_peripherals.workstation;sketch=0;html=1;fillColor=#1976D2;strokeColor=#1976D2;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="143" y="103" width="65" height="65" as="geometry" />
         </mxCell>
 
         <!-- Mentor Dashboard -->
-        <mxCell id="icon_mentor_dash" value="" style="shape=mxgraph.cisco.computers_and_peripherals.pc;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#0066CC;strokeColor=#0066CC;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="360" y="40" width="90" height="80" as="geometry" />
+        <mxCell id="card_mentor_dash" value="Mentor Dashboard"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#1976D2;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=12;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="400" y="95" width="130" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_mentor_dash" value="Mentor Dashboard" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="330" y="125" width="150" height="35" as="geometry" />
+        <mxCell id="icon_mentor_dash" value=""
+          style="shape=mxgraph.cisco.computers_and_peripherals.pc;sketch=0;html=1;fillColor=#1976D2;strokeColor=#1976D2;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="433" y="103" width="65" height="65" as="geometry" />
         </mxCell>
 
         <!-- Mentee Dashboard -->
-        <mxCell id="icon_mentee_dash" value="" style="shape=mxgraph.cisco.computers_and_peripherals.pc;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#0066CC;strokeColor=#0066CC;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="630" y="40" width="90" height="80" as="geometry" />
+        <mxCell id="card_mentee_dash" value="Mentee Dashboard"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#1976D2;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=12;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="690" y="95" width="130" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_mentee_dash" value="Mentee Dashboard" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="600" y="125" width="150" height="35" as="geometry" />
+        <mxCell id="icon_mentee_dash" value=""
+          style="shape=mxgraph.cisco.computers_and_peripherals.pc;sketch=0;html=1;fillColor=#1976D2;strokeColor=#1976D2;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="723" y="103" width="65" height="65" as="geometry" />
         </mxCell>
 
         <!-- Admin Panel -->
-        <mxCell id="icon_admin_panel" value="" style="shape=mxgraph.cisco.computers_and_peripherals.pc;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#0066CC;strokeColor=#0066CC;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="900" y="40" width="90" height="80" as="geometry" />
+        <mxCell id="card_admin" value="Admin Panel"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#1976D2;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=12;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="980" y="95" width="130" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_admin_panel" value="Admin Panel" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="875" y="125" width="140" height="35" as="geometry" />
+        <mxCell id="icon_admin" value=""
+          style="shape=mxgraph.cisco.computers_and_peripherals.pc;sketch=0;html=1;fillColor=#1976D2;strokeColor=#1976D2;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="1013" y="103" width="65" height="65" as="geometry" />
         </mxCell>
 
         <!-- ═══════════════════════════════════════════════════ -->
-        <!--        BUSINESS LAYER — APPLICATION SERVICES        -->
-        <!--   Auth | Profile | Paper Review | Meeting |         -->
-        <!--   Milestone | Announcement                          -->
-        <!--   x positions: 80, 265, 450, 635, 820, 1005        -->
+        <!--       APPLICATION TIER — APP SERVICES (row 1)       -->
+        <!--  card y=272  icon y=280  step-x=215               -->
+        <!--  x: 110, 325, 540, 755, 970, 1185                 -->
         <!-- ═══════════════════════════════════════════════════ -->
 
         <!-- Auth Module -->
-        <mxCell id="icon_auth" value="" style="shape=mxgraph.cisco.security.lock;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#2D6A4F;strokeColor=#2D6A4F;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="95" y="225" width="70" height="80" as="geometry" />
+        <mxCell id="card_auth" value="Auth Module"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#2E7D32;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=12;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="110" y="272" width="130" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_auth" value="Auth Module" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="75" y="310" width="130" height="35" as="geometry" />
+        <mxCell id="icon_auth" value=""
+          style="shape=mxgraph.cisco.security.lock;sketch=0;html=1;fillColor=#2E7D32;strokeColor=#2E7D32;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="148" y="280" width="55" height="65" as="geometry" />
         </mxCell>
 
         <!-- Profile Manager -->
-        <mxCell id="icon_profile" value="" style="shape=mxgraph.cisco.people.generic_person;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#2D6A4F;strokeColor=#2D6A4F;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="278" y="225" width="70" height="80" as="geometry" />
+        <mxCell id="card_profile" value="Profile Manager"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#2E7D32;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=12;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="325" y="272" width="130" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_profile" value="Profile Manager" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="258" y="310" width="130" height="35" as="geometry" />
+        <mxCell id="icon_profile" value=""
+          style="shape=mxgraph.cisco.people.generic_person;sketch=0;html=1;fillColor=#2E7D32;strokeColor=#2E7D32;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="363" y="280" width="55" height="65" as="geometry" />
         </mxCell>
 
         <!-- Paper Review -->
-        <mxCell id="icon_paper" value="" style="shape=mxgraph.flowchart.document;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#2D6A4F;strokeColor=#2D6A4F;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="463" y="225" width="70" height="80" as="geometry" />
+        <mxCell id="card_paper" value="Paper Review"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#2E7D32;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=12;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="540" y="272" width="130" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_paper" value="Paper Review" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="443" y="310" width="130" height="35" as="geometry" />
+        <mxCell id="icon_paper" value=""
+          style="shape=mxgraph.flowchart.document;sketch=0;html=1;fillColor=#2E7D32;strokeColor=#2E7D32;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="578" y="280" width="55" height="65" as="geometry" />
         </mxCell>
 
         <!-- Meeting Scheduler -->
-        <mxCell id="icon_meeting" value="" style="shape=mxgraph.cisco.servers.standard_server;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#2D6A4F;strokeColor=#2D6A4F;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="648" y="225" width="70" height="80" as="geometry" />
+        <mxCell id="card_meeting" value="Meeting Scheduler"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#2E7D32;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=12;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="755" y="272" width="130" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_meeting" value="Meeting Scheduler" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="618" y="310" width="150" height="35" as="geometry" />
+        <mxCell id="icon_meeting" value=""
+          style="shape=mxgraph.cisco.servers.standard_server;sketch=0;html=1;fillColor=#2E7D32;strokeColor=#2E7D32;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="793" y="280" width="55" height="65" as="geometry" />
         </mxCell>
 
         <!-- Milestone Tracker -->
-        <mxCell id="icon_milestone" value="" style="shape=mxgraph.flowchart.document;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#2D6A4F;strokeColor=#2D6A4F;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="833" y="225" width="70" height="80" as="geometry" />
+        <mxCell id="card_milestone" value="Milestone Tracker"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#2E7D32;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=12;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="970" y="272" width="130" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_milestone" value="Milestone Tracker" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="813" y="310" width="130" height="35" as="geometry" />
+        <mxCell id="icon_milestone" value=""
+          style="shape=mxgraph.flowchart.document;sketch=0;html=1;fillColor=#2E7D32;strokeColor=#2E7D32;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="1008" y="280" width="55" height="65" as="geometry" />
         </mxCell>
 
         <!-- Announcement Manager -->
-        <mxCell id="icon_announce" value="" style="shape=mxgraph.flowchart.display;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#2D6A4F;strokeColor=#2D6A4F;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="1018" y="225" width="70" height="80" as="geometry" />
+        <mxCell id="card_announce" value="Announcement Manager"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#2E7D32;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=11;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="1185" y="272" width="130" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_announce" value="Announcement Manager" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="988" y="310" width="160" height="35" as="geometry" />
+        <mxCell id="icon_announce" value=""
+          style="shape=mxgraph.flowchart.display;sketch=0;html=1;fillColor=#2E7D32;strokeColor=#2E7D32;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="1223" y="280" width="55" height="65" as="geometry" />
         </mxCell>
 
         <!-- ═══════════════════════════════════════════════════ -->
-        <!--        BUSINESS LAYER — MATCHING ENGINE             -->
-        <!--   Trigger | Skill Analyzer | Domain Mapper |        -->
-        <!--   Compatibility Scorer | Fair Pairing Engine         -->
-        <!--   x positions: 80, 265, 450, 635, 820              -->
+        <!--     APPLICATION TIER — MATCHING ENGINE (row 2)      -->
+        <!--  card y=450  icon y=458  step-x=240               -->
+        <!--  x: 110, 350, 590, 830, 1070                      -->
         <!-- ═══════════════════════════════════════════════════ -->
 
         <!-- Matching Trigger -->
-        <mxCell id="icon_trigger" value="" style="shape=mxgraph.flowchart.terminator;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#1B4F72;strokeColor=#1B4F72;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="90" y="408" width="90" height="55" as="geometry" />
+        <mxCell id="card_trigger" value="Matching Trigger"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#1A237E;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=12;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="110" y="450" width="130" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_trigger" value="Matching Trigger" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="75" y="468" width="130" height="35" as="geometry" />
+        <mxCell id="icon_trigger" value=""
+          style="shape=mxgraph.flowchart.terminator;sketch=0;html=1;fillColor=#1A237E;strokeColor=#1A237E;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="148" y="458" width="55" height="42" as="geometry" />
         </mxCell>
 
         <!-- Skill Analyzer -->
-        <mxCell id="icon_skill" value="" style="shape=mxgraph.flowchart.process;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#1B4F72;strokeColor=#1B4F72;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="273" y="408" width="90" height="55" as="geometry" />
+        <mxCell id="card_skill" value="Skill Analyzer"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#1A237E;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=12;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="350" y="450" width="130" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_skill" value="Skill Analyzer" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="258" y="468" width="130" height="35" as="geometry" />
+        <mxCell id="icon_skill" value=""
+          style="shape=mxgraph.flowchart.process;sketch=0;html=1;fillColor=#1A237E;strokeColor=#1A237E;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="388" y="458" width="55" height="42" as="geometry" />
         </mxCell>
 
         <!-- Domain Mapper -->
-        <mxCell id="icon_domain" value="" style="shape=mxgraph.flowchart.process;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#1B4F72;strokeColor=#1B4F72;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="458" y="408" width="90" height="55" as="geometry" />
+        <mxCell id="card_domain" value="Domain Mapper"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#1A237E;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=12;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="590" y="450" width="130" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_domain" value="Domain Mapper" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="443" y="468" width="130" height="35" as="geometry" />
+        <mxCell id="icon_domain" value=""
+          style="shape=mxgraph.flowchart.process;sketch=0;html=1;fillColor=#1A237E;strokeColor=#1A237E;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="628" y="458" width="55" height="42" as="geometry" />
         </mxCell>
 
         <!-- Compatibility Scorer -->
-        <mxCell id="icon_scorer" value="" style="rhombus;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#1B4F72;strokeColor=#1B4F72;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="643" y="400" width="90" height="70" as="geometry" />
+        <mxCell id="card_scorer" value="Compatibility Scorer"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#1A237E;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=12;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="830" y="450" width="130" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_scorer" value="Compatibility Scorer" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="618" y="475" width="150" height="35" as="geometry" />
+        <mxCell id="icon_scorer" value=""
+          style="rhombus;sketch=0;html=1;fillColor=#1A237E;strokeColor=#1A237E;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="868" y="455" width="55" height="48" as="geometry" />
         </mxCell>
 
         <!-- Fair Pairing Engine -->
-        <mxCell id="icon_pairing" value="" style="shape=mxgraph.flowchart.sort;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#1B4F72;strokeColor=#1B4F72;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="828" y="408" width="90" height="55" as="geometry" />
+        <mxCell id="card_pairing" value="Fair Pairing Engine"
+          style="rounded=1;fillColor=#FFFFFF;strokeColor=#1A237E;strokeWidth=2;shadow=1;arcSize=15;align=center;verticalAlign=bottom;fontStyle=1;fontSize=12;spacingBottom=8;"
+          vertex="1" parent="1">
+          <mxGeometry x="1070" y="450" width="130" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="lbl_pairing" value="Fair Pairing Engine" style="text;html=1;align=center;verticalAlign=top;strokeColor=none;fillColor=none;fontStyle=1;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="813" y="468" width="130" height="35" as="geometry" />
-        </mxCell>
-
-        <!-- ═══════════════════════════════════════════════════ -->
-        <!--              PERSISTENCE LAYER                      -->
-        <!--   User Store | Match Store | Paper Store |          -->
-        <!--   Meeting Store | Document Store                    -->
-        <!--   x positions: 80, 265, 450, 635, 820              -->
-        <!-- ═══════════════════════════════════════════════════ -->
-
-        <mxCell id="icon_user_store" value="User Store" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#9E6A00;strokeColor=#7A5000;fontColor=#FFFFFF;fontStyle=1;fontSize=12;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="80" y="598" width="120" height="100" as="geometry" />
-        </mxCell>
-
-        <mxCell id="icon_match_store" value="Match Store" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#9E6A00;strokeColor=#7A5000;fontColor=#FFFFFF;fontStyle=1;fontSize=12;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="265" y="598" width="120" height="100" as="geometry" />
-        </mxCell>
-
-        <mxCell id="icon_paper_store" value="Paper Store" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#9E6A00;strokeColor=#7A5000;fontColor=#FFFFFF;fontStyle=1;fontSize=12;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="450" y="598" width="120" height="100" as="geometry" />
-        </mxCell>
-
-        <mxCell id="icon_meeting_store" value="Meeting Store" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#9E6A00;strokeColor=#7A5000;fontColor=#FFFFFF;fontStyle=1;fontSize=12;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="635" y="598" width="120" height="100" as="geometry" />
-        </mxCell>
-
-        <mxCell id="icon_doc_store" value="Document Store" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#9E6A00;strokeColor=#7A5000;fontColor=#FFFFFF;fontStyle=1;fontSize=12;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="820" y="598" width="120" height="100" as="geometry" />
+        <mxCell id="icon_pairing" value=""
+          style="shape=mxgraph.flowchart.sort;sketch=0;html=1;fillColor=#1A237E;strokeColor=#1A237E;pointerEvents=0;"
+          vertex="1" parent="1">
+          <mxGeometry x="1108" y="458" width="55" height="42" as="geometry" />
         </mxCell>
 
         <!-- ═══════════════════════════════════════════════════ -->
-        <!--               DATABASE LAYER                        -->
-        <!--   Supabase Database | Supabase Auth | File Storage  -->
-        <!--   x positions: 175, 490, 805                       -->
+        <!--                  DATA TIER                          -->
+        <!--  cylinder y=688  width=150  height=120             -->
+        <!--  x: 280, 620, 955                                  -->
         <!-- ═══════════════════════════════════════════════════ -->
 
-        <mxCell id="icon_supabase_db" value="Supabase Database" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#8B1A1A;strokeColor=#5A0A0A;fontColor=#FFFFFF;fontStyle=1;fontSize=12;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="175" y="770" width="145" height="110" as="geometry" />
+        <mxCell id="icon_supabase_db" value="Supabase Database"
+          style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#4A148C;strokeColor=#38006B;fontColor=#FFFFFF;fontStyle=1;fontSize=12;verticalAlign=middle;"
+          vertex="1" parent="1">
+          <mxGeometry x="280" y="688" width="155" height="120" as="geometry" />
         </mxCell>
 
-        <mxCell id="icon_supabase_auth" value="Supabase Auth" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#8B1A1A;strokeColor=#5A0A0A;fontColor=#FFFFFF;fontStyle=1;fontSize=12;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="490" y="770" width="145" height="110" as="geometry" />
+        <mxCell id="icon_supabase_auth" value="Supabase Auth"
+          style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#4A148C;strokeColor=#38006B;fontColor=#FFFFFF;fontStyle=1;fontSize=12;verticalAlign=middle;"
+          vertex="1" parent="1">
+          <mxGeometry x="620" y="688" width="155" height="120" as="geometry" />
         </mxCell>
 
-        <mxCell id="icon_file_storage" value="File Storage" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#8B1A1A;strokeColor=#5A0A0A;fontColor=#FFFFFF;fontStyle=1;fontSize=12;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="805" y="770" width="145" height="110" as="geometry" />
+        <mxCell id="icon_file_storage" value="File Storage"
+          style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#4A148C;strokeColor=#38006B;fontColor=#FFFFFF;fontStyle=1;fontSize=12;verticalAlign=middle;"
+          vertex="1" parent="1">
+          <mxGeometry x="955" y="688" width="155" height="120" as="geometry" />
         </mxCell>
 
         <!-- ═══════════════════════════════════════════════════ -->
-        <!--          ARROWS: Presentation → Business            -->
+        <!--      ARROWS: Presentation → Application             -->
         <!-- ═══════════════════════════════════════════════════ -->
 
-        <mxCell id="arr_login_auth" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_login" target="icon_auth" parent="1">
+        <mxCell id="arr_login_auth" value="" style="endArrow=block;endFill=1;strokeColor=#1976D2;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_login" target="card_auth" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_mentor_profile" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_mentor_dash" target="icon_profile" parent="1">
+        <mxCell id="arr_mentor_profile" value="" style="endArrow=block;endFill=1;strokeColor=#1976D2;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_mentor_dash" target="card_profile" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_mentor_meeting" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_mentor_dash" target="icon_meeting" parent="1">
+        <mxCell id="arr_mentor_meeting" value="" style="endArrow=block;endFill=1;strokeColor=#1976D2;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_mentor_dash" target="card_meeting" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_mentor_milestone" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_mentor_dash" target="icon_milestone" parent="1">
+        <mxCell id="arr_mentor_milestone" value="" style="endArrow=block;endFill=1;strokeColor=#1976D2;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_mentor_dash" target="card_milestone" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_mentee_paper" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_mentee_dash" target="icon_paper" parent="1">
+        <mxCell id="arr_mentee_profile" value="" style="endArrow=block;endFill=1;strokeColor=#1976D2;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_mentee_dash" target="card_profile" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_mentee_profile" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_mentee_dash" target="icon_profile" parent="1">
+        <mxCell id="arr_mentee_paper" value="" style="endArrow=block;endFill=1;strokeColor=#1976D2;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_mentee_dash" target="card_paper" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_admin_announce" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_admin_panel" target="icon_announce" parent="1">
+        <mxCell id="arr_admin_announce" value="" style="endArrow=block;endFill=1;strokeColor=#1976D2;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_admin" target="card_announce" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_admin_trigger" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_admin_panel" target="icon_trigger" parent="1">
+        <mxCell id="arr_admin_trigger" value="" style="endArrow=block;endFill=1;strokeColor=#1976D2;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_admin" target="card_trigger" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
         <!-- ═══════════════════════════════════════════════════ -->
-        <!--       ARROWS: Matching Engine Pipeline (horizontal) -->
+        <!--    ARROWS: Matching Engine Pipeline (horizontal)    -->
         <!-- ═══════════════════════════════════════════════════ -->
 
-        <mxCell id="arr_trigger_skill" value="" style="endArrow=block;endFill=1;strokeColor=#1B4F72;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="icon_trigger" target="icon_skill" parent="1">
+        <mxCell id="arr_trigger_skill" value="" style="endArrow=block;endFill=1;strokeColor=#1A237E;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="card_trigger" target="card_skill" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_skill_domain" value="" style="endArrow=block;endFill=1;strokeColor=#1B4F72;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="icon_skill" target="icon_domain" parent="1">
+        <mxCell id="arr_skill_domain" value="" style="endArrow=block;endFill=1;strokeColor=#1A237E;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="card_skill" target="card_domain" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_domain_scorer" value="" style="endArrow=block;endFill=1;strokeColor=#1B4F72;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="icon_domain" target="icon_scorer" parent="1">
+        <mxCell id="arr_domain_scorer" value="" style="endArrow=block;endFill=1;strokeColor=#1A237E;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="card_domain" target="card_scorer" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_scorer_pairing" value="" style="endArrow=block;endFill=1;strokeColor=#1B4F72;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="icon_scorer" target="icon_pairing" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <!-- ═══════════════════════════════════════════════════ -->
-        <!--         ARROWS: Business → Persistence              -->
-        <!-- ═══════════════════════════════════════════════════ -->
-
-        <mxCell id="arr_auth_user" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_auth" target="icon_user_store" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <mxCell id="arr_profile_user" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_profile" target="icon_user_store" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <mxCell id="arr_paper_store" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_paper" target="icon_paper_store" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <mxCell id="arr_meeting_store" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_meeting" target="icon_meeting_store" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <mxCell id="arr_milestone_store" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_milestone" target="icon_meeting_store" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <mxCell id="arr_pairing_match" value="" style="endArrow=block;endFill=1;strokeColor=#1B4F72;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_pairing" target="icon_match_store" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <mxCell id="arr_paper_docstore" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_paper" target="icon_doc_store" parent="1">
+        <mxCell id="arr_scorer_pairing" value="" style="endArrow=block;endFill=1;strokeColor=#1A237E;strokeWidth=2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="card_scorer" target="card_pairing" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
         <!-- ═══════════════════════════════════════════════════ -->
-        <!--          ARROWS: Persistence → Database             -->
+        <!--         ARROWS: Application → Data                  -->
         <!-- ═══════════════════════════════════════════════════ -->
 
-        <mxCell id="arr_user_supadb" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_user_store" target="icon_supabase_db" parent="1">
+        <mxCell id="arr_auth_supaauth" value="" style="endArrow=block;endFill=1;strokeColor=#6A1B9A;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_auth" target="icon_supabase_auth" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_match_supadb" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_match_store" target="icon_supabase_db" parent="1">
+        <mxCell id="arr_profile_db" value="" style="endArrow=block;endFill=1;strokeColor=#6A1B9A;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_profile" target="icon_supabase_db" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_paper_supadb" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_paper_store" target="icon_supabase_db" parent="1">
+        <mxCell id="arr_paper_db" value="" style="endArrow=block;endFill=1;strokeColor=#6A1B9A;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_paper" target="icon_supabase_db" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_meeting_supadb" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_meeting_store" target="icon_supabase_db" parent="1">
+        <mxCell id="arr_paper_storage" value="" style="endArrow=block;endFill=1;strokeColor=#6A1B9A;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_paper" target="icon_file_storage" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_user_supaauth" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_user_store" target="icon_supabase_auth" parent="1">
+        <mxCell id="arr_meeting_db" value="" style="endArrow=block;endFill=1;strokeColor=#6A1B9A;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_meeting" target="icon_supabase_db" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="arr_doc_filestorage" value="" style="endArrow=block;endFill=1;strokeColor=#444444;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="icon_doc_store" target="icon_file_storage" parent="1">
+        <mxCell id="arr_milestone_db" value="" style="endArrow=block;endFill=1;strokeColor=#6A1B9A;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_milestone" target="icon_supabase_db" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arr_announce_db" value="" style="endArrow=block;endFill=1;strokeColor=#6A1B9A;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_announce" target="icon_supabase_db" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arr_pairing_db" value="" style="endArrow=block;endFill=1;strokeColor=#6A1B9A;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="card_pairing" target="icon_supabase_db" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
