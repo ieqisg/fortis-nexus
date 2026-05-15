@@ -7,6 +7,10 @@ This document contains technical analysis of the matching algorithm for use in t
 ## Table of Contents
 
 1. [System Overview](#1-system-overview)
+   - [Fair Matching](#11-fair-matching)
+   - [Pipeline](#12-pipeline)
+   - [Matching Algorithm Mechanics](#13-matching-algorithm-mechanics)
+   - [Evaluation Tooling](#14-evaluation-tooling)
 2. [Time Complexity Analysis](#2-time-complexity-analysis)
    - [Per-Stage Breakdown](#21-per-stage-breakdown)
    - [Full Pipeline Complexity](#22-full-pipeline-complexity)
@@ -87,7 +91,124 @@ Phase 3: Stable Matching (Fair-Matching)
 | Communication preference | **5%** | Matching communication mode (F2F, online chat, online call) |
 | Meeting frequency | **5%** | Number of shared available days |
 
-### 1.3 Evaluation Tooling
+### 1.3 Matching Algorithm Mechanics
+
+Both HR variants share the same fundamental proposal cycle. This section explains how proposals work, what each variant guarantees, and how the system selects between them.
+
+---
+
+#### 1.3.1 The Proposal Phase (Step-by-Step)
+
+The HR algorithm proceeds in discrete *rounds*. Each round, one free proposer — a mentee group (mentee-proposing variant) or a mentor (mentor-proposing variant) — selects the next best candidate from their preference list and sends a proposal. Three outcomes are possible:
+
+| Outcome | Condition | Effect |
+|---------|-----------|--------|
+| **Accept** | Candidate has spare capacity | Proposer is tentatively assigned; candidate's roster grows by 1 |
+| **Reject** | Candidate is full AND prefers all current matches over this proposer | Proposer advances to their next preference and re-enters the queue |
+| **Replace** | Candidate is full BUT prefers the new proposer over their current worst match | Current worst match is freed and re-enters the queue; new proposer takes their slot |
+
+The algorithm terminates when no free proposer has any remaining candidates to propose to.
+
+**Worked example** (3 mentee groups — A, B, C — and 2 mentors — X, Y — each with capacity 1):
+
+Assume the scored preference lists are:
+```
+Mentees:  A → [X, Y]   B → [X, Y]   C → [Y, X]
+Mentors:  X → [B, A, C]   Y → [A, B, C]
+```
+
+Proposal trace (mentee-proposing):
+
+| Round | Proposer | To | Outcome | Queue after |
+|-------|----------|----|---------|-------------|
+| 1 | A | X | **Accept** (X empty) | B, C free |
+| 2 | B | X | **Replace** (X prefers B over A; A freed) | C, A free |
+| 3 | C | Y | **Accept** (Y empty) | A free |
+| 4 | A | Y | **Reject** (Y full; Y prefers C over A) | A → tries no more |
+
+Final assignment: B→X, C→Y. A is unmatched (safety net applies; see Section 3.1, Metric #2).
+
+All four event types — `propose`, `accept`, `reject`, `replace` — are collected per round and stored in `algorithm_logs.log_data.phase3.proposal_events_mo` (mentee-proposing) and `proposal_events_meo` (mentor-proposing) for full auditability.
+
+---
+
+#### 1.3.2 Mentee-Optimal Matching (Mentee-Proposing HR)
+
+**Implementation:** `hospital_resident()` in `matching.py`
+
+In the mentee-proposing variant, mentee groups hold the proposing role:
+
+1. All mentee groups start free and are added to the proposal queue
+2. Each mentee proposes to their highest-ranked not-yet-proposed mentor
+3. Mentors tentatively hold their best offers up to `mentor_capacity`, replacing the worst match whenever a better proposer arrives
+4. Freed mentees continue proposing down their list
+5. Terminates when the queue is empty
+
+**Optimality guarantee [(Gale & Shapley, 1962)](https://doi.org/10.2307/2300560):** The resulting matching is *mentee-optimal* — every mentee group is assigned to the best mentor they could receive in *any* stable matching. Equivalently, no other stable matching exists where any mentee would prefer their assignment. This is simultaneously the worst stable matching for mentors: every mentor receives the least preferred group they must accept in any stable outcome.
+
+**Data structures used:**
+- `free_residents` — deque of proposing mentees
+- `next_proposal[r_id]` — index of next mentor to propose to (prevents repeated proposals, ensures O(1) advance)
+- `hospital_rank[h_id][r_id]` — precomputed rank dict for O(1) preference comparisons
+- `hospital_assignments[h_id]` — mentor's current tentative roster
+
+---
+
+#### 1.3.3 Mentor-Optimal Matching (Mentor-Proposing HR)
+
+**Implementation:** `hospital_resident_mentor_optimal()` in `matching.py`
+
+The mentor-proposing variant inverts the roles:
+
+1. All mentors start active; they propose to their highest-ranked not-yet-proposed mentee
+2. Each mentee group tentatively holds the best offer received so far
+3. When a better proposal arrives the previous offer is released, returning that mentor to the active queue
+4. A mentor refills from their preference list until all capacity slots are filled or the list is exhausted
+5. Terminates when the active-mentor queue is empty
+
+**Optimality guarantee [(Roth, 1984)](https://doi.org/10.2307/1912320):** The resulting matching is *mentor-optimal* — every mentor receives the best mentee group they could get in any stable matching. This is simultaneously the worst stable matching for mentees.
+
+**Data structures used:**
+- `active_hospitals` — deque of proposing mentors
+- `hospital_proposal_index[h_id]` — index of next mentee to propose to
+- `hospital_remaining_slots[h_id]` — remaining capacity during proposals
+- `resident_rank[r_id][h_id]` — precomputed rank dict for O(1) mentee-side comparisons
+- `resident_holding[r_id]` — best offer the mentee group currently holds
+
+---
+
+#### 1.3.4 Fair-Matching Selection
+
+**Implementation:** `pick_fairer_matching()` in `matching.py` (lines 263–295)
+
+The system runs **both** HR variants on every execution and selects the result that is fairest to both parties:
+
+**Dissatisfaction metric:** For each matched pair, the *dissatisfaction* of one side equals the rank position of their assigned match in their preference list (rank 1 = top choice; lower is always better). The average dissatisfaction across all mentees gives `mentee_dissatisfaction`; the equivalent average across all mentor slots gives `mentor_dissatisfaction`.
+
+**Selection rule:**
+```
+total_mo  = mentee_dissatisfaction(mentee-optimal result)
+           + mentor_dissatisfaction(mentee-optimal result)
+
+total_meo = mentee_dissatisfaction(mentor-optimal result)
+           + mentor_dissatisfaction(mentor-optimal result)
+
+selected  = mentee-optimal if total_mo ≤ total_meo, else mentor-optimal
+```
+
+Ties break in favor of mentee-optimal. The selected variant's match records are written to the `matches` table tagged `algorithm = "fair-matching"`. Both `proposal_events_mo` and `proposal_events_meo` are retained in `algorithm_logs` regardless of which variant is selected.
+
+**Why this is fair:** The mentee-optimal result gives mentees their best possible outcome at mentors' expense; the mentor-optimal result gives mentors their best at mentees' expense. The combined dissatisfaction sum measures the total "unhappiness" imposed on the system. Selecting the minimum ensures neither side is systematically disadvantaged across runs.
+
+| Variant | Optimally favors | Stability | Selected when |
+|---------|-----------------|-----------|--------------|
+| Mentee-optimal | Mentees | ✓ Guaranteed | Combined dissatisfaction ≤ mentor-optimal total |
+| Mentor-optimal | Mentors | ✓ Guaranteed | Combined dissatisfaction < mentee-optimal total |
+| **Fair-matching (system output)** | **Neither systematically** | **✓ Guaranteed** | **Always — one of the above is chosen per run** |
+
+---
+
+### 1.4 Evaluation Tooling
 
 | Script | Purpose | Data Source |
 |--------|---------|-------------|
@@ -238,17 +359,37 @@ Any algorithm that produces a *provably stable* matching must inspect at least �
 
 The system logs every individual proposal event (propose / accept / reject / replace) during each HR algorithm run. These events are collected in memory and included in `algorithm_logs.log_data.phase3.proposal_events_mo` and `proposal_events_meo`.
 
-**Event count bounds:**
+#### Per-variant complexity
+
+**Mentee-proposing (mentee-optimal):**
+
+Each mentee proposes to each mentor *at most once* — once rejected, the proposer never returns to the same mentor. With n mentees and m mentors, the maximum number of proposals is n · m.
+
+Each proposal is O(1): the mentor's current worst match is found via `max()` over at most `mentor_capacity` entries (bounded constant in practice), and the preference comparison uses the precomputed `hospital_rank[h_id][r_id]` dict.
+
+**Mentor-proposing (mentor-optimal):**
+
+Symmetric argument: each mentor proposes to each mentee at most once, giving O(n · m) proposals. Each proposal is O(1) via the precomputed `resident_rank[r_id][h_id]` dict.
+
+**Fair-matching overhead:**
+
+The system runs both variants in full on every execution. Total HR cost is 2 × O(n · m) = **O(n · m)** (the constant factor 2 is absorbed). The dissatisfaction comparison step that selects the winner (`pick_fairer_matching`) is **O(n + m)** — one pass over all matches on each side — and does not change the asymptotic class.
+
+#### Event count bounds
 
 | Scenario | Events per HR run |
 |----------|-----------------|
-| Best case (all first-choice accepts) | O(n) — each mentee accepted immediately |
-| Typical case | O(n · c) where c is average proposal rounds per mentee (c ≈ 1.2–2.0 empirically) |
-| Worst case | O(n · m) — every mentee proposes to every mentor before matching |
+| Best case (all first-choice accepts) | O(n) — each mentee/mentor accepted immediately |
+| Typical case | O(n · c) where c is average proposal rounds per proposer (c ≈ 1.2–2.0 empirically) |
+| Worst case | O(n · m) — every proposer cycles through the full preference list |
 
-**Collection cost:** O(1) per event (list append). The total additional overhead of event collection is O(n · m) in the worst case, which is already within the existing O(n · m) bounds for the HR algorithm. No asymptotic regression.
+**Fair-matching total (both variants):** 2 × (above) = **O(n · m)** worst case.
 
-**Storage:** Stored as JSONB in `algorithm_logs`. For n = 100, m = 10, typical event count ≈ 120–200 events per HR run (two events per proposal — a "propose" and an outcome). At ~150 bytes per event, this is roughly 30–60 KB per algorithm_logs row, well within Supabase JSONB limits.
+#### Collection and storage cost
+
+**Collection:** O(1) per event (list append). The total additional overhead of event collection is O(n · m) in the worst case, which is already within the existing O(n · m) bounds for the HR algorithm. No asymptotic regression.
+
+**Storage:** Both event lists (`proposal_events_mo` and `proposal_events_meo`) are persisted as JSONB in `algorithm_logs`. Worst-case DB payload is 2 × O(n · m) events. For n = 100, m = 10, typical total event count ≈ 240–400 events across both runs. At ~150 bytes per event, this is roughly 36–60 KB per `algorithm_logs` row, well within Supabase JSONB limits.
 
 ---
 
