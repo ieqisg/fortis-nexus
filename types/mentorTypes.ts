@@ -28,7 +28,6 @@ export interface MentorFormProfile {
     role: "mentor";
     profile_completed: boolean;
     email: string | null;
-    experience: number;
     communication_preference: CommunicationPreference | "";
     prev_mentored_thesis?: PrevMentoredThesis[];
     orcid?: string;
