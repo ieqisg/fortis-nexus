@@ -8,7 +8,7 @@
 
 ## Instructions
 
-Evaluate the system from a technical perspective based on code review, project documentation, and system architecture. Rate each statement using the scale below.
+Evaluate the system based on its observable behavior, architecture, and quality characteristics. Rate each statement using the scale below.
 
 | Rating | Meaning |
 |--------|---------|
@@ -30,9 +30,9 @@ Evaluate the system from a technical perspective based on code review, project d
 
 | # | Statement |
 |---|-----------|
-| M1 | The codebase is organized into clearly separated modules or layers that can be understood independently. |
-| M2 | The separation of concerns between the frontend (Next.js), backend (Express), and matching algorithm (Python) is clear and logical. |
-| M3 | Each module or layer has a well-defined responsibility with minimal overlap with others. |
+| M1 | The system is composed of clearly distinct components (e.g., user interface, data processing, matching engine) that operate independently. |
+| M2 | A failure or change in one component of the system does not cascade unexpectedly into other components. |
+| M3 | Each component of the system serves a well-defined purpose with minimal overlap in responsibility. |
 
 ### 1.2 Reusability
 
@@ -40,20 +40,20 @@ Evaluate the system from a technical perspective based on code review, project d
 
 | # | Statement |
 |---|-----------|
-| M4 | Existing components (e.g., UI components, server actions, algorithm stages) appear reusable across different parts of the system. |
-| M5 | Common patterns and utilities are appropriately abstracted to avoid code duplication. |
-| M6 | Shared interfaces and types are defined in a way that supports reuse across the application layers. |
+| M4 | System components appear designed in a way that would allow them to be reused in a related or future system. |
+| M5 | Common system behaviors (e.g., authentication, profile management) are handled consistently across different parts of the system. |
+| M6 | The system avoids duplicating logic by consolidating shared behavior into reusable parts. |
 
 ### 1.3 Analysability
 
-*Degree of effectiveness and efficiency to assess the impact on a product or system of an intended change to one or more of its parts, and to diagnose a product for deficiencies or causes of failures.*
+*Degree of effectiveness and efficiency to assess the impact of an intended change, and to diagnose deficiencies or causes of failures.*
 
 | # | Statement |
 |---|-----------|
-| M7 | I can identify where a given feature or behavior is implemented without excessive difficulty. |
-| M8 | The code follows consistent naming conventions and style that make it readable to a new developer. |
-| M9 | The project documentation (CLAUDE.md, inline comments, architecture notes) adequately supports developer onboarding. |
-| M10 | Error messages and system logs provide sufficient information to diagnose issues effectively. |
+| M7 | When the system encounters an error, it provides clear and informative feedback that helps identify the cause. |
+| M8 | The system's behavior is predictable enough that the impact of a proposed change can be assessed with confidence. |
+| M9 | System logs and diagnostic information are sufficient to trace the source of a problem. |
+| M10 | The overall structure of the system makes it straightforward to locate where a specific function or behavior originates. |
 
 ### 1.4 Modifiability
 
@@ -61,99 +61,99 @@ Evaluate the system from a technical perspective based on code review, project d
 
 | # | Statement |
 |---|-----------|
-| M11 | Making changes to one part of the system is unlikely to introduce unintended side effects in unrelated parts. |
-| M12 | The system's architecture allows new features to be added with minimal disruption to existing code. |
-| M13 | Configuration and environment settings are managed in a way that makes them easy to change across environments. |
+| M11 | Modifying one part of the system is unlikely to break unrelated features. |
+| M12 | The system appears designed to accommodate new features or requirements without requiring major structural changes. |
+| M13 | System configuration (e.g., environments, parameters) can be changed without altering core system behavior. |
 
 ### 1.5 Testability
 
-*Degree of effectiveness and efficiency with which test criteria can be established for a system, product, or component, and tests can be performed to determine whether those criteria have been met.*
+*Degree of effectiveness and efficiency with which test criteria can be established and tests can be performed to determine whether criteria have been met.*
 
 | # | Statement |
 |---|-----------|
-| M14 | The system's test coverage is sufficient to verify that changes do not introduce regressions. |
-| M15 | The codebase structure facilitates unit testing and integration testing without excessive setup. |
-| M16 | Test cases clearly reflect the intended behavior of the components they cover. |
+| M14 | The system's components can be evaluated individually to verify they behave as intended. |
+| M15 | The system produces consistent and verifiable outputs that make it straightforward to confirm correctness. |
+| M16 | The system's behavior under various inputs is predictable and can be validated through systematic testing. |
 
 ---
 
 ## Section 2 — Portability (ISO/IEC 25010, §4.8)
 
-*Degree of effectiveness and efficiency with which a system, product, or component can be transferred from one hardware, software, or other operational or usage environment to another.*
+*Degree of effectiveness and efficiency with which the system can be transferred from one environment to another.*
 
 ### 2.1 Adaptability
 
-*Degree to which a product or system can effectively and efficiently be adapted for different or evolving hardware, software, or other operational or usage environments.*
+*Degree to which the system can effectively be adapted for different or evolving operational or usage environments.*
 
 | # | Statement |
 |---|-----------|
-| Po1 | The system's dependencies and runtime configuration are well-isolated (e.g., via environment variables, virtual environments). |
-| Po2 | The system could be adapted to run in a different hosting environment without significant rework. |
-| Po3 | The Python matching pipeline is portable and can be run independently of the Next.js/Express layer. |
-| Po4 | The use of environment variables and configuration files makes it straightforward to adjust the system for different deployment targets. |
+| Po1 | The system can be configured to operate in different environments (e.g., development, staging, production) without changes to its core functionality. |
+| Po2 | The system's behavior adapts appropriately when deployed in a different hosting or infrastructure environment. |
+| Po3 | The matching engine operates independently of the web interface, making it possible to run each component in a different environment. |
+| Po4 | The system's configuration options are sufficient to tailor its behavior to different institutional or operational contexts. |
 
 ### 2.2 Installability
 
-*Degree of effectiveness and efficiency with which a product or system can be successfully installed and/or uninstalled in a specified environment.*
+*Degree of effectiveness and efficiency with which the system can be successfully installed and set up in a specified environment.*
 
 | # | Statement |
 |---|-----------|
-| Po5 | The installation and local setup process is clearly documented and can be followed without prior system-specific knowledge. |
-| Po6 | The required tools, runtimes, and dependencies are clearly specified and straightforward to install. |
-| Po7 | Setup steps are sequenced logically and free of ambiguity that would block a new developer. |
+| Po5 | The system can be set up in a new environment without requiring specialized prior knowledge of its internals. |
+| Po6 | All required services, runtime dependencies, and configuration steps for the system are clearly defined and straightforward to provision. |
+| Po7 | The system reaches a functional state consistently following the documented setup steps. |
 
 ### 2.3 Replaceability
 
-*Degree to which a product can replace another specified software product for the same purpose in the same environment.*
+*Degree to which the system can replace another specified system for the same purpose in the same environment.*
 
 | # | Statement |
 |---|-----------|
-| Po8 | Individual components (e.g., the database, authentication provider, or matching algorithm) could be replaced with alternatives without requiring a full rewrite. |
-| Po9 | The system uses standard interfaces and protocols that facilitate component replacement. |
-| Po10 | The database access layer (server actions) abstracts Supabase in a way that would allow migrating to a different database with limited changes. |
+| Po8 | The system could replace a manual or spreadsheet-based mentor-mentee matching process without loss of essential functionality. |
+| Po9 | Individual system services (e.g., database, authentication, matching algorithm) could be substituted with equivalent alternatives without requiring a complete rebuild. |
+| Po10 | The system's integration points are defined in a way that allows external components to be swapped out as technology evolves. |
 
 ---
 
 ## Section 3 — Functional Suitability (ISO/IEC 25010, §4.1)
 
-*Evaluated from a technical and architectural perspective through code review.*
+*Degree to which the system provides functions that meet stated and implied needs.*
 
 | # | Statement | Sub-Characteristic |
 |---|-----------|-------------------|
-| FS1 | The system implements all specified core features (matching, profile management, scheduling, admin controls). | Functional Completeness |
-| FS2 | The matching algorithm correctly implements the Gale-Shapley stable matching with TF-IDF scoring as described in the system documentation. | Functional Correctness |
-| FS3 | The system's outputs (match results, compatibility scores, audit logs) align with expected algorithmic behavior. | Functional Correctness |
-| FS4 | The feature set is appropriate and proportional to the thesis mentor-mentee matching use case without unnecessary complexity. | Functional Appropriateness |
-| FS5 | The algorithm's scoring pipeline (keyword extraction, TF-IDF vectorization, weighted combination) is implemented accurately relative to its specification. | Functional Correctness |
+| FS1 | The system covers all the core functions required for mentor-mentee matching (profile management, matching, scheduling, and administration). | Functional Completeness |
+| FS2 | The matching results produced by the system are accurate and consistent with the stated algorithm and inputs. | Functional Correctness |
+| FS3 | The system produces correct outputs even when given varied or edge-case inputs. | Functional Correctness |
+| FS4 | The features provided by the system are appropriate and proportional to the needs of a thesis mentoring program — neither over-engineered nor lacking. | Functional Appropriateness |
+| FS5 | The system's outputs (match assignments, compatibility scores, audit trail) align with what is expected from the described algorithm. | Functional Correctness |
 
 ---
 
 ## Section 4 — Performance Efficiency (ISO/IEC 25010, §4.2)
 
-*Evaluated from a code and architecture perspective through code review.*
+*Degree to which the system performs its functions within stated time, resource, and capacity constraints.*
 
 | # | Statement | Sub-Characteristic |
 |---|-----------|-------------------|
-| PE1 | The system architecture supports efficient data retrieval and processing. | Time Behaviour |
-| PE2 | Database queries and API calls appear optimized to avoid unnecessary overhead (e.g., no N+1 query patterns). | Resource Utilization |
-| PE3 | The matching algorithm's time complexity is appropriate and well-justified for the expected data scale. | Capacity |
-| PE4 | Resource-intensive operations (e.g., matching runs) are appropriately isolated from real-time user interactions. | Resource Utilization |
-| PE5 | The system avoids holding unnecessary resources (memory, connections) longer than required. | Resource Utilization |
+| PE1 | The system responds to user interactions within an acceptable timeframe. | Time Behaviour |
+| PE2 | The matching process completes within a reasonable time given the expected number of participants. | Time Behaviour |
+| PE3 | The system uses computational resources (processing, memory, network) proportional to the complexity of the task performed. | Resource Utilization |
+| PE4 | Long-running operations (such as the matching algorithm) do not noticeably degrade the responsiveness of other system features. | Resource Utilization |
+| PE5 | The system can handle the expected number of concurrent users without performance degradation. | Capacity |
 
 ---
 
 ## Section 5 — Security (ISO/IEC 25010, §4.6)
 
-*Evaluated from a technical review perspective.*
+*Degree to which the system protects information and data and prevents unauthorized access.*
 
 | # | Statement | Sub-Characteristic |
 |---|-----------|-------------------|
-| SE1 | Authentication and session management follow current security best practices (e.g., short-lived tokens, secure cookie handling). | Authenticity |
-| SE2 | Role-based access control is correctly enforced at the API and middleware level, preventing privilege escalation. | Confidentiality |
-| SE3 | Sensitive data (credentials, tokens, personal information) is handled appropriately in code and configuration. | Confidentiality |
-| SE4 | The codebase does not contain obvious security vulnerabilities (e.g., SQL injection, XSS, insecure direct object references). | Integrity |
-| SE5 | Environment secrets are properly managed and not exposed in the codebase or version history. | Confidentiality |
-| SE6 | Server-side validation is applied at appropriate boundaries to prevent malformed or malicious input. | Integrity |
+| SE1 | The system grants access only to users who have been properly authenticated. | Authenticity |
+| SE2 | Users can access only the data and functions appropriate to their assigned role. | Confidentiality |
+| SE3 | The system prevents one user from viewing or modifying another user's private information. | Confidentiality |
+| SE4 | The system rejects unauthorized attempts to access restricted features or administrative functions. | Integrity |
+| SE5 | Sensitive information is not exposed through system responses, error messages, or interface elements. | Confidentiality |
+| SE6 | The system maintains the integrity of stored data and prevents unauthorized modification. | Integrity |
 
 ---
 
@@ -161,7 +161,7 @@ Evaluate the system from a technical perspective based on code review, project d
 
 Please answer briefly in your own words.
 
-1. Which part of the system architecture did you find most well-designed, and why?
+1. Which aspect of the system did you find most well-designed from a technical standpoint, and why?
 
    _________________________________________________________________________
 
@@ -169,11 +169,11 @@ Please answer briefly in your own words.
 
    _________________________________________________________________________
 
-3. What security or performance concerns, if any, did you identify during your review?
+3. What performance or security concerns, if any, did you observe while evaluating the system?
 
    _________________________________________________________________________
 
-4. What architectural improvements would you suggest for future development?
+4. What improvements would you recommend to enhance the system's overall technical quality?
 
    _________________________________________________________________________
 
