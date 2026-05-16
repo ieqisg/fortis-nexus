@@ -17,6 +17,7 @@ This document contains technical analysis of the matching algorithm for use in t
    - [Empirical Scaling (Benchmark Results)](#23-empirical-scaling-benchmark-results)
    - [Is O(n) Achievable?](#24-is-on-achievable)
    - [Proposal Phase Complexity](#25-proposal-phase-complexity)
+     - [Plain-Language Explanation](#plain-language-explanation-of-proposal-phase-time-complexity)
    - [Complexity Reduction Alternatives](#26-complexity-reduction-alternatives-same-algorithm-different-approach)
 3. [Effectiveness Metrics](#3-effectiveness-metrics)
    - [Algorithmic Correctness](#31-algorithmic-correctness-metrics)
@@ -94,11 +95,11 @@ Phase 3: Stable Matching (Fair-Matching)
 
 | Component | Weight | What it measures |
 |-----------|--------|-----------------|
-| Keyword similarity | **60%** | TF-IDF cosine similarity of research profiles [(Salton & Buckley, 1988)](https://doi.org/10.1016/0306-4573(88)90021-0) |
-| Experience | **20%** | Mentor's advising background |
+| Keyword similarity | **75%** | TF-IDF cosine similarity of research profiles [(Salton & Buckley, 1988)](https://doi.org/10.1016/0306-4573(88)90021-0) |
+| Experience | **10%** | Mentor's advising background |
 | Availability | **10%** | Jaccard overlap of available days and time slots [(Jaccard, 1901)](https://doi.org/10.2307/3771392) |
-| Communication preference | **5%** | Matching communication mode (F2F, online chat, online call) |
-| Meeting frequency | **5%** | Number of shared available days |
+| Communication preference | **2.5%** | Matching communication mode (F2F, online chat, online call) |
+| Meeting frequency | **2.5%** | Number of shared available days |
 
 ### 1.3 Matching Algorithm Mechanics
 
@@ -402,6 +403,44 @@ The system runs both variants in full on every execution. Total HR cost is 2 × 
 
 ---
 
+#### Plain-Language Explanation of Proposal Phase Time Complexity
+
+The proposal phase is the part of the algorithm where actual assignments are made. It works like a structured application process: each unassigned student group sends a request to their most-preferred mentor, and mentors either accept, reject, or swap out a less-preferred current hold in favor of the new request.
+
+**Why the process must eventually stop**
+
+The key insight is that each request permanently eliminates one possible pairing from the student's list. Once a student group has been turned down by a mentor, they never ask that same mentor again. Since the number of possible (student, mentor) pairings is finite — there are `n` student groups and `m` mentors, giving exactly `n × m` possible pairings — the process is guaranteed to finish.
+
+**How many rounds are needed?**
+
+The number of rounds depends on how contested the mentors are.
+
+| Situation | What happens | Number of rounds |
+|-----------|--------------|-----------------|
+| Best case | Every student group is accepted immediately by their first-choice mentor | Equal to the number of student groups (n) |
+| Typical case | Each student group is turned down once or twice before being accepted | Roughly 1.2 to 2 times the number of student groups |
+| Worst case | Every student group is turned down by every mentor before being accepted by one | Up to n × m (student groups × mentors) |
+
+In the best case, all preferences are spread out so no mentor is overloaded — every first request is accepted, and the phase completes in as many rounds as there are students. In the worst case, every student chases the same few mentors, getting turned down repeatedly until they exhaust their list, producing the maximum n × m rounds.
+
+**What O(n × m) means for this system**
+
+For FEU Tech's current scale — approximately 21 student groups and 16 mentors — the worst-case number of proposal rounds is 21 × 16 = 336. Each individual round takes a fixed, constant amount of work (one comparison to decide accept, reject, or replace), so the total time is simply proportional to the number of rounds. Doubling the number of student groups doubles the number of rounds in the worst case; the algorithm scales predictably.
+
+**Why running two variants does not change the complexity class**
+
+The system runs the proposal phase twice on every execution — once where student groups do the asking, and once where mentors do the asking — in order to pick the fairer result. This doubles the worst-case event count to 2 × (n × m), but because the two runs happen sequentially, the combined cost is still expressed as O(n × m). The factor of 2 is a fixed constant and does not change how the runtime grows as the number of participants increases.
+
+**Why no proposal round is wasted**
+
+Every rejected request moves the proposer one step forward on their preference list and can never happen again. This means the algorithm makes measurable progress toward termination with every single round — there is no scenario where the same sequence of proposals repeats or where the algorithm gets stuck.
+
+**Formal statement for the thesis:**
+
+> The proposal phase of the Hospital-Resident algorithm executes in O(n · m) time, where n is the number of student groups and m is the number of mentors. Each student group proposes to each mentor at most once, and each proposal is evaluated in constant time using precomputed preference rankings. For FEU Tech's deployment scale, this produces at most a few hundred proposal events per run, completing in well under one second. Running both the student-proposing and mentor-proposing variants doubles the event count by a fixed factor of 2, which does not affect the asymptotic growth class.
+
+---
+
 ### 2.6 Complexity Reduction Alternatives (Same Algorithm, Different Approach)
 
 **Current bottleneck:** Phase 2 TF-IDF cosine matrix is **O(n · m · f)** (f ≤ 500 TF-IDF features). For n = 100, m = 50, f = 500 this means ~2.5 million scalar operations. The HR algorithm itself is O(n · m), which is absorbed by this dominant term. The fair-matching step runs HR twice, doubling the HR cost but not changing the complexity class.
@@ -493,10 +532,12 @@ The algorithm's effectiveness is measured across four categories. Metrics #1–1
 
 **Definition:** Percentage of all algorithm runs that produced a stable matching (no blocking pairs).
 
-**Formula:**
+**Formulas:**
 ```
-stability_rate = (stable_runs / total_runs) × 100%
+stability_rate (run-level)   = (stable_runs / total_runs) × 100%
+stability_rate (per-match)   = (stable_match_records / total_match_records) × 100%
 ```
+
 A *blocking pair* (mentee i, mentor j) exists if both:
 - Mentee i prefers mentor j over their assigned mentor, AND
 - Mentor j prefers mentee i over their worst current assigned mentee (or has spare capacity)
@@ -596,14 +637,23 @@ ORDER BY fill_pct DESC;
 
 #### Metric #4 — Fairness (Gini Coefficient) [(Gini, 1912)](https://doi.org/10.2307/2223319)
 
-**Definition:** Measures inequality in compatibility score distribution across all matched pairs. Lower is fairer.
+**Definition:** Measures inequality in two dimensions: compatibility score distribution across matched pairs (Score Equity) and assignment load across mentors relative to their capacity (Workload Equity). Lower is fairer in both cases.
 
-**Formula (normalized Gini for non-negative values):**
+**Formula — Score Equity Gini (normalized, non-negative values):**
 ```
 Sort scores in ascending order: s₁ ≤ s₂ ≤ ... ≤ sₙ
 
-G = (2 · Σᵢ₌₁ⁿ (i · sᵢ)) / (n · Σᵢ₌₁ⁿ sᵢ)  −  (n + 1) / n
+G_score = (2 · Σᵢ₌₁ⁿ (i · sᵢ)) / (n · Σᵢ₌₁ⁿ sᵢ)  −  (n + 1) / n
 ```
+
+**Formula — Workload Equity Gini:**
+```
+Uₘ = assigned_m / capacity_m       (utilization ratio per mentor m)
+
+G_workload = gini_coefficient([U₁, U₂, ..., Uₘ])
+```
+
+where `gini_coefficient` uses the same normalized formula above applied to the utilization vector.
 
 **Step-by-step example** (n = 4 scores: [0.72, 0.80, 0.85, 0.93]):
 ```
@@ -627,7 +677,7 @@ A Gini of 0.051 indicates very low inequality — the matches are fairly distrib
 | 0.10–0.20 | Moderate inequality — some mentees are significantly better matched than others |
 | > 0.20 | High inequality — a few matches are very good while others are poor; investigate |
 
-**Target:** G ≤ 0.10
+**Targets:** G_score ≤ 0.10  |  G_workload ≤ 0.15
 
 **SQL query:**
 ```sql
@@ -676,6 +726,40 @@ WHERE status = 'active';
 ```
 
 **Interpretation:** Any violation (score < 0.70) indicates a data integrity issue or a regression in the scoring pipeline. Flag immediately.
+
+---
+
+#### Metric #5b — Dissatisfaction Score
+
+**Definition:** For each matched pair, the dissatisfaction of one side equals the rank position of their assigned match in their preference list. Lower values indicate the algorithm produced outcomes closer to each party's top preference. Used internally to select between the mentee-optimal and mentor-optimal HR runs.
+
+**Formulas:**
+```
+D_mentee = (1 / |G|) · Σ_{g ∈ G} rank_g(M(g))
+
+D_mentor  = (1 / Σ capacity_m) · Σ_{m ∈ M} Σ_{g ∈ assigned(m)} rank_m(g)
+
+D_total   = D_mentee + D_mentor
+```
+
+where:
+- `rank_g(M(g))` = position of assigned mentor M(g) in mentee g's preference list (0-indexed: 0 = top choice)
+- `rank_m(g)` = position of assigned mentee g in mentor m's preference list
+- `|G|` = total number of mentee groups
+- `Σ capacity_m` = total mentor slots
+
+**Selection rule:**
+```
+selected = mentee-optimal   if  D_total(mentee-optimal) ≤ D_total(mentor-optimal)
+           mentor-optimal   otherwise
+```
+
+Ties break in favor of mentee-optimal. Both variants' dissatisfaction values are stored in `algorithm_logs.log_data.dissatisfaction` for every run.
+
+**Interpretation:**
+- D_mentee = 0 → every mentee received their top-ranked mentor
+- D_mentor = 0 → every mentor received their top-ranked mentee group
+- Lower D_total → less overall system "unhappiness"
 
 ---
 
@@ -879,7 +963,24 @@ LIMIT 1;
 
 **Definition:** Statistical summary of all `compatibility_score` values in the current match set.
 
-**Statistics reported:** mean, median, standard deviation, minimum, maximum, 25th percentile (P25), 75th percentile (P75).
+**Statistics reported:** mean, median, standard deviation, minimum, maximum, P25, P75, skewness, kurtosis, SEM, 95% CI.
+
+**Formulas:**
+```
+Mean       x̄  = (1/n) · Σᵢ sᵢ
+
+Std Dev     σ  = √( (1/(n−1)) · Σᵢ (sᵢ − x̄)² )
+
+SEM            = σ / √n
+
+95% CI         = [ x̄ − t(0.025, n−1)·SEM ,  x̄ + t(0.025, n−1)·SEM ]
+
+Skewness       = (1/n) · Σᵢ ((sᵢ − x̄)/σ)³           (Fisher's, moment-based)
+
+Kurtosis       = (1/n) · Σᵢ ((sᵢ − x̄)/σ)⁴  −  3     (Fisher's excess; 0 = normal)
+```
+
+A **platykurtic** distribution (kurtosis < 0) has thinner tails than a normal distribution — as observed in the bimodal score pattern where high-overlap pairs cluster near 0.80 and low-overlap pairs cluster near 0.10, with few pairs in between.
 
 **SQL query:**
 ```sql
@@ -970,9 +1071,12 @@ python3 metrics.py --log-id <uuid>
 |------|---------|
 | `metrics_log.txt` | Full text report identical to stdout + scipy stats |
 | `metrics_score_distribution.png` | Histogram + KDE [(Pedregosa et al., 2011)](https://jmlr.csail.mit.edu/papers/v12/pedregosa11a.html) + mean/median lines + skewness/kurtosis annotation |
-| `metrics_lorenz_curve.png` | Lorenz curve [(Gini, 1912)](https://doi.org/10.2307/2223319) with shaded inequality area and G value |
+| `metrics_lorenz_curve.png` | Lorenz curves [(Gini, 1912)](https://doi.org/10.2307/2223319) — Score Equity (G_score) and Workload Equity (G_workload) with shaded inequality areas |
 | `metrics_capacity.png` | Horizontal bar chart per mentor, color-coded by fill % |
-| `metrics_summary.png` | 2×2 dashboard combining all four charts above |
+| `metrics_summary.png` | 2×2 dashboard: score distribution, Lorenz curves, capacity utilization, preferred-match rates |
+| `metrics_stability.png` | 1×2: run-history stability timeline + blocking pairs bar chart per run |
+| `metrics_keyword_precision.png` | 1×2: keyword precision per matched pair + matched keyword count distribution |
+| `metrics_combined.png` | All 9 panels in a single 5-row figure — complete metrics dashboard |
 
 **Sample output:**
 ```
@@ -1104,21 +1208,72 @@ This section walks through the complete execution of the fair-matching pipeline 
 
 ### Step 1 — Compatibility Scoring
 
-Before any matching happens, every possible mentor–mentee pair receives a single compatibility score between 0 and 1. The formula combines five weighted components:
+Before any matching happens, every possible mentor–mentee pair receives a single compatibility score between 0 and 1.
+
+#### Weighted Compatibility Score
 
 ```
-final_score = 0.75 × keyword_similarity
-            + 0.10 × experience
-            + 0.10 × availability
-            + 0.025 × communication_preference
-            + 0.025 × meeting_frequency
+S(m, g) = 0.75 · k + 0.10 · e + 0.10 · a + 0.025 · c + 0.025 · f
 ```
 
-**Keyword similarity** is the dominant signal. For each pair, the algorithm extracts shared technical vocabulary from the mentor's skills/forte/thesis history and the mentee's research description, then applies TF-IDF cosine similarity to measure how semantically close the two profiles are.
+where:
+- `k` = keyword similarity (TF-IDF cosine similarity)
+- `e` = experience score (normalized mentor background)
+- `a` = availability overlap (Jaccard similarity of days + time slots)
+- `c` = communication preference match
+- `f` = meeting frequency overlap
 
-Two score floor boosts are then applied:
-- ≥ 2 matched keywords → final score is raised to at least **0.50**
-- ≥ 4 matched keywords → final score is raised to at least **0.80**
+#### TF-IDF Weighting [(Salton & Buckley, 1988)](https://doi.org/10.1016/0306-4573(88)90021-0)
+
+For term `t` in document `d`, across a corpus of `N` documents:
+
+```
+TF-IDF(t, d) = TF(t, d) × log(N / df(t))
+```
+
+where `TF(t, d)` = frequency of term `t` in document `d`, and `df(t)` = number of documents containing `t`.
+
+#### Cosine Similarity
+
+For TF-IDF vector `A` (mentor profile) and vector `B` (mentee profile):
+
+```
+cos(θ) = (A · B) / (‖A‖ · ‖B‖)
+       = Σᵢ AᵢBᵢ / (√Σ Aᵢ² · √Σ Bᵢ²)
+```
+
+This is the `keyword_similarity` component `k` in the weighted score formula above.
+
+#### Availability Overlap (Jaccard Similarity) [(Jaccard, 1901)](https://doi.org/10.2307/3771392)
+
+```
+J(A, B) = |A ∩ B| / |A ∪ B|
+```
+
+where `A` and `B` are the sets of available days and time slots for the mentor and mentee group respectively.
+
+#### Score Floor Boost
+
+After the weighted score is computed, domain alignment is rewarded via floor boosts:
+
+```
+S'(m, g) = max(S(m, g), 0.80)   if |K_shared| ≥ 4
+          max(S(m, g), 0.50)   if |K_shared| ≥ 2
+          S(m, g)               otherwise
+```
+
+where `K_shared` = set of keywords appearing in both the mentor's and mentee's profile text.
+
+#### Top-1 Preference Boost
+
+After base scoring, a small boost is applied before preference lists are generated to make top-1 preferences stickier in the HR algorithm:
+
+```
+S_boosted(i, j*) = min(S'(i, j*) + 0.05, 1.0)   where j* = argmax_j S'(i, j)   (per mentee i)
+S_boosted(i*, j) = min(S'(i*, j) + 0.05, 1.0)   where i* = argmax_i S'(i, j)   (per mentor j)
+```
+
+Mutual top-1 pairs receive the boost from both directions. Boosted scores are used **only** for preference list generation — the original `S'` scores are stored as `compatibility_score` in the `matches` table.
 
 The result is a complete **n × m score matrix** (n mentee groups × m mentors). All subsequent steps derive from this matrix.
 

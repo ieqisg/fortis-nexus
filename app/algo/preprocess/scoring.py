@@ -563,6 +563,28 @@ def extract_profile_keywords(profiles: list[dict], is_mentor: bool) -> list[tupl
 # 8. NORMALIZATION
 # ─────────────────────────────────────────────────────────────────────────────
 
+def apply_top1_boost(scores: np.ndarray, boost: float = 0.05) -> np.ndarray:
+    """
+    Adds `boost` to each mentee's top-ranked mentor and each mentor's
+    top-ranked mentee before preference lists are built, making top-1
+    preferences stickier in the HR algorithm.
+
+    Original scores are unchanged — callers should keep a separate reference
+    for display/storage and only pass boosted scores to generate_preferences().
+
+    Mutual top-1 pairs (each other's #1) receive the boost from both directions.
+    Results are clipped to [0, 1].
+    """
+    boosted = scores.copy().astype(np.float32)
+    for i in range(boosted.shape[0]):           # per mentee → their top mentor
+        j = int(np.argmax(boosted[i]))
+        boosted[i, j] = min(boosted[i, j] + boost, 1.0)
+    for j in range(boosted.shape[1]):           # per mentor → their top mentee
+        i = int(np.argmax(boosted[:, j]))
+        boosted[i, j] = min(boosted[i, j] + boost, 1.0)
+    return boosted
+
+
 def normalize_matrix(matrix: np.ndarray) -> np.ndarray:
     """Percentile-based normalization (p5 → p95)."""
     flat = matrix.flatten()

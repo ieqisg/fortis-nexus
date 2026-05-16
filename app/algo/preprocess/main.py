@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 from datetime import datetime, timezone
 
-from scoring import compute_weighted_scores, get_matched_keywords, extract_profile_keywords
+from scoring import compute_weighted_scores, get_matched_keywords, extract_profile_keywords, apply_top1_boost
 from matching import (
     generate_preferences,
     hospital_resident,
@@ -287,6 +287,7 @@ if __name__ == "__main__":
     print()
 
     scores, breakdowns = compute_weighted_scores(mentors, mentees, return_breakdowns=True)
+    boosted_scores = apply_top1_boost(scores)
 
     score_log = []
     if breakdowns:
@@ -389,7 +390,7 @@ if __name__ == "__main__":
     print("  STEP 4 · Preference Lists")
     print(SEP)
 
-    mentee_prefs, mentor_prefs = generate_preferences(mentors, mentees, scores)
+    mentee_prefs, mentor_prefs = generate_preferences(mentors, mentees, boosted_scores)
 
     preference_log = {
         "mentee_preferences": [
@@ -492,7 +493,7 @@ if __name__ == "__main__":
 
     if mode == "fair-matching":
         print("\n  5c · Picking fairer matching...")
-        final_assignment, selected_variant = pick_fairer_matching(
+        final_assignment, selected_variant, dissatisfaction_data = pick_fairer_matching(
             mentors, mentees,
             assignment_mo, assignment_meo,
             mentee_prefs, mentor_prefs,
@@ -501,13 +502,15 @@ if __name__ == "__main__":
         method = "fair-matching"
     elif mode == "mentee-optimal":
         final_assignment, method = assignment_mo, "mentee-optimal"
+        dissatisfaction_data = None
         print(f"\n  Result: mentee-optimal ({len(final_assignment)} pairs)")
     else:
         final_assignment, method = assignment_meo, "mentor-optimal"
+        dissatisfaction_data = None
         print(f"\n  Result: mentor-optimal ({len(final_assignment)} pairs)")
 
     print("\n  5d · Verifying stability...")
-    is_stable = verify_stability(
+    is_stable, blocking_pairs_count = verify_stability(
         final_assignment, mentors, mentees,
         mentee_prefs, mentor_prefs, hospital_capacity,
     )
@@ -545,13 +548,15 @@ if __name__ == "__main__":
 
     # ── Step 8: JSON log for Node.js ──────────────────────────────────────────
     log_output = {
-        "success":    True,
-        "matched":    len(match_records),
-        "unmatched":  len(mentees) - len(match_records),
-        "algorithm":  method,
-        "is_stable":  is_stable,
-        "started_at": started_at.isoformat(),
-        "timestamp":  datetime.now(timezone.utc).isoformat(),
+        "success":              True,
+        "matched":              len(match_records),
+        "unmatched":            len(mentees) - len(match_records),
+        "algorithm":            method,
+        "is_stable":            is_stable,
+        "blocking_pairs_count": blocking_pairs_count,
+        "dissatisfaction":      dissatisfaction_data,
+        "started_at":           started_at.isoformat(),
+        "timestamp":            datetime.now(timezone.utc).isoformat(),
         "phase1": {
             "mentors_count":      len(mentors),
             "mentees_count":      len(mentees),
