@@ -23,7 +23,7 @@ from collections import deque
 
 import numpy as np
 
-from scoring import compute_weighted_scores, get_matched_keywords
+from scoring import compute_weighted_scores, get_matched_keywords, apply_top1_boost
 
 logger = logging.getLogger(__name__)
 
@@ -267,32 +267,45 @@ def pick_fairer_matching(
     assignment_mentor_optimal: dict,
     mentee_prefs: dict,
     mentor_prefs: dict,
-) -> tuple[dict, str]:
+) -> tuple[dict, str, dict]:
     """
     Picks the matching with lower combined dissatisfaction from both sides.
-    Returns (assignment, selected_variant) where selected_variant is
-    "mentee-optimal" or "mentor-optimal" — callers set the DB label separately.
+    Returns (assignment, selected_variant, dissatisfaction_data).
+    dissatisfaction_data contains per-variant scores for logging.
     """
-    # Mentee-optimal dissatisfaction
-    d_mentee_mo = compute_dissatisfaction(assignment_mentee_optimal, mentee_prefs)
-    d_mentor_mo = _mentor_dissatisfaction(assignment_mentee_optimal, mentor_prefs)
-    total_mo    = d_mentee_mo + d_mentor_mo
+    d_mentee_mo  = compute_dissatisfaction(assignment_mentee_optimal, mentee_prefs)
+    d_mentor_mo  = _mentor_dissatisfaction(assignment_mentee_optimal, mentor_prefs)
+    total_mo     = d_mentee_mo + d_mentor_mo
 
-    # Mentor-optimal dissatisfaction
     d_mentee_meo = compute_dissatisfaction(assignment_mentor_optimal, mentee_prefs)
     d_mentor_meo = _mentor_dissatisfaction(assignment_mentor_optimal, mentor_prefs)
     total_meo    = d_mentee_meo + d_mentor_meo
 
     print(f"\n  ⚖️  Fairness Comparison:")
-    print(f"  Mentee-optimal → mentee dissatisfaction: {d_mentee_mo:.4f}, mentor: {d_mentor_mo:.4f}, total: {total_mo:.4f}")
-    print(f"  Mentor-optimal → mentee dissatisfaction: {d_mentee_meo:.4f}, mentor: {d_mentor_meo:.4f}, total: {total_meo:.4f}")
+    print(f"  Mentee-optimal → mentee: {d_mentee_mo:.4f}  mentor: {d_mentor_mo:.4f}  total: {total_mo:.4f}")
+    print(f"  Mentor-optimal → mentee: {d_mentee_meo:.4f}  mentor: {d_mentor_meo:.4f}  total: {total_meo:.4f}")
+
+    selected = "mentee-optimal" if total_mo <= total_meo else "mentor-optimal"
+    dissatisfaction_data = {
+        "mentee_optimal": {
+            "mentee": round(d_mentee_mo,  4),
+            "mentor": round(d_mentor_mo,  4),
+            "total":  round(total_mo,     4),
+        },
+        "mentor_optimal": {
+            "mentee": round(d_mentee_meo, 4),
+            "mentor": round(d_mentor_meo, 4),
+            "total":  round(total_meo,    4),
+        },
+        "selected": selected,
+    }
 
     if total_mo <= total_meo:
         print("  ✅ Mentee-optimal selected (lower combined dissatisfaction)")
-        return assignment_mentee_optimal, "mentee-optimal"
+        return assignment_mentee_optimal, "mentee-optimal", dissatisfaction_data
     else:
         print("  ✅ Mentor-optimal selected (lower combined dissatisfaction)")
-        return assignment_mentor_optimal, "mentor-optimal"
+        return assignment_mentor_optimal, "mentor-optimal", dissatisfaction_data
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -306,7 +319,7 @@ def verify_stability(
     mentee_prefs: dict,
     mentor_prefs: dict,
     hospital_capacity: dict,
-) -> bool:
+) -> tuple[bool, int]:
     """
     Verifies the matching is stable — no blocking pairs exist.
 
@@ -359,10 +372,10 @@ def verify_stability(
         print(f"\n  ⚠️  {len(blocking_pairs)} blocking pairs found — matching is UNSTABLE")
         for r_id, h_id in blocking_pairs[:5]:
             print(f"    ({r_id}, {h_id})")
-        return False
+        return False, len(blocking_pairs)
 
     print("\n  ✅ Matching is STABLE — no blocking pairs found")
-    return True
+    return True, 0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -452,10 +465,11 @@ def run_matching(
     # ── Step 1: Scores ────────────────────────────────────────────────────────
     print("\n📊 Step 1: Computing compatibility scores...")
     scores, _ = compute_weighted_scores(mentors, mentees)
+    boosted_scores = apply_top1_boost(scores)
 
     # ── Step 2: Preferences ───────────────────────────────────────────────────
     print("\n📋 Step 2: Generating preference lists...")
-    mentee_prefs, mentor_prefs = generate_preferences(mentors, mentees, scores)
+    mentee_prefs, mentor_prefs = generate_preferences(mentors, mentees, boosted_scores)
 
     # ── Step 3a: HR mentee-optimal ────────────────────────────────────────────
     print("\n🏥 Step 3a: Running HR (mentee-optimal)...")
@@ -477,7 +491,7 @@ def run_matching(
 
     # ── Step 4: Fairness comparison ───────────────────────────────────────────
     print("\n⚖️  Step 4: Picking fairer matching...")
-    final_assignment, selected_variant = pick_fairer_matching(
+    final_assignment, selected_variant, _ = pick_fairer_matching(
         mentors, mentees,
         assignment_mo, assignment_meo,
         mentee_prefs, mentor_prefs,
@@ -486,7 +500,7 @@ def run_matching(
 
     # ── Step 5: Stability verification ───────────────────────────────────────
     print("\n🔍 Step 5: Verifying stability...")
-    is_stable = verify_stability(
+    is_stable, _ = verify_stability(
         final_assignment, mentors, mentees,
         mentee_prefs, mentor_prefs, hospital_capacity,
     )
