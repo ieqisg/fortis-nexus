@@ -286,14 +286,13 @@ export default function MenteeDashboard() {
                                                         (matchRecord.mentor?.available_days ?? []).includes(d))
                                                     const sharedSlots = (mentee?.time_slot ?? []).filter((s: string) =>
                                                         (matchRecord.mentor?.time_slot ?? []).includes(s))
-                                                    const commMatch = !!mentee?.communication_preference &&
-                                                        mentee.communication_preference === matchRecord.mentor?.communication_preference
                                                     const commLabel = (p: string | null | undefined) => {
+                                                        if (!p) return "—"
                                                         if (p === "FACE_TO_FACE") return "Face to Face"
-                                                        if (p === "ONLINE_CHAT") return "Online — Chat"
-                                                        if (p === "ONLINE_CALL") return "Online — Call"
-                                                        return p ?? "—"
+                                                        return "Online Meeting"
                                                     }
+                                                    const commMatch = !!mentee?.communication_preference &&
+                                                        commLabel(mentee.communication_preference) === commLabel(matchRecord.mentor?.communication_preference)
                                                     return (
                                                         <div className="border-t border-slate-100 pt-3 space-y-2">
                                                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Match Criteria</p>

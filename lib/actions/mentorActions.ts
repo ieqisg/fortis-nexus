@@ -1,8 +1,14 @@
-// lib/actions/menteeActions.ts
+// lib/actions/mentorActions.ts
 "use server"
 import { getSupabaseClient } from "@/app/config/getSupabaseClient"
 import { cookies } from "next/headers"
 import { MentorInsert, MentorUpdate } from "@/types/modelTypes"
+
+const ONLINE_DAYS = new Set(["Tuesday", "Friday"]);
+function inferCommunicationPreference(days: string[]): "FACE_TO_FACE" | "ONLINE_MEETING" | null {
+    if (!days || days.length === 0) return null;
+    return days.some((d) => ONLINE_DAYS.has(d)) ? "ONLINE_MEETING" : "FACE_TO_FACE";
+}
 
 export async function createMentorProfile(payload: Omit<MentorInsert, 'id' | 'profile_completed'>) {
     const supabase = await getSupabaseClient()
@@ -14,6 +20,7 @@ export async function createMentorProfile(payload: Omit<MentorInsert, 'id' | 'pr
         .from("mentor")
         .update({
             ...payload,
+            communication_preference: inferCommunicationPreference(payload.available_days ?? []),
             profile_completed: true,
         })
         .eq("id", user.id)
@@ -40,6 +47,10 @@ export async function editMentorProfile(payload: MentorUpdate) {
             return true;
         })
     );
+
+    if (cleanPayload.available_days) {
+        cleanPayload.communication_preference = inferCommunicationPreference(cleanPayload.available_days as string[]);
+    }
 
     const { error } = await supabase
         .from("mentor")

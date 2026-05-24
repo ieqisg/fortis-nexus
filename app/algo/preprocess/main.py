@@ -16,6 +16,7 @@ from supabase import create_client
 from datetime import datetime, timezone
 
 from scoring import compute_weighted_scores, get_matched_keywords, extract_profile_keywords, apply_top1_boost
+from text_processing import prime_corpus, build_mentor_text, build_mentee_text
 from matching import (
     generate_preferences,
     hospital_resident,
@@ -253,6 +254,14 @@ if __name__ == "__main__":
         exit(1)
 
     print(f"  Fetched {len(mentors)} mentors, {len(mentees)} mentees")
+
+    # Prime corpus-level TF-IDF so residual keyword extraction uses meaningful IDF
+    all_profile_texts = (
+        [build_mentor_text(m) for m in mentors]
+        + [build_mentee_text(me) for me in mentees]
+    )
+    prime_corpus(all_profile_texts)
+    print(f"  Corpus vectorizer fitted on {len(all_profile_texts)} profile documents")
 
     mentor_map   = {m["id"]: m for m in mentors}
     mentee_map   = {m["id"]: m for m in mentees}

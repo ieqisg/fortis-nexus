@@ -3,6 +3,12 @@
 import { createClient } from "@supabase/supabase-js"
 import type { PublishedPaper, PrevMentoredThesis } from "@/types/mentorTypes"
 
+const ONLINE_DAYS = new Set(["Tuesday", "Friday"]);
+function inferCommunicationPreference(days: string[]): "FACE_TO_FACE" | "ONLINE_MEETING" | null {
+    if (!days || days.length === 0) return null;
+    return days.some((d) => ONLINE_DAYS.has(d)) ? "ONLINE_MEETING" : "FACE_TO_FACE";
+}
+
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -88,7 +94,6 @@ export async function adminEditMentor(mentorId: string, payload: {
     forte?: string[]
     available_days?: string[]
     time_slot?: string[]
-    communication_preference?: string | null
     prev_mentored_thesis?: PrevMentoredThesis[]
     published_papers?: PublishedPaper[]
     profile_completed?: boolean
@@ -96,10 +101,13 @@ export async function adminEditMentor(mentorId: string, payload: {
     ieee_id?: string | null
 }) {
     const { orcid, ieee_id, ...rest } = payload
-    const finalPayload = {
+    const finalPayload: Record<string, unknown> = {
         ...rest,
         orcid: orcid ?? null,
         ieee_id: ieee_id ?? null,
+    }
+    if (payload.available_days) {
+        finalPayload.communication_preference = inferCommunicationPreference(payload.available_days);
     }
     const { error } = await supabase.from("mentor").update(finalPayload).eq("id", mentorId)
     if (error) return { success: false, message: error.message }
@@ -114,10 +122,13 @@ export async function adminEditMentee(menteeId: string, payload: {
     mentor_preference?: string
     available_days?: string[]
     time_slot?: string[]
-    communication_preference?: string | null
     group_members?: string[]
 }) {
-    const { error } = await supabase.from("MENTEE_GROUPS").update(payload).eq("id", menteeId)
+    const finalPayload: Record<string, unknown> = { ...payload }
+    if (payload.available_days) {
+        finalPayload.communication_preference = inferCommunicationPreference(payload.available_days);
+    }
+    const { error } = await supabase.from("MENTEE_GROUPS").update(finalPayload).eq("id", menteeId)
     if (error) return { success: false, message: error.message }
     return { success: true }
 }

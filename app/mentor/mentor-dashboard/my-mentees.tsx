@@ -33,9 +33,7 @@ type Props = {
 function commLabel(pref: string | null | undefined) {
     if (!pref) return "—"
     if (pref === "FACE_TO_FACE") return "Face to Face"
-    if (pref === "ONLINE_CHAT") return "Online — Chat"
-    if (pref === "ONLINE_CALL") return "Online — Call"
-    return pref
+    return "Online Meeting"
 }
 
 function MenteeProfileModal({ match, open, onClose }: {
@@ -398,7 +396,7 @@ export default function MyMentees({ matches, mentorId }: Props) {
                                 const sharedSlots = (match.mentee?.time_slot ?? []).filter((s: string) =>
                                     (mentor?.time_slot ?? []).includes(s))
                                 const commMatch = !!match.mentee?.communication_preference &&
-                                    match.mentee.communication_preference === mentor?.communication_preference
+                                    commLabel(match.mentee.communication_preference) === commLabel(mentor?.communication_preference)
                                 return (
                                     <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
                                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Match Criteria</p>

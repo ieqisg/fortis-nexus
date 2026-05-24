@@ -6,6 +6,12 @@ import { MenteeGroupInsert } from "@/types/modelTypes"
 import { MenteeGroupUpdate } from "@/types/modelTypes"
 import { getSupabaseClient } from "@/app/config/getSupabaseClient"
 
+const ONLINE_DAYS = new Set(["Tuesday", "Friday"]);
+function inferCommunicationPreference(days: string[]): "FACE_TO_FACE" | "ONLINE_MEETING" | null {
+    if (!days || days.length === 0) return null;
+    return days.some((d) => ONLINE_DAYS.has(d)) ? "ONLINE_MEETING" : "FACE_TO_FACE";
+}
+
 export async function createMenteeProfile(payload: MenteeGroupInsert) {
     const supabase = await getSupabaseClient()
 
@@ -16,7 +22,7 @@ export async function createMenteeProfile(payload: MenteeGroupInsert) {
 
     const { error } = await supabase
         .from("MENTEE_GROUPS")
-        .insert(payload)
+        .insert({ ...payload, communication_preference: inferCommunicationPreference(payload.available_days ?? []) })
 
     if (error) {
         await adminSupabase.auth.admin.deleteUser(payload.id)
@@ -81,7 +87,7 @@ export async function registerMentee(
 
     const { error: insertError } = await adminSupabase
         .from("MENTEE_GROUPS")
-        .insert({ ...payload, id: userId })
+        .insert({ ...payload, id: userId, communication_preference: inferCommunicationPreference(payload.available_days ?? []) })
 
     if (insertError) {
         await adminSupabase.auth.admin.deleteUser(userId)
@@ -103,6 +109,10 @@ export async function editMenteeProfile(payload: MenteeGroupUpdate) {
             return true;
         })
     );
+
+    if (cleanPayload.available_days) {
+        cleanPayload.communication_preference = inferCommunicationPreference(cleanPayload.available_days as string[]);
+    }
 
     const { error } = await supabase
         .from("MENTEE_GROUPS")

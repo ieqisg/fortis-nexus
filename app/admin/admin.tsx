@@ -247,7 +247,6 @@ export default function Admin() {
                 mentor_capacity: user.mentor_capacity ?? 1,
                 experience: "",
                 self_description: "",
-                communication_preference: "",
                 profile_completed: "",
                 orcid: "",
                 ieee_id: "",
@@ -265,7 +264,6 @@ export default function Admin() {
                     ...prev,
                     experience: d.experience ?? 0,
                     self_description: d.self_description ?? "",
-                    communication_preference: d.communication_preference ?? "",
                     profile_completed: d.profile_completed ? "true" : "false",
                     orcid: d.orcid ?? "",
                     ieee_id: d.ieee_id ?? "",
@@ -285,7 +283,6 @@ export default function Admin() {
                 email: user.email ?? "",
                 research_description: "",
                 mentor_preference: "",
-                communication_preference: "",
             })
             setEditMenteeAvailDays([])
             setEditMenteeTimeSlots([])
@@ -298,7 +295,6 @@ export default function Admin() {
                     ...prev,
                     research_description: d.research_description ?? "",
                     mentor_preference: d.mentor_preference ?? "",
-                    communication_preference: d.communication_preference ?? "",
                 }))
                 setEditMenteeAvailDays(Array.isArray(d.available_days) ? d.available_days : [])
                 setEditMenteeTimeSlots(Array.isArray(d.time_slot) ? d.time_slot : [])
@@ -334,7 +330,6 @@ export default function Admin() {
                 mentor_capacity: Number(editForm.mentor_capacity),
                 experience: Number(editForm.experience),
                 self_description: editForm.self_description as string,
-                communication_preference: (editForm.communication_preference as string) || null,
                 profile_completed: editForm.profile_completed === "true",
                 technical_skills: editMentorSkills,
                 forte: editMentorForte,
@@ -354,7 +349,6 @@ export default function Admin() {
                 mentor_preference: editForm.mentor_preference as string,
                 available_days: editMenteeAvailDays,
                 time_slot: editMenteeTimeSlots,
-                communication_preference: (editForm.communication_preference as string) || null,
                 group_members: editMenteeMembers.map((m, idx) =>
                     JSON.stringify({ ...m, is_leader: idx === editMenteeLeaderIndex })
                 ),
@@ -1816,21 +1810,6 @@ export default function Admin() {
                                             onDaysChange={setEditMentorAvailDays}
                                             onTimeSlotsChange={setEditMentorTimeSlots}
                                         />
-                                        <div className="space-y-1">
-                                            <Label>Communication Preference</Label>
-                                            <div className="flex gap-4 flex-wrap">
-                                                {(["FACE_TO_FACE", "ONLINE_CHAT", "ONLINE_CALL"] as const).map(pref => (
-                                                    <label key={pref} className="flex items-center gap-2 cursor-pointer text-sm">
-                                                        <input type="radio" name="edit_mentor_comm" value={pref} checked={editForm.communication_preference === pref} onChange={() => setEditForm({ ...editForm, communication_preference: pref })} className="accent-blue-600" />
-                                                        {pref === "FACE_TO_FACE" ? "Face to Face" : pref === "ONLINE_CHAT" ? "Online Chat" : "Online Call"}
-                                                    </label>
-                                                ))}
-                                                <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-400">
-                                                    <input type="radio" name="edit_mentor_comm" value="" checked={!editForm.communication_preference} onChange={() => setEditForm({ ...editForm, communication_preference: "" })} className="accent-blue-600" />
-                                                    None
-                                                </label>
-                                            </div>
-                                        </div>
                                     </div>
 
                                     <div className="h-px bg-slate-100" />
@@ -1978,21 +1957,6 @@ export default function Admin() {
                                             onDaysChange={setEditMenteeAvailDays}
                                             onTimeSlotsChange={setEditMenteeTimeSlots}
                                         />
-                                        <div className="space-y-1">
-                                            <Label>Communication Preference</Label>
-                                            <div className="flex gap-4 flex-wrap">
-                                                {(["FACE_TO_FACE", "ONLINE_CHAT", "ONLINE_CALL"] as const).map(pref => (
-                                                    <label key={pref} className="flex items-center gap-2 cursor-pointer text-sm">
-                                                        <input type="radio" name="edit_mentee_comm" value={pref} checked={editForm.communication_preference === pref} onChange={() => setEditForm({ ...editForm, communication_preference: pref })} className="accent-green-600" />
-                                                        {pref === "FACE_TO_FACE" ? "Face to Face" : pref === "ONLINE_CHAT" ? "Online Chat" : "Online Call"}
-                                                    </label>
-                                                ))}
-                                                <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-400">
-                                                    <input type="radio" name="edit_mentee_comm" value="" checked={!editForm.communication_preference} onChange={() => setEditForm({ ...editForm, communication_preference: "" })} className="accent-green-600" />
-                                                    None
-                                                </label>
-                                            </div>
-                                        </div>
                                     </div>
 
                                     <div className="h-px bg-slate-100" />

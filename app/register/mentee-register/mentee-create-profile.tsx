@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
-import { CommunicationPreference, GroupMembers, MenteeFormProfile } from "@/types/menteeTypes";
+import { GroupMembers, MenteeFormProfile } from "@/types/menteeTypes";
 import { registerMentee } from "@/lib/actions/menteeActions";
 import { checkGroupNameAvailable } from "@/lib/actions/authActions";
 import { UserAuth } from "@/app/context/authContext";
@@ -52,7 +52,6 @@ export default function MenteeCreateProfile({
         mentor_preferences: "",
         available_days: [],
         time_slot: [],
-        communication_preference: "",
     });
     const studentNumbers = formData.group_members.map((m) => m.student_number).join(",")
     const availableDays = formData.available_days.join(",")
@@ -157,7 +156,6 @@ export default function MenteeCreateProfile({
                 available_days: formData.available_days,
                 time_slot: formData.time_slot,
                 group_members: formData.group_members.map((member, idx) => JSON.stringify({ ...member, is_leader: idx === leaderIndex })),
-                communication_preference: formData.communication_preference || null,
             };
 
             const result = await registerMentee(email, password, payload);
@@ -415,82 +413,6 @@ export default function MenteeCreateProfile({
 
                                         />
 
-                                    </CardContent>
-                                </Card>
-                            </div>
-
-                            {/* Communication Preference */}
-                            <div>
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-lg">
-                                            Communication Preference
-                                        </CardTitle>
-                                        <CardDescription>
-                                            How do you prefer to communicate with your mentor?
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-3">
-                                        <div className="flex gap-6">
-                                            {(["FACE_TO_FACE", "ONLINE"] as const).map((mode) => {
-                                                const isOnlineGroup = mode === "ONLINE";
-                                                const checked = isOnlineGroup
-                                                    ? formData.communication_preference === "ONLINE_CHAT" ||
-                                                    formData.communication_preference === "ONLINE_CALL"
-                                                    : formData.communication_preference === "FACE_TO_FACE";
-                                                return (
-                                                    <label key={mode} className="flex items-center gap-2 cursor-pointer">
-                                                        <input
-                                                            type="radio"
-                                                            name="comm_top"
-                                                            checked={checked}
-                                                            onChange={() => {
-                                                                if (isOnlineGroup) {
-                                                                    setFormData((prev) => ({
-                                                                        ...prev,
-                                                                        communication_preference: "ONLINE_CHAT",
-                                                                    }));
-                                                                } else {
-                                                                    setFormData((prev) => ({
-                                                                        ...prev,
-                                                                        communication_preference: "FACE_TO_FACE",
-                                                                    }));
-                                                                }
-                                                            }}
-                                                            className="accent-green-600"
-                                                        />
-                                                        <span className="text-sm font-medium">
-                                                            {isOnlineGroup ? "Online" : "Face to Face"}
-                                                        </span>
-                                                    </label>
-                                                );
-                                            })}
-                                        </div>
-
-                                        {(formData.communication_preference === "ONLINE_CHAT" ||
-                                            formData.communication_preference === "ONLINE_CALL") && (
-                                                <div className="ml-6 flex gap-6 border-l-2 border-green-100 pl-4">
-                                                    {(["ONLINE_CHAT", "ONLINE_CALL"] as CommunicationPreference[]).map((sub) => (
-                                                        <label key={sub} className="flex items-center gap-2 cursor-pointer">
-                                                            <input
-                                                                type="radio"
-                                                                name="comm_sub"
-                                                                checked={formData.communication_preference === sub}
-                                                                onChange={() =>
-                                                                    setFormData((prev) => ({
-                                                                        ...prev,
-                                                                        communication_preference: sub,
-                                                                    }))
-                                                                }
-                                                                className="accent-green-600"
-                                                            />
-                                                            <span className="text-sm">
-                                                                {sub === "ONLINE_CHAT" ? "Chat only" : "Online meeting / call"}
-                                                            </span>
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            )}
                                     </CardContent>
                                 </Card>
                             </div>
