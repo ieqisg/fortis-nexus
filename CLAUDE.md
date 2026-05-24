@@ -153,6 +153,22 @@ User role is determined by which table the user's auth ID appears in (`mentor`, 
 - **Rate limiting** (`/lib/rateLimit.ts`) is in-memory and resets on server restart; applies to login (5/5 min) and password reset (3/hr)
 - UI components in `/components/ui/` wrap Radix UI primitives
 
+## System Context File
+
+`docs/context.md` is the living record of what this system is, what it does, and how it is structured. **Whenever a major change is made to the system, update `docs/context.md` to reflect it.**
+
+A major change includes any of the following:
+- A new feature or user-facing capability is added or removed
+- A new database table or column is added, renamed, or dropped
+- A new route, portal, or page is introduced
+- The matching algorithm or its scoring weights are modified
+- A new module, service, or integration is added
+- Auth behavior or role routing logic is changed
+
+When updating `docs/context.md`:
+1. Edit the relevant section(s) to reflect the new state of the system
+2. Add a row to the **Change Log** table at the bottom with the date, a one-line description of the change, and the affected area
+
 ## Testing
 
 Tests live in `/tests/unit/` and use Vitest + React Testing Library with jsdom. Setup file: `tests/setup.ts`. Tests cover utility functions and validators, not database calls or full component trees.
