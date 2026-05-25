@@ -405,11 +405,15 @@ def _apply_safety_net(
         fill[mentor_id] = fill.get(mentor_id, 0) + 1
 
     for mentee in unmatched:
+        def _cap(m: dict) -> int:
+            c = m.get("mentor_capacity")
+            return c if c is not None else 1
+
         best_mentor = max(
             mentors,
-            key=lambda m: (m.get("mentor_capacity") or 1) - fill.get(m["id"], 0),
+            key=lambda m: _cap(m) - fill.get(m["id"], 0),
         )
-        remaining = (best_mentor.get("mentor_capacity") or 1) - fill.get(best_mentor["id"], 0)
+        remaining = _cap(best_mentor) - fill.get(best_mentor["id"], 0)
 
         if remaining <= 0:
             logger.error("Mentee %s could not be matched — all mentors at capacity.", mentee["id"])

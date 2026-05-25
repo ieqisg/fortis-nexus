@@ -118,9 +118,11 @@ def fetch_mentees(supabase) -> list[dict]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def clear_matches(supabase):
-    supabase.table("matches").delete().neq(
+    result = supabase.table("matches").delete().neq(
         "mentor_id", "00000000-0000-0000-0000-000000000000"
     ).execute()
+    if hasattr(result, "error") and result.error:
+        raise RuntimeError(f"Failed to clear matches: {result.error}")
     print("  Cleared existing matches")
 
 
@@ -548,8 +550,12 @@ if __name__ == "__main__":
     print(f"\n{SEP}")
     print("  STEP 7 · Saving to Supabase")
     print(SEP)
-    clear_matches(supabase)
-    save_matches(supabase, match_records)
+    try:
+        clear_matches(supabase)
+        save_matches(supabase, match_records)
+    except RuntimeError as e:
+        print(f"  ❌ {e}")
+        raise
     save_preferences(
         supabase, mentors, mentees, scores, breakdowns,
         mentee_prefs, mentor_prefs,
@@ -596,7 +602,7 @@ if __name__ == "__main__":
                     "keywords":    r["matched_keywords"],
                     "algorithm":   r["algorithm"],
                 }
-                for r in match_records
+                for r in sorted(match_records, key=lambda r: r["compatibility_score"], reverse=True)
             ],
         },
     }

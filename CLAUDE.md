@@ -169,6 +169,8 @@ When updating `docs/context.md`:
 1. Edit the relevant section(s) to reflect the new state of the system
 2. Add a row to the **Change Log** table at the bottom with the date, a one-line description of the change, and the affected area
 
+**IMPORTANT — scoring weights in `docs/context.md`:** The weights table in `docs/context.md` is a fixed baseline reference for stakeholders and panelists. **Never update the weight values in that table**, even when the actual runtime weights in `scoring.py` are changed. Only update `scoring.py` (and note the change in the Change Log).
+
 ## Testing
 
 Tests live in `/tests/unit/` and use Vitest + React Testing Library with jsdom. Setup file: `tests/setup.ts`. Tests cover utility functions and validators, not database calls or full component trees.

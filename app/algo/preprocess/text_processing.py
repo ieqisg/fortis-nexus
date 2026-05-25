@@ -67,6 +67,17 @@ _PRENORM: list[tuple[str, str]] = [
     (r"(?i)\bopen-gl\b",          "opengl"),
     (r"(?i)\ba\*\b",              "astar"),
     (r"(?i)\brapberry\s+pi\b",    "raspberry pi"),
+    # Compound words that must stay as a single token (hyphen would split them)
+    (r"(?i)\bmulti-modal\b",      "multimodal"),
+    (r"(?i)\bgen-ai\b",           "genai"),
+    (r"(?i)\blow-rank\b",         "low rank"),
+    (r"(?i)\bfine-tune\b",        "fine tuning"),
+    (r"(?i)\bfine-tuned\b",       "fine tuning"),
+    (r"(?i)\bpre-train(?:ed|ing)?\b", "pre training"),
+    # Plural abbreviations → singular canonical form (LLM-era)
+    (r"(?i)\bViTs\b",             "vit"),
+    (r"(?i)\bVLMs\b",             "vlm"),
+    (r"(?i)\bLoRAs\b",            "lora"),
 ]
 
 
@@ -568,6 +579,36 @@ CS_TECH_VOCAB: frozenset[str] = frozenset({
     "polymorphism", "inheritance", "encapsulation", "abstraction",
     "serialization", "deserialization", "protobuf", "avro",
     "load balancing", "rate limiting", "caching",
+
+    # ── Modern / LLM-era AI terms ──────────────────────────────────────────
+    # Broad field names
+    "artificial intelligence", "generative ai", "genai",
+    "foundation model", "multimodal", "multimodal learning",
+    # Architectures & components
+    "vision transformer", "vit",
+    "vision language model", "vlm",
+    "encoder", "decoder", "encoder decoder",
+    "embedding",
+    "autoregressive",
+    "masked language model", "causal language model",
+    # Training paradigms
+    "pre training",
+    "supervised fine tuning", "sft",
+    "instruction tuning",
+    "reinforcement learning from human feedback", "rlhf",
+    "direct preference optimization", "dpo",
+    "parameter efficient fine tuning", "peft",
+    "lora", "low rank adaptation",
+    "neural architecture search", "nas",
+    # Inference-time techniques
+    "prompt engineering",
+    "mixture of experts", "moe",
+    # Generation tasks
+    "text generation", "code generation", "speech synthesis",
+    # Data & evaluation
+    "data augmentation",
+    # Agentic AI
+    "ai agent", "agentic",
 })
 
 # Sorted longest-first so phrase matches consume the most tokens
@@ -587,19 +628,33 @@ _VOCAB_PATTERNS: list[tuple[str, re.Pattern]] = [
 # profile and "machine learning" in another count as a matched keyword.
 
 SYNONYMS: dict[str, str] = {
-    "ml":  "machine learning",
-    "dl":  "deep learning",
-    "cv":  "computer vision",
-    "nlp": "natural language processing",
-    "ai":  "artificial intelligence",
-    "nn":  "neural network",
-    "dp":  "dynamic programming",
-    "llm": "large language model",
-    "rl":  "reinforcement learning",
-    "ner": "named entity recognition",
-    "asr": "automatic speech recognition",
-    "ocr": "optical character recognition",
-    "rag": "retrieval augmented generation",
+    # Established abbreviations
+    "ml":    "machine learning",
+    "dl":    "deep learning",
+    "cv":    "computer vision",
+    "nlp":   "natural language processing",
+    "ai":    "artificial intelligence",
+    "nn":    "neural network",
+    "dp":    "dynamic programming",
+    "llm":   "large language model",
+    "rl":    "reinforcement learning",
+    "ner":   "named entity recognition",
+    "asr":   "automatic speech recognition",
+    "ocr":   "optical character recognition",
+    "rag":   "retrieval augmented generation",
+    # Cross-match: abbreviation ↔ full form already in vocab
+    "svm":   "support vector machine",
+    "gnn":   "graph neural network",
+    # Modern / LLM-era abbreviations
+    "vit":   "vision transformer",
+    "vlm":   "vision language model",
+    "genai": "generative ai",
+    "moe":   "mixture of experts",
+    "peft":  "parameter efficient fine tuning",
+    "rlhf":  "reinforcement learning from human feedback",
+    "dpo":   "direct preference optimization",
+    "sft":   "supervised fine tuning",
+    "nas":   "neural architecture search",
 }
 
 

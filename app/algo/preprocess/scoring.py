@@ -731,7 +731,7 @@ def compute_weighted_scores(
     )
 
     # ── Soft keyword bonus ────────────────────────────────────────────────────
-    # >= 2 shared keywords → +0.04; >= 4 → +0.08.
+    # >= 1 shared keyword → +0.02; >= 2 → +0.04; >= 4 → +0.08.
     # Additive rather than a hard floor so all 5 pillars remain meaningful
     # even for pairs with keyword overlap.
     if _mentor_vocab_sets is not None and _mentee_vocab_sets is not None:
@@ -750,7 +750,8 @@ def compute_weighted_scores(
         )
     kw_bonus = np.where(
         kw_counts >= 4, 0.08,
-        np.where(kw_counts >= 2, 0.04, 0.0),
+        np.where(kw_counts >= 2, 0.04,
+        np.where(kw_counts >= 1, 0.02, 0.0)),
     ).astype(np.float32)
     final_scores = np.clip(final_scores + kw_bonus, 0.0, 1.0)
 

@@ -106,7 +106,7 @@ export async function adminEditMentor(mentorId: string, payload: {
         orcid: orcid ?? null,
         ieee_id: ieee_id ?? null,
     }
-    if (payload.available_days) {
+    if (payload.available_days?.length) {
         finalPayload.communication_preference = inferCommunicationPreference(payload.available_days);
     }
     const { error } = await supabase.from("mentor").update(finalPayload).eq("id", mentorId)
@@ -125,7 +125,7 @@ export async function adminEditMentee(menteeId: string, payload: {
     group_members?: string[]
 }) {
     const finalPayload: Record<string, unknown> = { ...payload }
-    if (payload.available_days) {
+    if (payload.available_days?.length) {
         finalPayload.communication_preference = inferCommunicationPreference(payload.available_days);
     }
     const { error } = await supabase.from("MENTEE_GROUPS").update(finalPayload).eq("id", menteeId)
