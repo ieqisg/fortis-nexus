@@ -367,6 +367,80 @@ The algorithm scales comfortably to hundreds of participants before the O(N × M
 
 ---
 
+## Data Structures Used in the System
+
+The matching engine relies on four core data structures. Each was chosen because it is the most efficient tool for a specific job the algorithm needs to perform.
+
+---
+
+### Hash Map (Lookup Table)
+
+A hash map stores information as a collection of paired entries — a unique identifier on one side and a value on the other. Looking up any entry by its identifier takes the same amount of time regardless of how many entries are stored.
+
+**Where it is used in Fortis Nexus:**
+
+During the matching process, the algorithm frequently needs to answer questions like "what is this mentor's ranking of that mentee?" and "how many groups has this mentor already been assigned?" Rather than scanning through a list every time, these answers are stored in hash maps before the matching loop begins, making every lookup instant.
+
+Specific uses:
+
+| What is stored | What it enables |
+|---|---|
+| Each mentor's ranking of every mentee (and vice versa) | Instant comparison during proposal decisions — "is this applicant better than the current worst match?" |
+| Each mentor's current assignment count | Instant check of whether a mentor still has open capacity |
+| Profile lookup by user ID | Instant retrieval of any mentor or mentee's full profile when building the results log |
+| Score matrix row/column position by user ID | Instant navigation into the compatibility score grid |
+
+**Why the panelists' recommendation is valid — and already applied:**
+
+Without hash maps, every time the algorithm compares two candidates during a proposal, it would scan through the entire preference list to find their positions. With 21 mentees and 8 mentors, that inner scan runs hundreds of times per matching round. Hash maps eliminate this scan entirely, reducing that step from a search to a single direct lookup. This is the reason the algorithm completes in under 10 seconds regardless of how many proposals are made.
+
+---
+
+### Set (Unique Collection)
+
+A set stores a collection of unique items with no duplicates and no ordering. Checking whether an item belongs to a set, and finding the common items between two sets, are both extremely fast operations.
+
+**Where it is used in Fortis Nexus:**
+
+Availability matching uses sets. Each mentor and each mentee records which days of the week they are free. To find the days both sides share, the system computes the intersection of their two sets — one operation that instantly returns only the overlapping days. The same applies to time slot overlap.
+
+The technology vocabulary used for keyword extraction (`CS_TECH_VOCAB`, approximately 950 terms) is also stored as a set, so checking whether any given word is a recognized CS term is an instant yes/no operation rather than a search through a list.
+
+---
+
+### Queue (First-In First-Out List)
+
+A queue is an ordered waiting line where items are added to the back and removed from the front, in the same order they arrived.
+
+**Where it is used in Fortis Nexus:**
+
+The Hospital-Resident matching algorithm uses a queue to manage which mentee groups still need to be matched. When a group is displaced by a higher-ranked applicant, it is placed back in the queue and will propose again on its next turn. This ensures every group gets a fair chance to find a match and that the algorithm terminates predictably once the queue is empty.
+
+---
+
+### Matrix (Two-Dimensional Grid)
+
+A matrix is a rectangular grid of numbers organized in rows and columns. In this system, rows represent mentee groups and columns represent mentors, so every cell in the grid holds the compatibility score for one specific mentor-mentee pair.
+
+**Where it is used in Fortis Nexus:**
+
+After the five-pillar scoring is computed, all 168 compatibility scores (21 mentees × 8 mentors) are stored in a single matrix. This allows the system to apply the scoring weights, add the keyword bonus, and generate ranked preference lists for everyone in one efficient operation across the entire grid at once, rather than computing each pair individually in sequence.
+
+---
+
+### Summary Table
+
+| Data Structure | Plain-language role | Where it appears |
+|---|---|---|
+| **Hash Map** | Instant lookup by ID — eliminates searching | Rank lookups during HR matching, profile lookups, assignment tracking |
+| **Set** | Fast membership check and overlap detection | Available days matching, time slot overlap, CS vocabulary scan |
+| **Queue** | Ordered waiting line for unmatched groups | HR algorithm's pending-proposals list |
+| **Matrix** | Grid of all pairwise scores | Compatibility score storage, preference list generation |
+
+Each structure was selected because the alternative — using a plain unsorted list — would require scanning from the beginning every time a value is needed, which compounds into a significant performance cost when the same operation is repeated hundreds of times per matching run.
+
+---
+
 ## Key Files
 
 | File | Role |
