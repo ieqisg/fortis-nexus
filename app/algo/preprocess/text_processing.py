@@ -25,6 +25,16 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 # ─────────────────────────────────────────────────────────────────────────────
 
 _PRENORM: list[tuple[str, str]] = [
+    # Plural abbreviations → singular canonical form
+    (r"(?i)\bCNNs\b",  "cnn"),
+    (r"(?i)\bRNNs\b",  "rnn"),
+    (r"(?i)\bLLMs\b",  "llm"),
+    (r"(?i)\bGANs\b",  "gan"),
+    (r"(?i)\bMLPs\b",  "mlp"),
+    (r"(?i)\bSVMs\b",  "svm"),
+    (r"(?i)\bLSTMs\b", "lstm"),
+    (r"(?i)\bGNNs\b",  "gnn"),
+    (r"(?i)\bVAEs\b",  "vae"),
     # Language names with symbols → plain alpha tokens
     (r"(?i)\bc\+\+",              "cpp"),
     (r"(?i)\bc#",                 "csharp"),
@@ -57,6 +67,17 @@ _PRENORM: list[tuple[str, str]] = [
     (r"(?i)\bopen-gl\b",          "opengl"),
     (r"(?i)\ba\*\b",              "astar"),
     (r"(?i)\brapberry\s+pi\b",    "raspberry pi"),
+    # Compound words that must stay as a single token (hyphen would split them)
+    (r"(?i)\bmulti-modal\b",      "multimodal"),
+    (r"(?i)\bgen-ai\b",           "genai"),
+    (r"(?i)\blow-rank\b",         "low rank"),
+    (r"(?i)\bfine-tune\b",        "fine tuning"),
+    (r"(?i)\bfine-tuned\b",       "fine tuning"),
+    (r"(?i)\bpre-train(?:ed|ing)?\b", "pre training"),
+    # Plural abbreviations → singular canonical form (LLM-era)
+    (r"(?i)\bViTs\b",             "vit"),
+    (r"(?i)\bVLMs\b",             "vlm"),
+    (r"(?i)\bLoRAs\b",            "lora"),
 ]
 
 
@@ -558,6 +579,36 @@ CS_TECH_VOCAB: frozenset[str] = frozenset({
     "polymorphism", "inheritance", "encapsulation", "abstraction",
     "serialization", "deserialization", "protobuf", "avro",
     "load balancing", "rate limiting", "caching",
+
+    # ── Modern / LLM-era AI terms ──────────────────────────────────────────
+    # Broad field names
+    "artificial intelligence", "generative ai", "genai",
+    "foundation model", "multimodal", "multimodal learning",
+    # Architectures & components
+    "vision transformer", "vit",
+    "vision language model", "vlm",
+    "encoder", "decoder", "encoder decoder",
+    "embedding",
+    "autoregressive",
+    "masked language model", "causal language model",
+    # Training paradigms
+    "pre training",
+    "supervised fine tuning", "sft",
+    "instruction tuning",
+    "reinforcement learning from human feedback", "rlhf",
+    "direct preference optimization", "dpo",
+    "parameter efficient fine tuning", "peft",
+    "lora", "low rank adaptation",
+    "neural architecture search", "nas",
+    # Inference-time techniques
+    "prompt engineering",
+    "mixture of experts", "moe",
+    # Generation tasks
+    "text generation", "code generation", "speech synthesis",
+    # Data & evaluation
+    "data augmentation",
+    # Agentic AI
+    "ai agent", "agentic",
 })
 
 # Sorted longest-first so phrase matches consume the most tokens
@@ -571,7 +622,79 @@ _VOCAB_PATTERNS: list[tuple[str, re.Pattern]] = [
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4. PROFILE TEXT BUILDERS
+# 4. SYNONYM NORMALIZATION
+# ─────────────────────────────────────────────────────────────────────────────
+# Maps common abbreviations to their canonical long form so that "ml" in one
+# profile and "machine learning" in another count as a matched keyword.
+
+SYNONYMS: dict[str, str] = {
+    # Established abbreviations
+    "ml":    "machine learning",
+    "dl":    "deep learning",
+    "cv":    "computer vision",
+    "nlp":   "natural language processing",
+    "ai":    "artificial intelligence",
+    "nn":    "neural network",
+    "dp":    "dynamic programming",
+    "llm":   "large language model",
+    "rl":    "reinforcement learning",
+    "ner":   "named entity recognition",
+    "asr":   "automatic speech recognition",
+    "ocr":   "optical character recognition",
+    "rag":   "retrieval augmented generation",
+    # Cross-match: abbreviation ↔ full form already in vocab
+    "svm":   "support vector machine",
+    "gnn":   "graph neural network",
+    # Modern / LLM-era abbreviations
+    "vit":   "vision transformer",
+    "vlm":   "vision language model",
+    "genai": "generative ai",
+    "moe":   "mixture of experts",
+    "peft":  "parameter efficient fine tuning",
+    "rlhf":  "reinforcement learning from human feedback",
+    "dpo":   "direct preference optimization",
+    "sft":   "supervised fine tuning",
+    "nas":   "neural architecture search",
+}
+
+
+def normalize_keyword(kw: str) -> str:
+    """Map abbreviations to their canonical long form for intersection."""
+    return SYNONYMS.get(kw.strip().lower(), kw.strip().lower())
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. CORPUS-LEVEL TF-IDF
+# ─────────────────────────────────────────────────────────────────────────────
+# prime_corpus() should be called once in main.py after all profiles are fetched
+# so the IDF component is meaningful across the full document set rather than
+# being computed on a single profile (where IDF degrades to uniform 0).
+
+_CORPUS_VECTORIZER: "TfidfVectorizer | None" = None
+
+
+def prime_corpus(all_texts: list[str]) -> None:
+    """
+    Fit a corpus-level TF-IDF vectorizer on all profile texts.
+    Once called, _tfidf_residuals uses this vectorizer for transform instead
+    of fitting locally on each individual profile.
+    """
+    global _CORPUS_VECTORIZER
+    cleaned = [clean_text(t) for t in all_texts if t]
+    if not cleaned:
+        return
+    _CORPUS_VECTORIZER = TfidfVectorizer(
+        stop_words="english",
+        max_features=400,
+        ngram_range=(1, 2),
+        min_df=1,
+        sublinear_tf=True,
+    )
+    _CORPUS_VECTORIZER.fit(cleaned)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 6. PROFILE TEXT BUILDERS
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_mentor_text(mentor: dict) -> str:
@@ -637,19 +760,27 @@ def _tfidf_residuals(cleaned_text: str, n: int) -> list[str]:
     """
     Phase 2: TF-IDF extraction from cleaned text, returning up to n terms
     that are not in ACADEMIC_STOP_WORDS and have length > 2.
+
+    Uses the corpus-level vectorizer (from prime_corpus) when available so
+    IDF scores reflect rarity across all profiles, not just this document.
+    Falls back to a single-document fit when no corpus vectorizer is set.
     """
     if n <= 0 or not cleaned_text.strip():
         return []
 
-    vectorizer = TfidfVectorizer(
-        stop_words="english",
-        max_features=400,
-        ngram_range=(1, 2),
-        min_df=1,
-        sublinear_tf=True,
-    )
     try:
-        mat    = vectorizer.fit_transform([cleaned_text])
+        if _CORPUS_VECTORIZER is not None:
+            vectorizer = _CORPUS_VECTORIZER
+            mat        = vectorizer.transform([cleaned_text])
+        else:
+            vectorizer = TfidfVectorizer(
+                stop_words="english",
+                max_features=400,
+                ngram_range=(1, 2),
+                min_df=1,
+                sublinear_tf=True,
+            )
+            mat = vectorizer.fit_transform([cleaned_text])
         names  = vectorizer.get_feature_names_out()
         scores = dict(zip(names, mat.toarray()[0]))
 
@@ -687,16 +818,14 @@ def _tfidf_residuals(cleaned_text: str, n: int) -> list[str]:
 
 def _depluralize(text: str) -> str:
     """
-    Strip common English plural/gerund suffixes so vocab matching works on
-    both 'neural network' and 'neural networks', 'algorithm' and 'algorithms'.
-    Applied on a word-by-word basis, only for words not in the vocab directly.
-    This is a lightweight heuristic, not a full stemmer.
+    Strip trailing 's' only when the result is a known CS vocab term, so words
+    like 'process', 'analysis', 'class' are never mangled into fragments.
     """
     words = text.split()
     result = []
     for w in words:
-        # Strip trailing 's' for words longer than 4 chars (avoid "bfs" → "bf")
-        if len(w) > 4 and w.endswith("s") and not w.endswith("ss"):
+        if (len(w) > 4 and w.endswith("s") and not w.endswith("ss")
+                and w[:-1] in CS_TECH_VOCAB):
             result.append(w[:-1])
         else:
             result.append(w)

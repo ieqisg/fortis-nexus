@@ -16,6 +16,7 @@ from supabase import create_client
 from datetime import datetime, timezone
 
 from scoring import compute_weighted_scores, get_matched_keywords, extract_profile_keywords, apply_top1_boost
+from text_processing import prime_corpus, build_mentor_text, build_mentee_text
 from matching import (
     generate_preferences,
     hospital_resident,
@@ -117,9 +118,11 @@ def fetch_mentees(supabase) -> list[dict]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def clear_matches(supabase):
-    supabase.table("matches").delete().neq(
+    result = supabase.table("matches").delete().neq(
         "mentor_id", "00000000-0000-0000-0000-000000000000"
     ).execute()
+    if hasattr(result, "error") and result.error:
+        raise RuntimeError(f"Failed to clear matches: {result.error}")
     print("  Cleared existing matches")
 
 
@@ -253,6 +256,14 @@ if __name__ == "__main__":
         exit(1)
 
     print(f"  Fetched {len(mentors)} mentors, {len(mentees)} mentees")
+
+    # Prime corpus-level TF-IDF so residual keyword extraction uses meaningful IDF
+    all_profile_texts = (
+        [build_mentor_text(m) for m in mentors]
+        + [build_mentee_text(me) for me in mentees]
+    )
+    prime_corpus(all_profile_texts)
+    print(f"  Corpus vectorizer fitted on {len(all_profile_texts)} profile documents")
 
     mentor_map   = {m["id"]: m for m in mentors}
     mentee_map   = {m["id"]: m for m in mentees}
@@ -539,8 +550,12 @@ if __name__ == "__main__":
     print(f"\n{SEP}")
     print("  STEP 7 · Saving to Supabase")
     print(SEP)
-    clear_matches(supabase)
-    save_matches(supabase, match_records)
+    try:
+        clear_matches(supabase)
+        save_matches(supabase, match_records)
+    except RuntimeError as e:
+        print(f"  ❌ {e}")
+        raise
     save_preferences(
         supabase, mentors, mentees, scores, breakdowns,
         mentee_prefs, mentor_prefs,
@@ -587,7 +602,7 @@ if __name__ == "__main__":
                     "keywords":    r["matched_keywords"],
                     "algorithm":   r["algorithm"],
                 }
-                for r in match_records
+                for r in sorted(match_records, key=lambda r: r["compatibility_score"], reverse=True)
             ],
         },
     }

@@ -27,9 +27,7 @@ export default function MenteeProfileDetails() {
     const commLabel = (pref: string | null | undefined) => {
         if (!pref) return "—"
         if (pref === "FACE_TO_FACE") return "Face to Face"
-        if (pref === "ONLINE_CHAT") return "Online — Chat"
-        if (pref === "ONLINE_CALL") return "Online — Call"
-        return pref
+        return "Online Meeting"
     }
 
     if (loading) return (

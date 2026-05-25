@@ -14,7 +14,7 @@ export type PublishedPaper = {
     authors?: string[]
 }
 
-export type CommunicationPreference = "FACE_TO_FACE" | "ONLINE_CHAT" | "ONLINE_CALL";
+export type CommunicationPreference = "FACE_TO_FACE" | "ONLINE_MEETING";
 
 export interface MentorFormProfile {
     first_name: string;
@@ -28,7 +28,6 @@ export interface MentorFormProfile {
     role: "mentor";
     profile_completed: boolean;
     email: string | null;
-    communication_preference: CommunicationPreference | "";
     prev_mentored_thesis?: PrevMentoredThesis[];
     orcid?: string;
     ieee_id?: string;

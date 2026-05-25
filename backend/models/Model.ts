@@ -146,7 +146,7 @@ export type Database = {
       MENTEE_GROUPS: {
         Row: {
           available_days: string[]
-          communication_preference: "FACE_TO_FACE" | "ONLINE_CHAT" | "ONLINE_CALL" | null
+          communication_preference: "FACE_TO_FACE" | "ONLINE_MEETING" | null
           created_at: string | null
           email: string | null
           group_members: string[]
@@ -160,7 +160,7 @@ export type Database = {
         }
         Insert: {
           available_days: string[]
-          communication_preference?: "FACE_TO_FACE" | "ONLINE_CHAT" | "ONLINE_CALL" | null
+          communication_preference?: "FACE_TO_FACE" | "ONLINE_MEETING" | null
           created_at?: string | null
           email?: string | null
           group_members: string[]
@@ -174,7 +174,7 @@ export type Database = {
         }
         Update: {
           available_days?: string[]
-          communication_preference?: "FACE_TO_FACE" | "ONLINE_CHAT" | "ONLINE_CALL" | null
+          communication_preference?: "FACE_TO_FACE" | "ONLINE_MEETING" | null
           created_at?: string | null
           email?: string | null
           group_members?: string[]
@@ -191,7 +191,7 @@ export type Database = {
       mentor: {
         Row: {
           available_days: string[] | null
-          communication_preference: "FACE_TO_FACE" | "ONLINE_CHAT" | "ONLINE_CALL" | null
+          communication_preference: "FACE_TO_FACE" | "ONLINE_MEETING" | null
           email: string | null
           experience: number | null
           first_name: string | null
@@ -211,7 +211,7 @@ export type Database = {
         }
         Insert: {
           available_days?: string[] | null
-          communication_preference?: "FACE_TO_FACE" | "ONLINE_CHAT" | "ONLINE_CALL" | null
+          communication_preference?: "FACE_TO_FACE" | "ONLINE_MEETING" | null
           email?: string | null
           experience?: number | null
           first_name?: string | null
@@ -231,7 +231,7 @@ export type Database = {
         }
         Update: {
           available_days?: string[] | null
-          communication_preference?: "FACE_TO_FACE" | "ONLINE_CHAT" | "ONLINE_CALL" | null
+          communication_preference?: "FACE_TO_FACE" | "ONLINE_MEETING" | null
           email?: string | null
           experience?: number | null
           first_name?: string | null

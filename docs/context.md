@@ -33,7 +33,11 @@ The core feature. An admin triggers a matching run that automatically assigns ea
 | Communication style | 5% | Shared preference for in-person, online chat, or video call |
 | Meeting frequency | 5% | How often both sides can meet |
 
-Both sides of the Gale-Shapley stable matching algorithm are run (mentor-proposing and mentee-proposing). The result with lower combined dissatisfaction is selected. Stability is verified by checking for blocking pairs.
+> **Note:** The weights shown above are the baseline reference values for documentation purposes. The actual weights used at runtime may be tuned in the codebase (`scoring.py`). **Do not update the weights in this table** — it serves as a stable reference for stakeholders and panelists, not a live reflection of runtime configuration.
+
+A soft additive keyword bonus is applied on top of the weighted score: +0.08 for ≥4 shared keywords, +0.04 for ≥2, +0.02 for ≥1. An additional +0.05 top-1 boost is applied to each person's single best match before preference list generation (not stored in the database).
+
+Both sides of the Gale-Shapley stable matching algorithm are run (mentor-proposing and mentee-proposing). The result with lower combined dissatisfaction is selected. Stability is verified by checking for blocking pairs. Any unmatched mentee after the main algorithm is assigned by a safety net to the mentor with the most remaining capacity. Mentors with `mentor_capacity = 0` are excluded from the safety net.
 
 ### Profile Management
 - Mentors fill in expertise, research background, availability, communication preference, and prior mentored theses.
@@ -140,3 +144,10 @@ Track significant system changes here. Add a new entry whenever `CLAUDE.md` inst
 | Date | Change | Affected area |
 |---|---|---|
 | 2026-05-24 | Initial context file created | — |
+| 2026-05-24 | Matching engine improvements — plural abbreviation prenorms (CNNs/LLMs/etc.), depluralize guard against word mangling, synonym normalization (ml↔machine learning, dl↔deep learning, etc.), corpus-level TF-IDF priming, matched_vocab denominator changed to mentee-size, hard keyword floor replaced with soft additive bonus (+0.04/+0.08), communication inference from days removed (defaults to FLEXIBLE), experience years field added to experience score, mentor_preference excluded from matched-keyword computation | Matching Engine (`text_processing.py`, `scoring.py`, `main.py`) |
+| 2026-05-24 | Communication preference auto-inferred from selected days (Tuesday/Friday → ONLINE_MEETING, Mon/Wed/Thu/Sat → FACE_TO_FACE); ONLINE_CHAT removed; all manual communication preference inputs removed from mentor, mentee, and admin forms; legacy DB values normalized at display and scoring time | Forms (`compelete-profile.tsx`, `mentee-create-profile.tsx`, `edit-profile.tsx`, `admin.tsx`), Server Actions, Types, Python Scoring |
+| 2026-05-25 | Scoring weights updated — keyword similarity raised from 60% to 75%; experience lowered from 20% to 10%; communication and meeting frequency each halved from 5% to 2.5%; soft keyword bonus tiers added (+0.08/+0.04/+0.02 for ≥4/≥2/≥1 shared keywords) | Matching Engine (`scoring.py`) |
+| 2026-05-25 | Vocabulary expanded with 29 modern AI/ML terms (embedding, foundation model, genai, multimodal, LoRA, RLHF, DPO, PEFT, etc.); 11 new synonym mappings added; 9 new prenorm rules for hyphenated compound forms (multi-modal, fine-tune, pre-train, ViTs, VLMs, LoRAs) | Matching Engine (`text_processing.py`) |
+| 2026-05-25 | DB check constraint on `MENTEE_GROUPS.communication_preference` and `mentor.communication_preference` updated — old values (FLEXIBLE, ONLINE_CHAT, ONLINE_CALL) removed; only FACE_TO_FACE and ONLINE_MEETING are now valid; empty-array truthiness bug fixed in admin server actions that caused null to be written when days field was cleared | Server Actions (`adminActions.ts`), Database |
+| 2026-05-25 | Mentor capacity enforcement hardened — `clear_matches()` now raises on Supabase error instead of silently continuing (prevents stale match stacking); admin capacity display now filters by `status = "active"` to exclude stale rows; safety net respects `mentor_capacity = 0` by using a None-check instead of the `or 1` pattern | Matching Engine (`main.py`, `matching.py`), Admin Portal (`admin.tsx`) |
+| 2026-05-25 | Algorithm log final matches list now sorted by compatibility score descending | Matching Engine (`main.py`) |

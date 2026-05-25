@@ -14,7 +14,7 @@ scoring.py
     Total                     1.00
 
 Communication preference rules (inferred from available_days):
-    Tuesday, Friday          → ONLINE
+    Tuesday, Friday          → ONLINE_MEETING
     Mon, Wed, Thu, Sat       → FACE_TO_FACE
     Mixed or unrecognized    → FLEXIBLE  (compatible with either)
 
@@ -41,6 +41,7 @@ from text_processing import (
     build_mentee_text,
     _extract_vocab_matches,
     ACADEMIC_STOP_WORDS,
+    normalize_keyword,
 )
 from domain_expander import expand_pair
 
@@ -60,19 +61,19 @@ def infer_communication_mode(available_days: list[str]) -> str:
     Infers preferred communication mode from available days.
 
     Rules:
-        Days only in {Tuesday, Friday}        → ONLINE
+        Any day in {Tuesday, Friday}          → ONLINE_MEETING
         Days only in {Mon, Wed, Thu, Sat}     → FACE_TO_FACE
-        Days in both sets, or no match        → FLEXIBLE
+        No days                               → FLEXIBLE
 
-    Returns: "ONLINE" | "FACE_TO_FACE" | "FLEXIBLE"
+    Returns: "ONLINE_MEETING" | "FACE_TO_FACE" | "FLEXIBLE"
     """
     days       = set(available_days or [])
     has_online = bool(days & _ONLINE_DAYS)
     has_f2f    = bool(days & _FACE_TO_FACE_DAYS)
 
-    if has_online and not has_f2f:
-        return "ONLINE"
-    if has_f2f and not has_online:
+    if has_online:
+        return "ONLINE_MEETING"
+    if has_f2f:
         return "FACE_TO_FACE"
     return "FLEXIBLE"
 
@@ -81,37 +82,18 @@ def _resolve_communication_mode(mode_a: str, mode_b: str) -> tuple[float, str]:
     """
     Returns (compatibility_score, resolved_mode) for a mentor-mentee pair.
 
-    Explicit preference score rules (FACE_TO_FACE / ONLINE_CHAT / ONLINE_CALL):
-        Same value                  → 1.0
-        ONLINE_CHAT vs ONLINE_CALL  → 0.7  (both online, different modality)
-        FACE_TO_FACE vs any ONLINE  → 0.2  (misaligned medium)
-
-    Fallback inference score rules (ONLINE / FACE_TO_FACE / FLEXIBLE):
-        Same mode        → 1.0
-        Either FLEXIBLE  → 0.8   (can adapt, slight penalty for ambiguity)
-        ONLINE vs F2F    → 0.2   (possible but misaligned)
+    Score rules (FACE_TO_FACE / ONLINE_MEETING / FLEXIBLE):
+        Same value                        → 1.0
+        Either FLEXIBLE                   → 0.8  (can adapt)
+        FACE_TO_FACE vs ONLINE_MEETING    → 0.2  (misaligned medium)
 
     Resolved mode:
-        Both same        → that mode
-        One FLEXIBLE     → the other's specific mode
-        Both different   → FLEXIBLE
+        Both same    → that mode
+        One FLEXIBLE → the other's specific mode
+        Different    → FLEXIBLE
     """
     if mode_a == mode_b:
         return 1.0, mode_a
-
-    # Explicit online sub-modes — same medium, different modality
-    online_sub = {"ONLINE_CHAT", "ONLINE_CALL"}
-    if mode_a in online_sub and mode_b in online_sub:
-        return 0.7, "ONLINE"
-
-    # One face-to-face, one online
-    face_to_face = {"FACE_TO_FACE"}
-    online_any = online_sub | {"ONLINE"}
-    if (mode_a in face_to_face and mode_b in online_any) or \
-       (mode_b in face_to_face and mode_a in online_any):
-        return 0.2, "FLEXIBLE"
-
-    # Fallback inference logic (FLEXIBLE from available_days)
     if mode_a == "FLEXIBLE":
         return 0.8, mode_b
     if mode_b == "FLEXIBLE":
@@ -311,23 +293,30 @@ def _kw_similarity_avg_max(mentor_kws: list[str], mentee_kws: list[str]) -> floa
         return 0.0
 
 
+def _kw_sim_from_sets(mentor_norm: set[str], mentee_norm: set[str]) -> float:
+    """
+    Keyword similarity from pre-normalized vocab sets.
+    Denominator is mentee_vocab size: asks 'how much of what the mentee needs
+    does this mentor cover?' rather than dividing by the larger of the two pools.
+    """
+    if not mentor_norm or not mentee_norm:
+        return 0.0
+    ref = len(mentee_norm)
+    return min(len(mentor_norm & mentee_norm) / ref, 1.0) if ref else 0.0
+
+
 def _kw_similarity_matched_vocab(mentor: dict, mentee: dict) -> float:
     """
-    Keyword score = matched keyword count / max vocab size.
-    Uses the same computation as get_matched_keywords() so the score directly
-    reflects the matched keywords shown in the UI. More matches → higher score.
+    Keyword score via synonym-normalized vocab intersection.
+    Denominator is mentee vocab size (mentee-coverage semantics).
     """
-    matched = get_matched_keywords(mentor, mentee)
-    if not matched:
+    mentor_vocab = {normalize_keyword(k)
+                    for k in _extract_vocab_matches(_build_direct_mentor_str(mentor))}
+    mentee_vocab = {normalize_keyword(k)
+                    for k in _extract_vocab_matches(_build_direct_mentee_str(mentee))}
+    if not mentee_vocab:
         return 0.0
-    mentor_vocab = set(_extract_vocab_matches(_build_direct_mentor_str(mentor)))
-    mentee_vocab = set(_extract_vocab_matches(_build_direct_mentee_str(mentee)))
-    ref = max(len(mentor_vocab), len(mentee_vocab))
-    if ref == 0:
-        # Neither profile has recognized CS vocabulary — don't inflate score
-        # via bigram-only matches where denominator would otherwise be 1.
-        return 0.0
-    return min(len(matched) / ref, 1.0)
+    return _kw_sim_from_sets(mentor_vocab, mentee_vocab)
 
 
 def compute_keyword_similarity(
@@ -384,27 +373,35 @@ def _availability_score(mentor: dict, mentee: dict) -> float:
 # 4. COMMUNICATION PREFERENCE SCORE
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _normalize_comm_pref(pref: str) -> str:
+    """Normalizes legacy ONLINE_CHAT / ONLINE_CALL values to ONLINE_MEETING."""
+    if pref in ("ONLINE_CHAT", "ONLINE_CALL"):
+        return "ONLINE_MEETING"
+    return pref
+
+
 def _communication_score(mentor: dict, mentee: dict) -> tuple[float, str]:
     """
     Scores communication mode alignment between mentor and mentee.
 
     Uses the explicit `communication_preference` field when present
-    (FACE_TO_FACE | ONLINE_CHAT | ONLINE_CALL).  Falls back to inferring
-    from `available_days` when the field is missing or null.
+    (FACE_TO_FACE | ONLINE_MEETING).  Falls back to inferring from
+    `available_days` when the field is missing or null.
+    Legacy values ONLINE_CHAT / ONLINE_CALL are normalized to ONLINE_MEETING.
 
     Returns (score, resolved_mode).
     """
-    explicit_modes = {"FACE_TO_FACE", "ONLINE_CHAT", "ONLINE_CALL"}
+    explicit_modes = {"FACE_TO_FACE", "ONLINE_MEETING"}
 
-    mentor_pref = mentor.get("communication_preference") or ""
-    mentee_pref = mentee.get("communication_preference") or ""
+    mentor_raw  = _normalize_comm_pref(mentor.get("communication_preference") or "")
+    mentee_raw  = _normalize_comm_pref(mentee.get("communication_preference") or "")
 
     mentor_mode = (
-        mentor_pref if mentor_pref in explicit_modes
+        mentor_raw if mentor_raw in explicit_modes
         else infer_communication_mode(mentor.get("available_days") or [])
     )
     mentee_mode = (
-        mentee_pref if mentee_pref in explicit_modes
+        mentee_raw if mentee_raw in explicit_modes
         else infer_communication_mode(mentee.get("available_days") or [])
     )
 
@@ -461,6 +458,13 @@ def _experience_score(mentor: dict) -> float:
     if certs is not None:
         components.append(min(len(certs) / 3.0, 1.0))
 
+    years = mentor.get("experience")
+    if years is not None:
+        try:
+            components.append(min(int(years) / 15.0, 1.0))
+        except (TypeError, ValueError):
+            pass
+
     return float(np.mean(components)) if components else 0.5
 
 
@@ -493,11 +497,15 @@ def _build_direct_mentor_str(mentor: dict) -> str:
 
 
 def _build_direct_mentee_str(mentee: dict) -> str:
-    """Keyword string from raw profile fields only — no domain expansion."""
+    """
+    Keyword string from core research fields only.
+    mentor_preference is excluded here: it describes the desired mentor, not the
+    mentee's own research focus, so it should not appear as a 'matched keyword'.
+    build_mentee_text (used for TF-IDF scoring) still includes all three fields.
+    """
     parts = [
         mentee.get("research_title") or "",
         mentee.get("research_description") or "",
-        mentee.get("mentor_preference") or "",
     ]
     return clean_text(" ".join(parts))
 
@@ -520,9 +528,17 @@ def get_matched_keywords(mentor: dict, mentee: dict) -> list[str]:
     mentee_kw_str = _build_direct_mentee_str(mentee)
 
     # Priority 1: shared vocabulary hits (most meaningful signal, no cap)
-    mentor_vocab = set(_extract_vocab_matches(mentor_kw_str))
-    mentee_vocab = set(_extract_vocab_matches(mentee_kw_str))
-    shared_vocab = sorted(mentor_vocab & mentee_vocab, key=len, reverse=True)
+    # Normalize abbreviations (e.g. "ml" ↔ "machine learning") before intersecting.
+    mentor_raw  = _extract_vocab_matches(mentor_kw_str)
+    mentee_raw  = _extract_vocab_matches(mentee_kw_str)
+    mentor_norm = {normalize_keyword(k): k for k in mentor_raw}
+    mentee_norm = {normalize_keyword(k): k for k in mentee_raw}
+    shared_norm = set(mentor_norm) & set(mentee_norm)
+    # Surface the longer of the two forms (prefer "machine learning" over "ml")
+    shared_vocab = sorted(
+        (max(mentor_norm[n], mentee_norm[n], key=len) for n in shared_norm),
+        key=len, reverse=True,
+    )
 
     # Priority 2: shared bigrams only — avoids fragment/phrase duplication
     def get_bigrams(text: str) -> set[str]:
@@ -631,10 +647,25 @@ def compute_weighted_scores(
 
     # ── Keyword similarity ────────────────────────────────────────────────────
     print(f"  📝 Extracting keywords and computing similarity [{keyword_method}]...")
+
+    # Vocab sets pre-computed here and reused for the keyword-count bonus below
+    # to avoid O(n×m) repeated calls to _extract_vocab_matches.
+    _mentor_vocab_sets: list[set[str]] | None = None
+    _mentee_vocab_sets: list[set[str]] | None = None
+
     if keyword_method == "matched_vocab":
+        _mentor_vocab_sets = [
+            {normalize_keyword(k) for k in _extract_vocab_matches(_build_direct_mentor_str(m))}
+            for m in mentors
+        ]
+        _mentee_vocab_sets = [
+            {normalize_keyword(k) for k in _extract_vocab_matches(_build_direct_mentee_str(me))}
+            for me in mentees
+        ]
         kw_normalized = np.array(
-            [[_kw_similarity_matched_vocab(mentor, mentee) for mentor in mentors]
-             for mentee in mentees],
+            [[_kw_sim_from_sets(_mentor_vocab_sets[j], _mentee_vocab_sets[i])
+              for j in range(len(mentors))]
+             for i in range(len(mentees))],
             dtype=np.float32,
         )
     elif keyword_method in ("bow", "avg_max"):
@@ -699,24 +730,30 @@ def compute_weighted_scores(
         + weights.meeting_frequency * freq_matrix
     )
 
-    # ── Keyword match floor boost ─────────────────────────────────────────────
-    # >= 2 shared keywords → floor 0.5; >= 4 → floor 0.8.
-    # For pairs below the floor the weighted score is still fully computed first;
-    # the floor is then applied as a hard minimum. The original score is added
-    # back at a 1e-4 scale purely as a tiebreaker so no two pairs land on the
-    # exact same value — it has no meaningful effect on the score itself.
-    kw_counts = np.array(
-        [[len(get_matched_keywords(mentor, mentee)) for mentor in mentors]
-         for mentee in mentees],
-        dtype=int,
-    )
-    floor = np.where(kw_counts >= 4, 0.8, np.where(kw_counts >= 2, 0.5, 0.0)).astype(np.float32)
-    below_floor = final_scores < floor
-    final_scores = np.where(
-        below_floor,
-        floor + final_scores * 1e-2,
-        final_scores,
+    # ── Soft keyword bonus ────────────────────────────────────────────────────
+    # >= 1 shared keyword → +0.02; >= 2 → +0.04; >= 4 → +0.08.
+    # Additive rather than a hard floor so all 5 pillars remain meaningful
+    # even for pairs with keyword overlap.
+    if _mentor_vocab_sets is not None and _mentee_vocab_sets is not None:
+        # Reuse pre-computed sets (matched_vocab path) — avoids O(n×m) extra work
+        kw_counts = np.array(
+            [[len(_mentor_vocab_sets[j] & _mentee_vocab_sets[i])
+              for j in range(len(mentors))]
+             for i in range(len(mentees))],
+            dtype=int,
+        )
+    else:
+        kw_counts = np.array(
+            [[len(get_matched_keywords(mentor, mentee)) for mentor in mentors]
+             for mentee in mentees],
+            dtype=int,
+        )
+    kw_bonus = np.where(
+        kw_counts >= 4, 0.08,
+        np.where(kw_counts >= 2, 0.04,
+        np.where(kw_counts >= 1, 0.02, 0.0)),
     ).astype(np.float32)
+    final_scores = np.clip(final_scores + kw_bonus, 0.0, 1.0)
 
     # ── Breakdowns ────────────────────────────────────────────────────────────
     breakdowns = None

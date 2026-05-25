@@ -38,7 +38,7 @@ export type GroupMembers = {
     student_number: string | "";
     is_leader?: boolean;
 }
-export type CommunicationPreference = "FACE_TO_FACE" | "ONLINE_CHAT" | "ONLINE_CALL";
+export type CommunicationPreference = "FACE_TO_FACE" | "ONLINE_MEETING";
 
 export interface MenteeFormProfile {
     email: string
@@ -50,7 +50,6 @@ export interface MenteeFormProfile {
     mentor_preferences: string;
     available_days: string[];
     time_slot: string[];
-    communication_preference: CommunicationPreference | "";
 }
 
 
@@ -88,5 +87,4 @@ export type MenteeEditForm = {
     mentor_preference: string,
     available_days: string[],
     time_slot: string[],
-    communication_preference: CommunicationPreference | "",
 };
