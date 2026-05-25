@@ -77,6 +77,8 @@ _PRENORM: list[tuple[str, str]] = [
     (r"(?i)\bfine-tune\b",        "fine tuning"),
     (r"(?i)\bfine-tuned\b",       "fine tuning"),
     (r"(?i)\bpre-train(?:ed|ing)?\b", "pre training"),
+    # Operations research hyphenated forms
+    (r"(?i)\bmixed-integer\b",    "mixed integer"),
     # Plural abbreviations → singular canonical form (LLM-era)
     (r"(?i)\bViTs\b",             "vit"),
     (r"(?i)\bVLMs\b",             "vlm"),
@@ -616,6 +618,51 @@ CS_TECH_VOCAB: frozenset[str] = frozenset({
     "data augmentation",
     # Agentic AI
     "ai agent", "agentic",
+
+    # ── Operations research & mathematical optimization ────────────────────
+    "mixed integer linear programming", "milp",
+    "integer linear programming", "ilp",
+    "integer programming",
+    "linear programming", "lp",
+    "nonlinear programming", "nlp optimization",
+    "quadratic programming", "qp",
+    "convex optimization",
+    "combinatorial optimization",
+    "constraint programming",
+    "constraint satisfaction",
+    "mathematical optimization",
+    "operations research",
+    "multi objective optimization",
+    "stochastic optimization",
+    "robust optimization",
+    "heuristic algorithm",
+    "metaheuristic",
+    "simulated annealing",
+
+    # ── Software testing & quality ────────────────────────────────────────
+    "mutation testing",
+    "mutation operator",
+    "test case generation",
+    "fault injection",
+    "fuzz testing", "fuzzing",
+    "property based testing",
+    "model based testing",
+    "software verification",
+
+    # ── Code analysis & clone detection ──────────────────────────────────
+    "code clone detection", "clone detection",
+    "abstract syntax tree",
+    "code similarity",
+    "token analysis",
+    "source code analysis",
+    "code smell",
+    "technical debt",
+
+    # ── Stable matching & combinatorial algorithms ─────────────────────
+    "stable matching",
+    "gale shapley",
+    "hospital resident",
+    "bipartite matching",
 })
 
 # Sorted longest-first so phrase matches consume the most tokens
@@ -662,6 +709,11 @@ SYNONYMS: dict[str, str] = {
     "dpo":   "direct preference optimization",
     "sft":   "supervised fine tuning",
     "nas":   "neural architecture search",
+    # Operations research
+    "milp":  "mixed integer linear programming",
+    "ilp":   "integer linear programming",
+    "lp":    "linear programming",
+    "qp":    "quadratic programming",
 }
 
 
