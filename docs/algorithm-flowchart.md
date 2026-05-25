@@ -232,6 +232,92 @@ The stability check runs in O(N×M) after matching completes and logs any violat
 
 ---
 
+## Match Effectiveness Metrics
+
+The algorithm produces two categories of effectiveness evidence: **formal algorithmic guarantees** and **quantitative performance metrics** computed and stored for every run.
+
+---
+
+### Formal Guarantee — Stability
+
+The most rigorous indicator of match effectiveness is **stability**. A matching is stable when no blocking pair exists — no mentor-mentee pair outside the assignment where *both* would prefer each other over their current assigned partner.
+
+This is verified explicitly after every run by checking all unassigned pairs against the final preference lists. The result is stored as `is_stable` in the `matches` table and `blocking_pairs_count` in `algorithm_logs`. A stable matching guarantees there is no "obviously better" pairing the algorithm missed.
+
+---
+
+### Per-Run Quantitative Metrics
+
+Every run computes and stores the following in `algorithm_logs`:
+
+| Metric | What it measures | Good value |
+|---|---|---|
+| **Match rate** | Fraction of mentee groups successfully paired | 100% |
+| **Unmatched count** | Mentees not paired by HR — handled by safety net | 0 |
+| **Stability flag** | Whether any blocking pairs exist | `true` |
+| **Blocking pair count** | Number of unstable pairs found | 0 |
+| **Mentee dissatisfaction** | Average rank of assigned mentor in each mentee's preference list | As low as possible |
+| **Mentor dissatisfaction** | Average rank of assigned mentees in each mentor's preference list | As low as possible |
+| **Combined dissatisfaction** | Sum of both sides — the selection criterion between HR variants | Minimized |
+
+**Dissatisfaction interpretation:**
+
+| Combined dissatisfaction | What it means |
+|---|---|
+| < 1.0 | Both sides got, on average, a top-2 match |
+| 1.0 – 3.0 | Both sides got, on average, a top-3 or top-4 match |
+| > 5.0 | Some participants received lower-ranked matches — may indicate insufficient mentor diversity for the mentee pool |
+
+A rank of **0** means a participant received their top choice. The algorithm selects whichever HR variant (mentee-proposing or mentor-proposing) yields the lower combined score, so neither side is systematically disadvantaged.
+
+---
+
+### Per-Pair Score Breakdown
+
+Every match record stores a compatibility score (0–1) decomposed across five pillars:
+
+| Pillar | Weight | Effectiveness signal |
+|---|---|---|
+| **Keyword similarity** | 75% | Degree of research topic alignment — the primary driver |
+| **Experience** | 10% | Mentor's depth of prior mentoring (theses, papers, certifications) |
+| **Availability** | 10% | Fraction of schedule that overlaps — determines whether meetings can happen |
+| **Communication mode** | 2.5% | Whether both prefer online or face-to-face meetings |
+| **Meeting frequency** | 2.5% | Number of shared available days as a proxy for how regularly they can meet |
+
+**Compatibility score interpretation:**
+
+| Score | Interpretation |
+|---|---|
+| ≥ 0.80 | Strong match — substantial keyword overlap with good schedule and experience fit |
+| 0.60 – 0.79 | Good match — meaningful research alignment with reasonable availability |
+| 0.40 – 0.59 | Moderate match — some keyword overlap, or strong non-keyword factors compensating |
+| < 0.40 | Constrained match — limited research alignment; likely no higher-scoring option remained in the pool |
+
+---
+
+### Matched Keywords as Explainability Evidence
+
+Each stored match record includes a list of **matched keywords** — the shared CS vocabulary terms between the mentor's profile and the mentee's research description. These are extracted from raw profile text against a ~950-term CS technology vocabulary, normalized for abbreviations and synonyms (e.g. `MILP` → `mixed integer linear programming`), and verified via pairwise cosine similarity ≥ 0.45.
+
+The matched keyword list provides human-readable justification for each compatibility score, visible to admins in the algorithm log dashboard. A pair showing `machine learning, deep learning, neural network` as matched keywords is explainably well-matched; a pair showing zero matched keywords signals a mismatch the score alone cannot convey.
+
+---
+
+### Post-Assignment Effectiveness Signals
+
+The algorithm measures *compatibility potential* from profile data at the time of matching. Ongoing relationship quality is tracked through the platform's activity modules:
+
+| Signal | Source | What it indicates |
+|---|---|---|
+| **Milestone completion rate** | Milestone tracker | Whether research goals are being met on schedule |
+| **Paper submission and review activity** | Paper review module | Whether the mentoring relationship is academically productive |
+| **Meeting regularity** | Meeting scheduler | Whether scheduled meetings are being created and maintained |
+| **Mentor announcement activity** | Mentor announcements | Whether mentors are actively communicating with their groups |
+
+These signals are not fed back into the algorithm automatically, but they provide ground-truth data for evaluating whether high-scoring matches correlate with active, productive mentoring relationships.
+
+---
+
 ## Time Complexity
 
 Let:
