@@ -162,6 +162,125 @@ The **fair-matching** mode runs both, then picks the one with lower **combined d
 
 ---
 
+## Keyword Scoring — Semantic Method (Default)
+
+The default `"semantic"` method replaces exact keyword intersection with pairwise cosine similarity between individual keyword vectors.
+
+**How it works — per pair:**
+
+1. Extract CS vocab keywords from both profiles using `_extract_vocab_matches()` — a longest-first scan against a ~950-term CS technology vocabulary (`CS_TECH_VOCAB`).
+2. Normalize abbreviations via `normalize_keyword()` (e.g. `"nlp"` → `"natural language processing"`, `"milp"` → `"mixed integer linear programming"`).
+3. Fit a word-level TF-IDF vectorizer on the combined keyword list (mentor + mentee keywords together).
+4. Compute an `n_mentee × n_mentor` cosine similarity matrix.
+5. A mentee keyword is counted as **matched** if its best cosine similarity with any mentor keyword ≥ 0.45 (the `KW_SIMILARITY_THRESHOLD`).
+
+**Tiered keyword score from matched count:**
+
+| Matched keywords | Score |
+|---|---|
+| > 4 | 1.0 (ceiling) |
+| > 2 | 0.7 (floor) |
+| ≤ 2 | `(mentee_coverage + min_set_coverage) / 2` |
+
+**Soft additive bonus** applied on top of the weighted score:
+
+| Matched keywords | Bonus |
+|---|---|
+| ≥ 4 | +0.08 |
+| ≥ 2 | +0.04 |
+| ≥ 1 | +0.02 |
+
+**Why pairwise instead of set intersection?**  
+Set intersection requires an exact string match after normalization. Pairwise cosine catches semantic relatives — for example, `"machine learning"` and `"deep learning"` share the token `"learning"` and score ~0.45–0.55, clearing the threshold. Two profiles that share 2 highly related terms now score differently from two profiles that share 2 distantly related terms.
+
+---
+
+## Top-1 Boost
+
+Before preference lists are built, a `+0.05` bonus is added to each mentee's single highest-scoring mentor, and each mentor's single highest-scoring mentee. This makes mutual top-1 pairs stickier in the HR algorithm without changing the stored compatibility scores (boosted scores are discarded after preference generation).
+
+---
+
+## Dissatisfaction Metric
+
+After both HR variants run, the one with lower **combined dissatisfaction** is chosen.
+
+```
+dissatisfaction(side) = average rank of matched partner in that side's preference list
+combined = mentee_dissatisfaction + mentor_dissatisfaction
+```
+
+Rank 0 means "got their top choice." Higher rank = worse outcome. Lower combined score = fairer result overall.
+
+---
+
+## Algorithmic Guarantees
+
+| Property | Guarantee |
+|---|---|
+| **Stability** | No blocking pair exists in the output — no unmatched mentee-mentor pair where both would prefer each other over their current assignment |
+| **Mentee-optimality** | The mentee-proposing HR produces the best stable matching possible for mentees — no other stable matching exists where every mentee is at least as well-off |
+| **Mentor-optimality** | The mentor-proposing HR produces the best stable matching possible for mentors — same guarantee from the other side |
+| **Fairness** | Running both variants and selecting the lower combined dissatisfaction prevents systematically favoring one side |
+| **Completeness** | Every mentee is matched — the safety net catches any mentee left unmatched after HR (e.g. due to insufficient total capacity) |
+
+A **blocking pair** `(mentee m, mentor M)` exists if:
+- `m` prefers `M` over their current assigned mentor, **and**
+- `M` prefers `m` over their worst currently assigned mentee (or has an open slot)
+
+The stability check runs in O(N×M) after matching completes and logs any violations.
+
+---
+
+## Time Complexity
+
+Let:
+- **N** = number of mentors
+- **M** = number of mentees
+- **K** = average number of CS vocab keywords extracted per profile (~15)
+- **V** = CS_TECH_VOCAB size (~950 terms)
+- **T** = average token count of a cleaned profile text (~200 tokens)
+
+| Stage | Operation | Complexity |
+|---|---|---|
+| Keyword extraction | Vocab scan per profile (longest-first) | O((N+M) × V × T) |
+| Semantic keyword scoring | Per-pair TF-IDF cosine on K-keyword lists | O(N × M × K²) |
+| Availability scoring | Set intersection per pair | O(N × M × D) where D ≤ 7 days |
+| Experience scoring | Per-mentor component average | O(N) |
+| Communication + frequency | Per-pair day-set lookups | O(N × M) |
+| Weighted combination | Numpy broadcast | O(N × M) |
+| Soft keyword bonus | Numpy where on count matrix | O(N × M) |
+| Preference generation | Sort per mentee + per mentor | O(N × M × log M + M × N × log N) = O(N × M × log(max(N,M))) |
+| HR matching (each variant) | Proposals with O(1) rank lookup | O(N × M) worst case |
+| Fairness comparison | Rank lookup over assignments | O(N + M) |
+| Stability verification | All non-assigned pairs checked | O(N × M) |
+| Safety net | Unmatched × mentors | O(U × N) where U = unmatched count (typically 0) |
+| DB writes | Insert matches + preferences + log | O(N × M) |
+
+**Overall dominant cost: O(N × M × K²)** — the semantic pairwise scoring step.
+
+All other stages are O(N × M) or below, which is dominated by the keyword scoring cost.
+
+**Space complexity: O(N × M)** — the score matrix and preference lists are the largest structures.
+
+---
+
+## Current Deployment Scale
+
+| Parameter | Value |
+|---|---|
+| Mentors (N) | 8 |
+| Mentees (M) | 21 |
+| Pairs scored per run | 168 |
+| Avg keywords per profile (K) | ~15 |
+| Pairwise similarity computations | ~168 × 15² ≈ 37,800 |
+| HR proposals (worst case) | 168 per variant × 2 variants |
+| Typical full run duration | < 10 seconds |
+
+The algorithm scales comfortably to hundreds of participants before the O(N × M × K²) cost becomes a bottleneck. At 50 mentors × 200 mentees × 15 keywords, the pair count is 10,000 and semantic scoring would produce ~2.25M cosine operations — still well within a single Python process in seconds.
+
+---
+
 ## Key Files
 
 | File | Role |

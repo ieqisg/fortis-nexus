@@ -102,6 +102,21 @@ def _resolve_communication_mode(mode_a: str, mode_b: str) -> tuple[float, str]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# KEYWORD SIMILARITY THRESHOLD
+# ─────────────────────────────────────────────────────────────────────────────
+
+KW_SIMILARITY_THRESHOLD: float = 0.45
+"""
+Minimum cosine similarity for two keywords to be considered semantically related.
+At word-level TF-IDF:
+  "machine learning" ↔ "deep learning"            → ~0.45–0.55 (share "learning")
+  "neural network"   ↔ "convolutional neural net" → ~0.55–0.70
+  "python"           ↔ "java"                      → 0.0 (no shared tokens)
+After normalize_keyword(), "nlp" == "natural language processing" → 1.0
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # WEIGHTS
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -293,16 +308,73 @@ def _kw_similarity_avg_max(mentor_kws: list[str], mentee_kws: list[str]) -> floa
         return 0.0
 
 
+def _kw_similarity_semantic(
+    mentor_kws: list[str],
+    mentee_kws: list[str],
+    threshold: float = KW_SIMILARITY_THRESHOLD,
+) -> tuple[float, int]:
+    """
+    Pairwise TF-IDF cosine between keyword lists with a similarity threshold.
+
+    1. Normalize each keyword via normalize_keyword() (maps abbreviations like
+       "nlp" → "natural language processing" before vectorizing).
+    2. Fit a word-level TF-IDF vectorizer on the combined keyword corpus.
+    3. Compute cosine similarity matrix: shape (n_mentee, n_mentor).
+    4. A mentee keyword is "matched" when max(row) >= threshold.
+    5. Score blends mentee-coverage and min-set-coverage.
+
+    Returns (score, matched_count).
+    """
+    if not mentor_kws or not mentee_kws:
+        return 0.0, 0
+
+    m_norm = [normalize_keyword(k) for k in mentor_kws]
+    e_norm = [normalize_keyword(k) for k in mentee_kws]
+
+    vectorizer = TfidfVectorizer(
+        stop_words="english",
+        ngram_range=(1, 2),
+        min_df=1,
+        sublinear_tf=True,
+        analyzer="word",
+    )
+    try:
+        mat = vectorizer.fit_transform(e_norm + m_norm)
+        n_e = len(e_norm)
+        sim_matrix = cosine_similarity(mat[:n_e], mat[n_e:])
+        matched_count = int((sim_matrix.max(axis=1) >= threshold).sum())
+        if not matched_count:
+            return 0.0, 0
+        if matched_count > 4:
+            score = 1.0
+        elif matched_count > 2:
+            score = 0.7
+        else:
+            mentee_cov = matched_count / len(e_norm)
+            min_cov    = matched_count / min(len(m_norm), len(e_norm))
+            score = min((mentee_cov + min_cov) / 2, 1.0)
+        return score, matched_count
+    except Exception:
+        return 0.0, 0
+
+
 def _kw_sim_from_sets(mentor_norm: set[str], mentee_norm: set[str]) -> float:
     """
     Keyword similarity from pre-normalized vocab sets.
-    Denominator is mentee_vocab size: asks 'how much of what the mentee needs
-    does this mentor cover?' rather than dividing by the larger of the two pools.
+    Blends two coverage perspectives:
+      - mentee_cov: how much of the mentee's needs the mentor covers
+      - min_cov:    how well the smaller vocabulary is matched (specialist fit)
+    Averaging the two rewards mentors who fully cover their own niche even
+    when the mentee's research is broader.
     """
     if not mentor_norm or not mentee_norm:
         return 0.0
-    ref = len(mentee_norm)
-    return min(len(mentor_norm & mentee_norm) / ref, 1.0) if ref else 0.0
+    intersection = len(mentor_norm & mentee_norm)
+    if not intersection:
+        return 0.0
+    mentee_cov = intersection / len(mentee_norm)
+    min_cov    = intersection / min(len(mentor_norm), len(mentee_norm))
+    return min((mentee_cov + min_cov) / 2, 1.0)
 
 
 def _kw_similarity_matched_vocab(mentor: dict, mentee: dict) -> float:
@@ -348,7 +420,12 @@ def compute_keyword_similarity(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _availability_score(mentor: dict, mentee: dict) -> float:
-    """Jaccard overlap for days (0.6) and time slots (0.4)."""
+    """
+    Availability overlap for days (0.6) and time slots (0.4).
+    Days use smaller-set coverage: intersection / min(|mentor_days|, |mentee_days|).
+    This rewards genuine schedule alignment without penalising either side
+    for listing more available days. Time slots keep Jaccard (union denominator).
+    """
     mentor_days  = set(mentor.get("available_days") or [])
     mentee_days  = set(mentee.get("available_days") or [])
     mentor_slots = set(mentor.get("time_slot") or [])
@@ -357,11 +434,11 @@ def _availability_score(mentor: dict, mentee: dict) -> float:
     if not mentor_days or not mentee_days:
         return 0.0
 
-    day_union  = mentor_days | mentee_days
     slot_union = mentor_slots | mentee_slots
 
-    day_score  = len(mentor_days & mentee_days) / len(day_union)
-    slot_score = (
+    day_overlap = len(mentor_days & mentee_days)
+    day_score   = day_overlap / min(len(mentor_days), len(mentee_days))
+    slot_score  = (
         len(mentor_slots & mentee_slots) / len(slot_union)
         if slot_union else 0.0
     )
@@ -561,6 +638,32 @@ def get_matched_keywords(mentor: dict, mentee: dict) -> list[str]:
         key=len, reverse=True
     )
 
+    # Priority 3: semantic near-matches via TF-IDF cosine
+    # Mentee keywords not covered by exact/bigram matches that have a cosine
+    # similarity >= KW_SIMILARITY_THRESHOLD with any mentor keyword.
+    mentor_all_kws = _extract_vocab_matches(_build_direct_mentor_str(mentor))
+    mentee_all_kws = _extract_vocab_matches(_build_direct_mentee_str(mentee))
+    if mentor_all_kws and mentee_all_kws:
+        already = set(shared_vocab) | {bg for bg in extras}
+        m_norm_list = [normalize_keyword(k) for k in mentor_all_kws]
+        e_norm_list = [normalize_keyword(k) for k in mentee_all_kws]
+        try:
+            vec = TfidfVectorizer(
+                stop_words="english", ngram_range=(1, 2), min_df=1, sublinear_tf=True
+            )
+            mat = vec.fit_transform(e_norm_list + m_norm_list)
+            n_e = len(e_norm_list)
+            sim_mat = cosine_similarity(mat[:n_e], mat[n_e:])
+            for idx, ek in enumerate(mentee_all_kws):
+                if ek in already:
+                    continue
+                best = float(sim_mat[idx].max())
+                if best >= KW_SIMILARITY_THRESHOLD:
+                    already.add(ek)
+                    extras.append(ek)
+        except Exception:
+            pass
+
     return shared_vocab + extras
 
 
@@ -622,15 +725,17 @@ def compute_weighted_scores(
     mentees: list[dict],
     weights: Optional[ScoringWeights] = None,
     return_breakdowns: bool = False,
-    keyword_method: str = "matched_vocab",
+    keyword_method: str = "semantic",
 ) -> tuple[np.ndarray, list[list[ScoreBreakdown]] | None]:
     """
     Main scoring pipeline — 5 pillars, weights sum to 1.0.
 
     keyword_method:
-        "tfidf"   — current default: full document TF-IDF cosine (with boosting)
-        "bow"     — Approach A: keyword bag-of-words TF-IDF cosine (clean lists, no repetition)
-        "avg_max" — Approach B: per-keyword average max cosine using char n-grams
+        "semantic"      — default: pairwise TF-IDF cosine per keyword with threshold
+        "matched_vocab" — exact CS-vocab intersection with synonym normalization
+        "tfidf"         — full document TF-IDF cosine (with boosting)
+        "bow"           — Approach A: keyword bag-of-words TF-IDF cosine
+        "avg_max"       — Approach B: per-keyword average max cosine (char n-grams)
 
     Returns:
         scores:     np.ndarray shape (n_mentees, n_mentors) in [0, 1]
@@ -653,7 +758,25 @@ def compute_weighted_scores(
     _mentor_vocab_sets: list[set[str]] | None = None
     _mentee_vocab_sets: list[set[str]] | None = None
 
-    if keyword_method == "matched_vocab":
+    _semantic_kw_counts: np.ndarray | None = None  # populated by "semantic" path
+
+    if keyword_method == "semantic":
+        mentor_kw_lists = [_extract_vocab_matches(_build_direct_mentor_str(m)) for m in mentors]
+        mentee_kw_lists = [_extract_vocab_matches(_build_direct_mentee_str(me)) for me in mentees]
+        _semantic_results = [
+            [_kw_similarity_semantic(mentor_kw_lists[j], mentee_kw_lists[i])
+             for j in range(len(mentors))]
+            for i in range(len(mentees))
+        ]
+        kw_normalized = np.array(
+            [[r[0] for r in row] for row in _semantic_results],
+            dtype=np.float32,
+        )
+        _semantic_kw_counts = np.array(
+            [[r[1] for r in row] for row in _semantic_results],
+            dtype=int,
+        )
+    elif keyword_method == "matched_vocab":
         _mentor_vocab_sets = [
             {normalize_keyword(k) for k in _extract_vocab_matches(_build_direct_mentor_str(m))}
             for m in mentors
@@ -734,8 +857,11 @@ def compute_weighted_scores(
     # >= 1 shared keyword → +0.02; >= 2 → +0.04; >= 4 → +0.08.
     # Additive rather than a hard floor so all 5 pillars remain meaningful
     # even for pairs with keyword overlap.
-    if _mentor_vocab_sets is not None and _mentee_vocab_sets is not None:
-        # Reuse pre-computed sets (matched_vocab path) — avoids O(n×m) extra work
+    if _semantic_kw_counts is not None:
+        # Reuse counts from semantic scoring pass — avoids redundant computation
+        kw_counts = _semantic_kw_counts
+    elif _mentor_vocab_sets is not None and _mentee_vocab_sets is not None:
+        # Reuse pre-computed sets (matched_vocab path)
         kw_counts = np.array(
             [[len(_mentor_vocab_sets[j] & _mentee_vocab_sets[i])
               for j in range(len(mentors))]

@@ -1721,20 +1721,16 @@ export default function Admin() {
                                   ))}
                                 </div>
                               )}
-                              {(match.overlapping_days?.length > 0 || match.overlapping_slots?.length > 0) && (
-                                <div className="pl-9 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-slate-500">
-                                  {match.overlapping_days?.length > 0 && (
-                                    <span>
-                                      <span className="font-medium text-slate-600">Days: </span>
-                                      {match.overlapping_days.join(", ")}
-                                    </span>
-                                  )}
-                                  {match.overlapping_slots?.length > 0 && (
-                                    <span>
-                                      <span className="font-medium text-slate-600">Time: </span>
-                                      {match.overlapping_slots.join(", ")}
-                                    </span>
-                                  )}
+                              {match.overlapping_slots?.length > 0 && (
+                                <div className="pl-9 flex flex-wrap gap-1 mt-0.5">
+                                  <span className="text-[10px] font-medium text-slate-600 self-center mr-1">Schedule:</span>
+                                  {(match.overlapping_slots as string[]).map((entry: string) => {
+                                    const colon = entry.indexOf(":")
+                                    const display = colon !== -1
+                                      ? `${entry.slice(0, colon)} ${entry.slice(colon + 1)}`
+                                      : entry
+                                    return <Badge key={entry} variant="outline" className="text-[10px]">{display}</Badge>
+                                  })}
                                 </div>
                               )}
                             </div>
