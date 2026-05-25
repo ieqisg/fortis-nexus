@@ -596,11 +596,15 @@ if __name__ == "__main__":
             "proposal_events_meo":    resolve_events(proposal_events_meo) if proposal_events_meo is not None else None,
             "matches": [
                 {
-                    "mentee_name": mentee_map.get(r["mentee_group_id"], {}).get("group_name", ""),
-                    "mentor_name": f"{mentor_map.get(r['mentor_id'], {}).get('first_name', '')} {mentor_map.get(r['mentor_id'], {}).get('last_name', '')}".strip(),
-                    "score":       r["compatibility_score"],
-                    "keywords":    r["matched_keywords"],
-                    "algorithm":   r["algorithm"],
+                    "mentee_name":       mentee_map.get(r["mentee_group_id"], {}).get("group_name", ""),
+                    "mentor_name":       f"{mentor_map.get(r['mentor_id'], {}).get('first_name', '')} {mentor_map.get(r['mentor_id'], {}).get('last_name', '')}".strip(),
+                    "score":             r["compatibility_score"],
+                    "keywords":          r["matched_keywords"],
+                    "algorithm":         r["algorithm"],
+                    "overlapping_days":  sorted(set(mentor_map.get(r["mentor_id"], {}).get("available_days") or [])
+                                                & set(mentee_map.get(r["mentee_group_id"], {}).get("available_days") or [])),
+                    "overlapping_slots": sorted(set(mentor_map.get(r["mentor_id"], {}).get("time_slot") or [])
+                                                & set(mentee_map.get(r["mentee_group_id"], {}).get("time_slot") or [])),
                 }
                 for r in sorted(match_records, key=lambda r: r["compatibility_score"], reverse=True)
             ],

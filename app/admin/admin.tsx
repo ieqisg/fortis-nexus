@@ -54,6 +54,7 @@ import {
   Scale,
   Loader2,
   Crown,
+  ChevronDown,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -119,6 +120,9 @@ export default function Admin() {
   const [visibleMentorScores, setVisibleMentorScores] = useState(5)
   const [visibleMatches, setVisibleMatches] = useState(5)
   const [showAllProposals, setShowAllProposals] = useState(false)
+  const [phase1Open, setPhase1Open] = useState(false)
+  const [phase2Open, setPhase2Open] = useState(false)
+  const [phase3Open, setPhase3Open] = useState(false)
   const [rollingBack, setRollingBack] = useState(false)
   const [isRollbackDialogOpen, setIsRollbackDialogOpen] = useState(false)
   // capacity override state: mentorId → draft value while editing
@@ -895,7 +899,7 @@ export default function Admin() {
                     <div className="flex justify-between items-center">
                       <span className="font-medium text-sm">
                         {capacityGap > 0
-                          ? `⚠️ Deficit: ${capacityGap} slot${capacityGap > 1 ? "s" : ""} short`
+                          ? ` Deficit: ${capacityGap} slot${capacityGap > 1 ? "s" : ""} short`
                           : capacityGap < 0
                             ? ` Surplus: ${Math.abs(capacityGap)} extra slot${Math.abs(capacityGap) > 1 ? "s" : ""}`
                             : " Balanced"}
@@ -1331,297 +1335,359 @@ export default function Admin() {
                 ) : (
                   <div className="space-y-6">
 
+                    {/* Summary Banner */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-center">
+                        <p className="text-2xl font-bold text-emerald-700">{matchLog.matched}</p>
+                        <p className="text-xs text-emerald-600 mt-0.5">Matched</p>
+                      </div>
+                      {matchLog.unmatched > 0 ? (
+                        <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-center">
+                          <p className="text-2xl font-bold text-amber-700">{matchLog.unmatched}</p>
+                          <p className="text-xs text-amber-600 mt-0.5">Unmatched</p>
+                        </div>
+                      ) : (
+                        <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-center">
+                          <p className="text-2xl font-bold text-green-700">0</p>
+                          <p className="text-xs text-green-600 mt-0.5">Unmatched</p>
+                        </div>
+                      )}
+                      <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-center">
+                        <p className="text-sm font-semibold text-slate-700 leading-tight truncate">{matchLog.algorithm}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Algorithm</p>
+                      </div>
+                      <div className={`rounded-lg border p-3 text-center ${matchLog.is_stable ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
+                        <p className={`text-sm font-semibold ${matchLog.is_stable ? "text-green-700" : "text-red-700"}`}>
+                          {matchLog.is_stable ? "Stable" : "Unstable"}
+                        </p>
+                        <p className={`text-xs mt-0.5 ${matchLog.is_stable ? "text-green-600" : "text-red-600"}`}>Stability</p>
+                      </div>
+                    </div>
+
                     {/* Phase 1: Data Collection */}
                     <div className="border rounded-lg overflow-hidden">
-                      <div className="p-4 bg-blue-50 border-b border-blue-200">
-                        <div className="flex justify-between items-center">
+                      <button
+                        onClick={() => setPhase1Open(v => !v)}
+                        className="w-full p-4 bg-blue-50 border-b border-blue-200 flex justify-between items-center text-left"
+                      >
+                        <div className="flex items-center gap-3">
                           <h3 className="font-semibold">Phase 1: Data Collection & Preprocessing</h3>
-                          <span className="text-sm text-slate-500">{new Date(matchLog.timestamp).toLocaleString()}</span>
+                          <span className="text-xs text-slate-500 bg-blue-100 px-2 py-0.5 rounded-full">
+                            {matchLog.phase1.mentors_count} mentors · {matchLog.phase1.mentees_count} mentees
+                          </span>
                         </div>
-                      </div>
-                      <div className="p-4 space-y-3">
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
-                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm">Mentor profiles loaded</p>
-                            <p className="text-xs text-slate-500">{matchLog.phase1.mentors_count} mentor profiles successfully parsed and indexed.</p>
+                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${phase1Open ? "rotate-180" : ""}`} />
+                      </button>
+                      {phase1Open && (
+                        <div className="p-4 space-y-3">
+                          <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="font-medium text-sm">Mentor profiles loaded</p>
+                              <p className="text-xs text-slate-500">{matchLog.phase1.mentors_count} mentor profiles successfully parsed and indexed.</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="font-medium text-sm">Mentee group profiles loaded</p>
+                              <p className="text-xs text-slate-500">{matchLog.phase1.mentees_count} mentee groups successfully parsed and indexed.</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="font-medium text-sm">Keyword extraction complete</p>
+                              <p className="text-xs text-slate-500">TF-IDF with bigram prioritization and domain expansion applied to all profiles.</p>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
-                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm">Mentee group profiles loaded</p>
-                            <p className="text-xs text-slate-500">{matchLog.phase1.mentees_count} mentee groups successfully parsed and indexed.</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
-                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm">Keyword extraction complete</p>
-                            <p className="text-xs text-slate-500">TF-IDF with bigram prioritization and domain expansion applied to all profiles.</p>
-                          </div>
-                        </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* Phase 2: Compatibility Scoring */}
                     <div className="border rounded-lg overflow-hidden">
-                      <div className="p-4 bg-emerald-50 border-b border-emerald-200">
+                      <button
+                        onClick={() => setPhase2Open(v => !v)}
+                        className="w-full p-4 bg-emerald-50 border-b border-emerald-200 flex justify-between items-center text-left"
+                      >
                         <h3 className="font-semibold">Phase 2: Compatibility Scoring</h3>
-                      </div>
-                      <div className="p-4 space-y-3">
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
-                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm">Cosine similarity computed</p>
-                            <p className="text-xs text-slate-500">TF-IDF keyword vectors compared across all mentor-mentee pairs.</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
-                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm">Weighted scores applied</p>
-                            <p className="text-xs text-slate-500">Keyword similarity (60%), experience (20%), availability (10%), communication (5%), meeting frequency (5%)</p>
-                          </div>
-                        </div>
-
-                        {/* Score table per mentee */}
-                        {matchLog.phase2.scores?.length > 0 && (
-                          <div className="mt-4">
-                            <p className="font-medium text-sm mb-3">Top compatibility scores per mentee group:</p>
-                            <div className="space-y-3">
-                              {matchLog.phase2.scores.slice(0, visibleScores).map((entry: any) => (
-                                <div key={entry.mentee_id} className="border rounded-lg p-3 bg-white">
-                                  <p className="font-semibold text-sm text-gray-800 mb-2">{entry.mentee_name}</p>
-                                  <div className="space-y-1">
-                                    {entry.top_matches.map((match: any, idx: number) => (
-                                      <div key={idx} className="flex flex-wrap items-center justify-between text-xs bg-gray-50 rounded px-3 py-2 gap-2">
-                                        <span className="font-medium w-32 shrink-0">{match.mentor_name}</span>
-                                        <div className="flex gap-2 text-slate-500 flex-wrap">
-                                          <span>keyword: <strong>{match.keyword_score}</strong></span>
-                                          <span>exp: <strong>{match.experience_score}</strong></span>
-                                          <span>avail: <strong>{match.availability_score}</strong></span>
-                                          <span>comm: <strong>{match.communication_score}</strong></span>
-                                          <span>freq: <strong>{match.meeting_frequency_score}</strong></span>
-                                          <span className="text-blue-600 font-semibold">
-                                            final: {(match.final_score * 100).toFixed(1)}%
-                                          </span>
-                                        </div>
-                                        {match.communication_mode && (
-                                          <Badge variant="outline" className="text-xs">
-                                            {match.communication_mode}
-                                          </Badge>
-                                        )}
-                                        <div className="flex gap-1 flex-wrap">
-                                          {match.matched_keywords?.map((kw: string) => (
-                                            <Badge key={kw} variant="outline" className="text-xs">{kw}</Badge>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                              {matchLog.phase2.scores.length > 5 && (
-                                <button
-                                  onClick={() => setVisibleScores(v => v >= matchLog.phase2.scores.length ? 5 : Math.min(v + 5, matchLog.phase2.scores.length))}
-                                  className="text-sm text-blue-600 hover:underline mt-1 w-full text-center py-2"
-                                >
-                                  {visibleScores >= matchLog.phase2.scores.length
-                                    ? "Show Less"
-                                    : `Show More (${matchLog.phase2.scores.length - visibleScores} remaining)`}
-                                </button>
-                              )}
+                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${phase2Open ? "rotate-180" : ""}`} />
+                      </button>
+                      {phase2Open && (
+                        <div className="p-4 space-y-3">
+                          <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="font-medium text-sm">Cosine similarity computed</p>
+                              <p className="text-xs text-slate-500">TF-IDF keyword vectors compared across all mentor-mentee pairs.</p>
                             </div>
                           </div>
-                        )}
-
-                        {/* Score table per mentor */}
-                        {matchLog.phase2.mentor_scores?.length > 0 && (
-                          <div className="mt-4">
-                            <p className="font-medium text-sm mb-3">Top compatibility scores per mentor:</p>
-                            <div className="space-y-3">
-                              {matchLog.phase2.mentor_scores.slice(0, visibleMentorScores).map((entry: any) => (
-                                <div key={entry.mentor_id} className="border rounded-lg p-3 bg-white">
-                                  <p className="font-semibold text-sm text-gray-800 mb-1">{entry.mentor_name}</p>
-                                  {entry.experience_score != null && (
-                                    <p className="text-xs text-slate-500 mb-2">exp: <strong>{entry.experience_score}</strong></p>
-                                  )}
-                                  <div className="space-y-1">
-                                    {entry.top_matches.map((match: any, idx: number) => (
-                                      <div key={idx} className="flex flex-wrap items-center justify-between text-xs bg-gray-50 rounded px-3 py-2 gap-2">
-                                        <span className="font-medium w-32 shrink-0">{match.mentee_name}</span>
-                                        <div className="flex gap-2 text-slate-500 flex-wrap">
-                                          <span>keyword: <strong>{match.keyword_score}</strong></span>
-                                          <span>avail: <strong>{match.availability_score}</strong></span>
-                                          <span>comm: <strong>{match.communication_score}</strong></span>
-                                          <span>freq: <strong>{match.meeting_frequency_score}</strong></span>
-                                          <span className="text-blue-600 font-semibold">
-                                            final: {(match.final_score * 100).toFixed(2)}%
-                                          </span>
-                                        </div>
-                                        {match.communication_mode && (
-                                          <Badge variant="outline" className="text-xs">
-                                            {match.communication_mode}
-                                          </Badge>
-                                        )}
-                                        <div className="flex gap-1 flex-wrap">
-                                          {match.matched_keywords?.map((kw: string) => (
-                                            <Badge key={kw} variant="outline" className="text-xs">{kw}</Badge>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                              {matchLog.phase2.mentor_scores.length > 5 && (
-                                <button
-                                  onClick={() => setVisibleMentorScores(v => v >= matchLog.phase2.mentor_scores.length ? 5 : Math.min(v + 5, matchLog.phase2.mentor_scores.length))}
-                                  className="text-sm text-blue-600 hover:underline mt-1 w-full text-center py-2"
-                                >
-                                  {visibleMentorScores >= matchLog.phase2.mentor_scores.length
-                                    ? "Show Less"
-                                    : `Show More (${matchLog.phase2.mentor_scores.length - visibleMentorScores} remaining)`}
-                                </button>
-                              )}
+                          <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="font-medium text-sm">Weighted scores applied</p>
+                              <p className="text-xs text-slate-500">Keyword similarity (60%), experience (20%), availability (10%), communication (5%), meeting frequency (5%)</p>
                             </div>
                           </div>
-                        )}
-                      </div>
+
+                          {/* Score table per mentee */}
+                          {matchLog.phase2.scores?.length > 0 && (
+                            <div className="mt-4">
+                              <p className="font-medium text-sm mb-3">Top compatibility scores per mentee group:</p>
+                              <div className="space-y-3">
+                                {matchLog.phase2.scores.slice(0, visibleScores).map((entry: any) => (
+                                  <div key={entry.mentee_id} className="border rounded-lg p-3 bg-white">
+                                    <p className="font-semibold text-sm text-gray-800 mb-2">{entry.mentee_name}</p>
+                                    <div className="space-y-2">
+                                      {entry.top_matches.map((match: any, idx: number) => {
+                                        const scoreColor = match.final_score >= 0.65 ? "bg-green-100 text-green-700"
+                                          : match.final_score >= 0.40 ? "bg-amber-100 text-amber-700"
+                                          : "bg-red-100 text-red-700"
+                                        return (
+                                          <div key={idx} className="text-xs bg-gray-50 rounded px-3 py-2 space-y-1.5">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                              <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold flex items-center justify-center shrink-0">{idx + 1}</span>
+                                              <span className="font-medium w-32 shrink-0">{match.mentor_name}</span>
+                                              <div className="flex gap-2 text-slate-500 flex-wrap flex-1">
+                                                <span>kw: <strong>{match.keyword_score}</strong></span>
+                                                <span>exp: <strong>{match.experience_score}</strong></span>
+                                                <span>avail: <strong>{match.availability_score}</strong></span>
+                                                <span>comm: <strong>{match.communication_score}</strong></span>
+                                                <span>freq: <strong>{match.meeting_frequency_score}</strong></span>
+                                              </div>
+                                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${scoreColor}`}>
+                                                {(match.final_score * 100).toFixed(1)}%
+                                              </span>
+                                              {match.communication_mode && (
+                                                <Badge variant="outline" className="text-[10px]">{match.communication_mode}</Badge>
+                                              )}
+                                            </div>
+                                            {match.matched_keywords?.length > 0 && (
+                                              <div className="flex gap-1 flex-wrap pl-7 pt-1 border-t border-slate-100">
+                                                {match.matched_keywords.map((kw: string) => (
+                                                  <Badge key={kw} variant="outline" className="text-[10px]">{kw}</Badge>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  </div>
+                                ))}
+                                {matchLog.phase2.scores.length > 5 && (
+                                  <button
+                                    onClick={() => setVisibleScores(v => v >= matchLog.phase2.scores.length ? 5 : Math.min(v + 5, matchLog.phase2.scores.length))}
+                                    className="text-sm text-blue-600 hover:underline mt-1 w-full text-center py-2"
+                                  >
+                                    {visibleScores >= matchLog.phase2.scores.length
+                                      ? "Show Less"
+                                      : `Show More (${matchLog.phase2.scores.length - visibleScores} remaining)`}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Score table per mentor */}
+                          {matchLog.phase2.mentor_scores?.length > 0 && (
+                            <div className="mt-4">
+                              <p className="font-medium text-sm mb-3">Top compatibility scores per mentor:</p>
+                              <div className="space-y-3">
+                                {matchLog.phase2.mentor_scores.slice(0, visibleMentorScores).map((entry: any) => (
+                                  <div key={entry.mentor_id} className="border rounded-lg p-3 bg-white">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <p className="font-semibold text-sm text-gray-800">{entry.mentor_name}</p>
+                                      {entry.experience_score != null && (
+                                        <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">exp: {entry.experience_score}</span>
+                                      )}
+                                    </div>
+                                    <div className="space-y-2">
+                                      {entry.top_matches.map((match: any, idx: number) => {
+                                        const scoreColor = match.final_score >= 0.65 ? "bg-green-100 text-green-700"
+                                          : match.final_score >= 0.40 ? "bg-amber-100 text-amber-700"
+                                          : "bg-red-100 text-red-700"
+                                        return (
+                                          <div key={idx} className="text-xs bg-gray-50 rounded px-3 py-2 space-y-1.5">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                              <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold flex items-center justify-center shrink-0">{idx + 1}</span>
+                                              <span className="font-medium w-32 shrink-0">{match.mentee_name}</span>
+                                              <div className="flex gap-2 text-slate-500 flex-wrap flex-1">
+                                                <span>kw: <strong>{match.keyword_score}</strong></span>
+                                                <span>avail: <strong>{match.availability_score}</strong></span>
+                                                <span>comm: <strong>{match.communication_score}</strong></span>
+                                                <span>freq: <strong>{match.meeting_frequency_score}</strong></span>
+                                              </div>
+                                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${scoreColor}`}>
+                                                {(match.final_score * 100).toFixed(1)}%
+                                              </span>
+                                              {match.communication_mode && (
+                                                <Badge variant="outline" className="text-[10px]">{match.communication_mode}</Badge>
+                                              )}
+                                            </div>
+                                            {match.matched_keywords?.length > 0 && (
+                                              <div className="flex gap-1 flex-wrap pl-7 pt-1 border-t border-slate-100">
+                                                {match.matched_keywords.map((kw: string) => (
+                                                  <Badge key={kw} variant="outline" className="text-[10px]">{kw}</Badge>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  </div>
+                                ))}
+                                {matchLog.phase2.mentor_scores.length > 5 && (
+                                  <button
+                                    onClick={() => setVisibleMentorScores(v => v >= matchLog.phase2.mentor_scores.length ? 5 : Math.min(v + 5, matchLog.phase2.mentor_scores.length))}
+                                    className="text-sm text-blue-600 hover:underline mt-1 w-full text-center py-2"
+                                  >
+                                    {visibleMentorScores >= matchLog.phase2.mentor_scores.length
+                                      ? "Show Less"
+                                      : `Show More (${matchLog.phase2.mentor_scores.length - visibleMentorScores} remaining)`}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Phase 3: Matching */}
                     <div className="border rounded-lg overflow-hidden">
-                      <div className="p-4 bg-amber-50 border-b border-amber-200">
+                      <button
+                        onClick={() => setPhase3Open(v => !v)}
+                        className="w-full p-4 bg-amber-50 border-b border-amber-200 flex justify-between items-center text-left"
+                      >
                         <h3 className="font-semibold">Phase 3: Hospital-Resident Matching (Gale-Shapley)</h3>
-                      </div>
-                      <div className="p-4 space-y-3">
+                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${phase3Open ? "rotate-180" : ""}`} />
+                      </button>
+                      {phase3Open && (
+                        <div className="p-4 space-y-3">
 
-                        {/* Preferences */}
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
-                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                          <div className="w-full">
-                            <p className="font-medium text-sm mb-2">Preference lists generated</p>
-                            <div className="grid md:grid-cols-2 gap-4">
-                              <div>
-                                <p className="text-xs font-semibold text-gray-600 mb-2">Mentee Preferences (top 3 mentors):</p>
-                                <div className="space-y-1">
-                                  {matchLog.phase3.preferences?.mentee_preferences?.map((pref: any) => (
-                                    <div key={pref.mentee_name} className="text-xs text-slate-600 bg-white rounded px-2 py-1">
-                                      <span className="font-medium text-gray-800">{pref.mentee_name}:</span>{" "}
-                                      <span>{pref.ranked_mentors.slice(0, 3).join(" → ")}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                              <div>
-                                <p className="text-xs font-semibold text-gray-600 mb-2">Mentor Preferences (top 3 mentees):</p>
-                                <div className="space-y-1">
-                                  {matchLog.phase3.preferences?.mentor_preferences?.map((pref: any) => (
-                                    <div key={pref.mentor_name} className="text-xs text-slate-600 bg-white rounded px-2 py-1">
-                                      <span className="font-medium text-gray-800">{pref.mentor_name}:</span>{" "}
-                                      <span>{pref.ranked_mentees.slice(0, 3).join(" → ")}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Proposal Phase */}
-                        {(() => {
-                          const typeColors: Record<string, string> = {
-                            propose: "bg-blue-100 text-blue-700",
-                            accept: "bg-green-100 text-green-700",
-                            reject: "bg-red-100 text-red-700",
-                            replace: "bg-orange-100 text-orange-700",
-                          }
-                          const blocks: { label: string; events: any[]; key: string }[] = []
-                          if (matchLog.phase3.proposal_events_mo?.length) {
-                            blocks.push({ label: "Mentee-Optimal", events: matchLog.phase3.proposal_events_mo, key: "mo" })
-                          }
-                          if (matchLog.phase3.proposal_events_meo?.length) {
-                            blocks.push({ label: "Mentor-Optimal", events: matchLog.phase3.proposal_events_meo, key: "meo" })
-                          }
-                          if (blocks.length === 0) return null
-                          return blocks.map(({ label, events, key }) => (
-                            <div key={key} className="rounded-lg border border-slate-200 overflow-hidden">
-                              <div className="p-3 bg-slate-50 border-b border-slate-200">
-                                <p className="text-xs font-semibold text-slate-700">
-                                  Proposal Phase · {label} ({events.length} events)
-                                </p>
-                              </div>
-                              <div className="p-3 space-y-1 max-h-72 overflow-y-auto">
-                                {(showAllProposals ? events : events.slice(0, 20)).map((ev: any, idx: number) => (
-                                  <div key={idx} className="flex items-center gap-2 text-xs font-mono">
-                                    <span className="text-slate-400 w-8 text-right shrink-0">#{ev.round}</span>
-                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0 ${typeColors[ev.type] ?? "bg-slate-100 text-slate-600"}`}>
-                                      {ev.type}
-                                    </span>
-                                    <span className="text-slate-700 truncate">{ev.proposer}</span>
-                                    <span className="text-slate-400 shrink-0">→</span>
-                                    <span className="text-slate-700 truncate">{ev.to}</span>
-                                    {ev.replaced && (
-                                      <span className="text-orange-600 truncate">(replaced: {ev.replaced})</span>
-                                    )}
+                          {/* Preferences */}
+                          <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                            <div className="w-full">
+                              <p className="font-medium text-sm mb-2">Preference lists generated</p>
+                              <div className="grid md:grid-cols-2 gap-4">
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-600 mb-2">Mentee Preferences (top 3 mentors):</p>
+                                  <div className="space-y-1">
+                                    {matchLog.phase3.preferences?.mentee_preferences?.map((pref: any) => (
+                                      <div key={pref.mentee_name} className="text-xs text-slate-600 bg-white rounded px-2 py-1">
+                                        <span className="font-medium text-gray-800">{pref.mentee_name}:</span>{" "}
+                                        <span>{pref.ranked_mentors.slice(0, 3).join(" → ")}</span>
+                                      </div>
+                                    ))}
                                   </div>
-                                ))}
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-600 mb-2">Mentor Preferences (top 3 mentees):</p>
+                                  <div className="space-y-1">
+                                    {matchLog.phase3.preferences?.mentor_preferences?.map((pref: any) => (
+                                      <div key={pref.mentor_name} className="text-xs text-slate-600 bg-white rounded px-2 py-1">
+                                        <span className="font-medium text-gray-800">{pref.mentor_name}:</span>{" "}
+                                        <span>{pref.ranked_mentees.slice(0, 3).join(" → ")}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               </div>
-                              {events.length > 20 && (
-                                <button
-                                  onClick={() => setShowAllProposals(v => !v)}
-                                  className="text-xs text-blue-600 hover:underline w-full text-center py-2 border-t border-slate-100"
-                                >
-                                  {showAllProposals ? "Show Less" : `Show All ${events.length} Events`}
-                                </button>
-                              )}
                             </div>
-                          ))
-                        })()}
+                          </div>
 
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
-                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm">Mentee-optimal HR completed</p>
-                            <p className="text-xs text-slate-500">{matchLog.phase3.mentee_optimal_matches} pairs matched (best outcome for mentees)</p>
+                          {/* Proposal Phase */}
+                          {(() => {
+                            const typeColors: Record<string, string> = {
+                              propose: "bg-blue-100 text-blue-700",
+                              accept: "bg-green-100 text-green-700",
+                              reject: "bg-red-100 text-red-700",
+                              replace: "bg-orange-100 text-orange-700",
+                            }
+                            const blocks: { label: string; events: any[]; key: string }[] = []
+                            if (matchLog.phase3.proposal_events_mo?.length) {
+                              blocks.push({ label: "Mentee-Optimal", events: matchLog.phase3.proposal_events_mo, key: "mo" })
+                            }
+                            if (matchLog.phase3.proposal_events_meo?.length) {
+                              blocks.push({ label: "Mentor-Optimal", events: matchLog.phase3.proposal_events_meo, key: "meo" })
+                            }
+                            if (blocks.length === 0) return null
+                            return blocks.map(({ label, events, key }) => (
+                              <div key={key} className="rounded-lg border border-slate-200 overflow-hidden">
+                                <div className="p-3 bg-slate-50 border-b border-slate-200">
+                                  <p className="text-xs font-semibold text-slate-700">
+                                    Proposal Phase · {label} ({events.length} events)
+                                  </p>
+                                </div>
+                                <div className="p-3 space-y-1 max-h-72 overflow-y-auto">
+                                  {(showAllProposals ? events : events.slice(0, 20)).map((ev: any, idx: number) => (
+                                    <div key={idx} className="flex items-center gap-2 text-xs font-mono">
+                                      <span className="text-slate-400 w-8 text-right shrink-0">#{ev.round}</span>
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0 ${typeColors[ev.type] ?? "bg-slate-100 text-slate-600"}`}>
+                                        {ev.type}
+                                      </span>
+                                      <span className="text-slate-700 truncate">{ev.proposer}</span>
+                                      <span className="text-slate-400 shrink-0">→</span>
+                                      <span className="text-slate-700 truncate">{ev.to}</span>
+                                      {ev.replaced && (
+                                        <span className="text-orange-600 truncate">(replaced: {ev.replaced})</span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                                {events.length > 20 && (
+                                  <button
+                                    onClick={() => setShowAllProposals(v => !v)}
+                                    className="text-xs text-blue-600 hover:underline w-full text-center py-2 border-t border-slate-100"
+                                  >
+                                    {showAllProposals ? "Show Less" : `Show All ${events.length} Events`}
+                                  </button>
+                                )}
+                              </div>
+                            ))
+                          })()}
+
+                          {/* Algorithm comparison + stability */}
+                          <div className="rounded-lg border border-slate-200 p-3 space-y-2">
+                            <p className="text-xs font-semibold text-slate-600">Algorithm Comparison</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="rounded bg-slate-50 px-3 py-2 text-center">
+                                <p className="text-lg font-bold text-slate-700">{matchLog.phase3.mentee_optimal_matches}</p>
+                                <p className="text-[10px] text-slate-500">Mentee-Optimal pairs</p>
+                              </div>
+                              <div className="rounded bg-slate-50 px-3 py-2 text-center">
+                                <p className="text-lg font-bold text-slate-700">{matchLog.phase3.mentor_optimal_matches}</p>
+                                <p className="text-[10px] text-slate-500">Mentor-Optimal pairs</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 pt-1">
+                              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <p className="text-xs text-slate-600">
+                                Selected <strong>{matchLog.phase3.selected_algorithm}</strong> — minimizes combined dissatisfaction
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className={`flex items-start gap-3 p-3 rounded-lg ${matchLog.phase3.is_stable ? "bg-green-50" : "bg-red-50"}`}>
+                            {matchLog.phase3.is_stable
+                              ? <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                              : <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                            }
+                            <div>
+                              <p className="font-medium text-sm">Stability verification</p>
+                              <p className="text-xs text-slate-500">
+                                {matchLog.phase3.is_stable
+                                  ? "Matching is stable — no blocking pairs found"
+                                  : "Blocking pairs detected — matching may be unstable"}
+                              </p>
+                            </div>
                           </div>
                         </div>
-
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
-                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm">Mentor-optimal HR completed</p>
-                            <p className="text-xs text-slate-500">{matchLog.phase3.mentor_optimal_matches} pairs matched (best outcome for mentors)</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
-                          <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm">Fairer matching selected</p>
-                            <p className="text-xs text-slate-500">
-                              Selected: <strong>{matchLog.phase3.selected_algorithm}</strong> — minimizes combined dissatisfaction from both sides
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className={`flex items-start gap-3 p-3 rounded-lg ${matchLog.phase3.is_stable ? "bg-green-50" : "bg-red-50"}`}>
-                          {matchLog.phase3.is_stable
-                            ? <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                            : <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-                          }
-                          <div>
-                            <p className="font-medium text-sm">Stability verification</p>
-                            <p className="text-xs text-slate-500">
-                              {matchLog.phase3.is_stable
-                                ? " Matching is stable — no blocking pairs found"
-                                : " Blocking pairs detected — matching may be unstable"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* Final Matches */}
@@ -1632,18 +1698,48 @@ export default function Admin() {
                         {matchLog.unmatched > 0 && `, ${matchLog.unmatched} unmatched`})
                       </h3>
                       <div className="space-y-2">
-                        {matchLog.phase3.matches?.slice(0, visibleMatches).map((match: any, idx: number) => (
-                          <div key={idx} className="flex flex-wrap items-center justify-between p-2 bg-white rounded gap-2">
-                            <span className="font-medium text-sm w-36 shrink-0">{match.mentee_name}</span>
-                            <span className="text-emerald-600 text-sm">→ {match.mentor_name}</span>
-                            <span className="text-slate-500 text-xs bg-slate-100 px-2 py-0.5 rounded">score: {match.score}</span>
-                            <div className="flex gap-1 flex-wrap">
-                              {match.keywords?.map((kw: string) => (
-                                <Badge key={kw} variant="outline" className="text-xs">{kw}</Badge>
-                              ))}
+                        {matchLog.phase3.matches?.slice(0, visibleMatches).map((match: any, idx: number) => {
+                          const pct = (match.score * 100).toFixed(1)
+                          const scoreColor = match.score >= 0.65 ? "bg-green-100 text-green-700"
+                            : match.score >= 0.40 ? "bg-amber-100 text-amber-700"
+                            : "bg-red-100 text-red-700"
+                          return (
+                            <div key={idx} className="p-3 bg-white rounded-lg border border-green-100 space-y-1.5">
+                              <div className="flex items-center gap-3">
+                                <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center shrink-0">
+                                  {idx + 1}
+                                </span>
+                                <span className="font-medium text-sm flex-1">{match.mentee_name}</span>
+                                <span className="text-slate-400 text-sm shrink-0">→</span>
+                                <span className="text-emerald-700 font-medium text-sm flex-1 text-right">{match.mentor_name}</span>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${scoreColor}`}>{pct}%</span>
+                              </div>
+                              {match.keywords?.length > 0 && (
+                                <div className="flex gap-1 flex-wrap pl-9">
+                                  {match.keywords.map((kw: string) => (
+                                    <Badge key={kw} variant="outline" className="text-[10px]">{kw}</Badge>
+                                  ))}
+                                </div>
+                              )}
+                              {(match.overlapping_days?.length > 0 || match.overlapping_slots?.length > 0) && (
+                                <div className="pl-9 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-slate-500">
+                                  {match.overlapping_days?.length > 0 && (
+                                    <span>
+                                      <span className="font-medium text-slate-600">Days: </span>
+                                      {match.overlapping_days.join(", ")}
+                                    </span>
+                                  )}
+                                  {match.overlapping_slots?.length > 0 && (
+                                    <span>
+                                      <span className="font-medium text-slate-600">Time: </span>
+                                      {match.overlapping_slots.join(", ")}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                       {(matchLog.phase3.matches?.length ?? 0) > 5 && (
                         <button

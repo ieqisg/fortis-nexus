@@ -17,7 +17,10 @@ technical terms are always extracted when present, regardless of TF-IDF ranking.
 
 import re
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
+
+
+_STOPWORDS: frozenset[str] = frozenset(ENGLISH_STOP_WORDS)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -91,6 +94,10 @@ def _prenormalize(text: str) -> str:
 # 1. TEXT CLEANING
 # ─────────────────────────────────────────────────────────────────────────────
 
+def remove_stopwords(text: str) -> str:
+    return " ".join(t for t in text.split() if t not in _STOPWORDS)
+
+
 def clean_text(text: str) -> str:
     if not text:
         return ""
@@ -98,7 +105,7 @@ def clean_text(text: str) -> str:
     text = text.lower()
     text = re.sub(r"[^a-z0-9\s]", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
-    return text
+    return remove_stopwords(text)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
