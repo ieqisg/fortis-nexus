@@ -61,9 +61,10 @@ def infer_communication_mode(available_days: list[str]) -> str:
     Infers preferred communication mode from available days.
 
     Rules:
-        Any day in {Tuesday, Friday}          → ONLINE_MEETING
-        Days only in {Mon, Wed, Thu, Sat}     → FACE_TO_FACE
-        No days                               → FLEXIBLE
+        Both online days {Tue, Fri} AND face-to-face days {Mon, Wed, Thu, Sat} → FLEXIBLE
+        Only online days {Tuesday, Friday}                                      → ONLINE_MEETING
+        Only face-to-face days {Mon, Wed, Thu, Sat}                            → FACE_TO_FACE
+        No days                                                                 → FLEXIBLE
 
     Returns: "ONLINE_MEETING" | "FACE_TO_FACE" | "FLEXIBLE"
     """
@@ -71,6 +72,8 @@ def infer_communication_mode(available_days: list[str]) -> str:
     has_online = bool(days & _ONLINE_DAYS)
     has_f2f    = bool(days & _FACE_TO_FACE_DAYS)
 
+    if has_online and has_f2f:
+        return "FLEXIBLE"
     if has_online:
         return "ONLINE_MEETING"
     if has_f2f:

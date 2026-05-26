@@ -14,7 +14,7 @@ export type PublishedPaper = {
     authors?: string[]
 }
 
-export type CommunicationPreference = "FACE_TO_FACE" | "ONLINE_MEETING";
+export type CommunicationPreference = "FACE_TO_FACE" | "ONLINE_MEETING" | "FLEXIBLE";
 
 export interface MentorFormProfile {
     first_name: string;

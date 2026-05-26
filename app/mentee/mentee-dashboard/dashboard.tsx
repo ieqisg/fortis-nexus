@@ -289,6 +289,7 @@ export default function MenteeDashboard() {
                                                     const commLabel = (p: string | null | undefined) => {
                                                         if (!p) return "—"
                                                         if (p === "FACE_TO_FACE") return "Face to Face"
+                                                        if (p === "FLEXIBLE") return "Flexible"
                                                         return "Online Meeting"
                                                     }
                                                     const commMatch = !!mentee?.communication_preference &&
