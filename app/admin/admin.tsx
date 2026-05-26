@@ -1443,7 +1443,7 @@ export default function Admin() {
                                       {entry.top_matches.map((match: any, idx: number) => {
                                         const scoreColor = match.final_score >= 0.65 ? "bg-green-100 text-green-700"
                                           : match.final_score >= 0.40 ? "bg-amber-100 text-amber-700"
-                                          : "bg-red-100 text-red-700"
+                                            : "bg-red-100 text-red-700"
                                         return (
                                           <div key={idx} className="text-xs bg-gray-50 rounded px-3 py-2 space-y-1.5">
                                             <div className="flex flex-wrap items-center gap-2">
@@ -1507,7 +1507,7 @@ export default function Admin() {
                                       {entry.top_matches.map((match: any, idx: number) => {
                                         const scoreColor = match.final_score >= 0.65 ? "bg-green-100 text-green-700"
                                           : match.final_score >= 0.40 ? "bg-amber-100 text-amber-700"
-                                          : "bg-red-100 text-red-700"
+                                            : "bg-red-100 text-red-700"
                                         return (
                                           <div key={idx} className="text-xs bg-gray-50 rounded px-3 py-2 space-y-1.5">
                                             <div className="flex flex-wrap items-center gap-2">
@@ -1702,7 +1702,7 @@ export default function Admin() {
                           const pct = (match.score * 100).toFixed(1)
                           const scoreColor = match.score >= 0.65 ? "bg-green-100 text-green-700"
                             : match.score >= 0.40 ? "bg-amber-100 text-amber-700"
-                            : "bg-red-100 text-red-700"
+                              : "bg-red-100 text-red-700"
                           return (
                             <div key={idx} className="p-3 bg-white rounded-lg border border-green-100 space-y-1.5">
                               <div className="flex items-center gap-3">

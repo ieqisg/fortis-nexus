@@ -314,14 +314,16 @@ def _kw_similarity_semantic(
     threshold: float = KW_SIMILARITY_THRESHOLD,
 ) -> tuple[float, int]:
     """
-    Pairwise TF-IDF cosine between keyword lists with a similarity threshold.
+    Two-step keyword matching that guarantees exact vocab intersections are counted.
 
-    1. Normalize each keyword via normalize_keyword() (maps abbreviations like
-       "nlp" → "natural language processing" before vectorizing).
-    2. Fit a word-level TF-IDF vectorizer on the combined keyword corpus.
-    3. Compute cosine similarity matrix: shape (n_mentee, n_mentor).
-    4. A mentee keyword is "matched" when max(row) >= threshold.
-    5. Score blends mentee-coverage and min-set-coverage.
+    Step 1 — exact: normalized mentee keywords that appear verbatim in the mentor
+             list are counted immediately; no TF-IDF needed.
+    Step 2 — semantic: remaining unmatched mentee keywords are compared via pairwise
+             TF-IDF cosine against all mentor keywords; any row with max >= threshold
+             adds to the count.
+
+    This ensures Priority-1 exact matches (same as get_matched_keywords) are never
+    missed due to TF-IDF corpus artifacts.
 
     Returns (score, matched_count).
     """
@@ -331,31 +333,36 @@ def _kw_similarity_semantic(
     m_norm = [normalize_keyword(k) for k in mentor_kws]
     e_norm = [normalize_keyword(k) for k in mentee_kws]
 
-    vectorizer = TfidfVectorizer(
-        stop_words="english",
-        ngram_range=(1, 2),
-        min_df=1,
-        sublinear_tf=True,
-        analyzer="word",
-    )
-    try:
-        mat = vectorizer.fit_transform(e_norm + m_norm)
-        n_e = len(e_norm)
-        sim_matrix = cosine_similarity(mat[:n_e], mat[n_e:])
-        matched_count = int((sim_matrix.max(axis=1) >= threshold).sum())
-        if not matched_count:
-            return 0.0, 0
-        if matched_count > 4:
-            score = 1.0
-        elif matched_count > 2:
-            score = 0.7
-        else:
-            mentee_cov = matched_count / len(e_norm)
-            min_cov    = matched_count / min(len(m_norm), len(e_norm))
-            score = min((mentee_cov + min_cov) / 2, 1.0)
-        return score, matched_count
-    except Exception:
+    # Step 1: exact normalized intersections (guaranteed match)
+    m_set = set(m_norm)
+    exact_matched = {ek for ek in e_norm if ek in m_set}
+    exact_count = len(exact_matched)
+
+    # Step 2: semantic near-matches for remaining mentee keywords
+    remaining_e = [ek for ek in e_norm if ek not in exact_matched]
+    semantic_extra = 0
+    if remaining_e:
+        vectorizer = TfidfVectorizer(
+            stop_words="english",
+            ngram_range=(1, 2),
+            min_df=1,
+            sublinear_tf=True,
+            analyzer="word",
+        )
+        try:
+            mat = vectorizer.fit_transform(remaining_e + m_norm)
+            n_r = len(remaining_e)
+            sub_sim = cosine_similarity(mat[:n_r], mat[n_r:])
+            semantic_extra = int((sub_sim.max(axis=1) >= threshold).sum())
+        except Exception:
+            pass
+
+    matched_count = exact_count + semantic_extra
+    if not matched_count:
         return 0.0, 0
+    _KW_TIER = {1: 0.35, 2: 0.60, 3: 0.85}
+    score = _KW_TIER.get(matched_count, 1.0)
+    return score, matched_count
 
 
 def _kw_sim_from_sets(mentor_norm: set[str], mentee_norm: set[str]) -> float:
