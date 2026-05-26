@@ -3,10 +3,15 @@
 import { createClient } from "@supabase/supabase-js"
 import type { PublishedPaper, PrevMentoredThesis } from "@/types/mentorTypes"
 
-const ONLINE_DAYS = new Set(["Tuesday", "Friday"]);
-function inferCommunicationPreference(days: string[]): "FACE_TO_FACE" | "ONLINE_MEETING" | null {
+const ONLINE_DAYS  = new Set(["Tuesday", "Friday"]);
+const F2F_DAYS     = new Set(["Monday", "Wednesday", "Thursday", "Saturday"]);
+function inferCommunicationPreference(days: string[]): "FACE_TO_FACE" | "ONLINE_MEETING" | "FLEXIBLE" | null {
     if (!days || days.length === 0) return null;
-    return days.some((d) => ONLINE_DAYS.has(d)) ? "ONLINE_MEETING" : "FACE_TO_FACE";
+    const hasOnline = days.some((d) => ONLINE_DAYS.has(d));
+    const hasF2F    = days.some((d) => F2F_DAYS.has(d));
+    if (hasOnline && hasF2F) return "FLEXIBLE";
+    if (hasOnline) return "ONLINE_MEETING";
+    return "FACE_TO_FACE";
 }
 
 const supabase = createClient(

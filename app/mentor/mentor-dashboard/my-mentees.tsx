@@ -33,6 +33,7 @@ type Props = {
 function commLabel(pref: string | null | undefined) {
     if (!pref) return "—"
     if (pref === "FACE_TO_FACE") return "Face to Face"
+    if (pref === "FLEXIBLE") return "Flexible"
     return "Online Meeting"
 }
 

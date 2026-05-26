@@ -203,6 +203,165 @@ DOMAIN_MAP = {
         "time complexity", "space complexity", "big o notation",
         "asymptotic analysis", "recurrence relation",
     ],
+
+    # ── HCI & UX ──────────────────────────────────────────────────────────
+    "human computer interaction": [
+        "hci", "user interface", "user experience", "usability testing",
+        "interaction design", "cognitive load", "user centered design",
+        "accessibility", "navigation design", "information architecture",
+        "ui design", "ux design", "human factors",
+    ],
+    "hci": [
+        "human computer interaction", "user interface", "user experience",
+        "usability", "interaction design", "cognitive load",
+    ],
+    "usability": [
+        "usability testing", "usability engineering", "user centered design",
+        "cognitive load", "task analysis", "user research",
+        "human computer interaction", "hci",
+    ],
+    "usability testing": [
+        "usability engineering", "user research", "task analysis",
+        "cognitive load", "human computer interaction", "hci",
+    ],
+    "user experience": [
+        "ux design", "ui design", "usability", "interaction design",
+        "user centered design", "human computer interaction",
+        "navigation design", "information architecture",
+    ],
+    "ux": [
+        "user experience", "ux design", "usability", "interaction design",
+        "ui design", "human computer interaction",
+    ],
+    "cognitive load": [
+        "usability", "user experience", "human computer interaction",
+        "educational technology", "navigation optimization",
+        "information architecture", "adaptive learning",
+    ],
+    "navigation optimization": [
+        "shortest path algorithm", "graph algorithms", "floyd warshall",
+        "user navigation", "cognitive load", "usability",
+        "educational applications",
+    ],
+
+    # ── Educational technology ─────────────────────────────────────────────
+    "educational technology": [
+        "e learning", "intelligent tutoring system", "learning management system",
+        "adaptive learning", "gamification", "educational applications",
+        "learning analytics", "edtech", "personalized learning",
+    ],
+    "edtech": [
+        "educational technology", "e learning", "adaptive learning",
+        "learning management system", "educational applications",
+        "intelligent tutoring system",
+    ],
+    "intelligent tutoring system": [
+        "adaptive learning", "educational technology", "machine learning",
+        "personalized learning", "learning analytics", "e learning",
+    ],
+    "adaptive learning": [
+        "personalized learning", "intelligent tutoring system",
+        "educational technology", "machine learning", "learning analytics",
+        "recommendation systems", "cognitive load",
+    ],
+    "e learning": [
+        "educational technology", "learning management system",
+        "adaptive learning", "online learning", "edtech",
+        "educational applications",
+    ],
+
+    # ── Graph algorithms (extended) ────────────────────────────────────────
+    "floyd warshall": [
+        "all pairs shortest path", "dynamic programming", "graph algorithms",
+        "shortest path", "weighted graph", "navigation optimization",
+    ],
+    "bellman ford": [
+        "shortest path", "single source shortest path", "graph algorithms",
+        "weighted graph", "negative weight edges",
+    ],
+    "dijkstra": [
+        "shortest path", "graph algorithms", "greedy algorithms",
+        "single source shortest path", "weighted graph",
+    ],
+    "kruskal": [
+        "minimum spanning tree", "greedy algorithms", "graph algorithms",
+        "union find", "disjoint set",
+    ],
+    "prim": [
+        "minimum spanning tree", "greedy algorithms", "graph algorithms",
+        "weighted graph",
+    ],
+    "network flow": [
+        "maximum flow", "minimum cut", "ford fulkerson", "edmonds karp",
+        "bipartite matching", "graph algorithms",
+    ],
+    "shortest path": [
+        "dijkstra", "bellman ford", "floyd warshall", "a star",
+        "graph algorithms", "single source shortest path",
+        "all pairs shortest path",
+    ],
+    "minimum spanning tree": [
+        "kruskal", "prim", "greedy algorithms", "graph algorithms",
+        "spanning tree", "weighted graph",
+    ],
+    "strongly connected components": [
+        "scc", "tarjan algorithm", "kosaraju algorithm", "graph algorithms",
+        "directed graph",
+    ],
+
+    # ── Extended classical algorithms ──────────────────────────────────────
+    "dynamic programming": [
+        "memoization", "tabulation", "optimal substructure",
+        "overlapping subproblems", "knapsack problem",
+        "longest common subsequence", "longest increasing subsequence",
+        "coin change", "matrix chain multiplication",
+    ],
+    "huffman coding": [
+        "greedy algorithms", "compression", "prefix code",
+        "binary tree", "data compression",
+    ],
+    "fast fourier transform": [
+        "fft", "signal processing", "polynomial multiplication",
+        "divide and conquer", "number theory",
+    ],
+    "fft": [
+        "fast fourier transform", "signal processing", "divide and conquer",
+    ],
+    "knapsack problem": [
+        "dynamic programming", "optimization", "combinatorial optimization",
+        "greedy algorithms",
+    ],
+    "stable matching": [
+        "gale shapley", "deferred acceptance", "hospital resident",
+        "bipartite matching", "two sided matching", "stable marriage",
+        "matching algorithm",
+    ],
+    "gale shapley": [
+        "stable matching", "deferred acceptance", "hospital resident",
+        "two sided matching", "stable marriage problem",
+        "matching algorithm",
+    ],
+
+    # ── Financial technology ───────────────────────────────────────────────
+    "financial technology": [
+        "fintech", "expense management", "financial data",
+        "document intelligence", "receipt processing", "ocr",
+        "adaptive classification", "financial analytics",
+    ],
+    "fintech": [
+        "financial technology", "expense tracking", "digital payments",
+        "financial data", "document processing", "ocr",
+    ],
+    "document processing": [
+        "optical character recognition", "ocr", "document intelligence",
+        "intelligent document processing", "information extraction",
+        "named entity recognition", "financial technology",
+    ],
+    "expense management": [
+        "financial technology", "fintech", "receipt processing",
+        "expense tracking", "financial analytics", "adaptive classification",
+        "ocr", "optical character recognition",
+    ],
 }
 
 # ─────────────────────────────────────────────
