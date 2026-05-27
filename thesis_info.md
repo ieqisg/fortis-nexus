@@ -1,81 +1,212 @@
-# Thesis Information — Fortis Nexus Mentor-Mentee Matching System
+# Thesis Information — Fortis Nexus (Complete Reference)
 
-This document contains technical analysis of the matching algorithm for use in the thesis study: time complexity, effectiveness metrics, interpretation guides, and SQL queries for reporting algorithm performance. A companion script, `app/algo/preprocess/metrics.py`, automates every measurement defined here against live Supabase data.
+This document is the single combined reference for the Fortis Nexus thesis. It merges system architecture, algorithm documentation, evaluation metrics, system diagrams, survey instruments, and a technical Q&A into one file. The companion script `app/algo/preprocess/metrics.py` automates every measurement defined here against live Supabase data.
 
 ---
 
 ## Table of Contents
 
-1. [System Overview](#1-system-overview)
-   - [Fair Matching](#11-fair-matching)
-   - [Pipeline](#12-pipeline)
-   - [Matching Algorithm Mechanics](#13-matching-algorithm-mechanics)
-   - [Evaluation Tooling](#14-evaluation-tooling)
-2. [Time Complexity Analysis](#2-time-complexity-analysis)
-   - [Per-Stage Breakdown](#21-per-stage-breakdown)
-   - [Full Pipeline Complexity](#22-full-pipeline-complexity)
-   - [Empirical Scaling (Benchmark Results)](#23-empirical-scaling-benchmark-results)
-   - [Is O(n) Achievable?](#24-is-on-achievable)
-   - [Proposal Phase Complexity](#25-proposal-phase-complexity)
-     - [Plain-Language Explanation](#plain-language-explanation-of-proposal-phase-time-complexity)
-   - [Complexity Reduction Alternatives](#26-complexity-reduction-alternatives-same-algorithm-different-approach)
-3. [Effectiveness Metrics](#3-effectiveness-metrics)
-   - [Algorithmic Correctness](#31-algorithmic-correctness-metrics)
-   - [Semantic Match Quality](#32-semantic-match-quality-metrics)
-   - [Efficiency](#33-efficiency-metrics)
-   - [User Outcomes](#34-user-outcome-metrics)
-   - [Running All Metrics](#35-running-all-metrics)
-4. [Comparison Baselines](#4-comparison-baselines)
-5. [Research Questions Mapped to Metrics](#5-research-questions-mapped-to-metrics)
-6. [How to Run the Benchmark](#6-how-to-run-the-benchmark)
-7. [Proposal Explanation](#7-proposal-explanation)
-   - [Step 1 — Compatibility Scoring](#step-1--compatibility-scoring)
-   - [Step 2 — Preference Lists](#step-2--preference-lists)
-   - [Step 3a — Mentee-Optimal Run](#step-3a--mentee-optimal-run-hospital_resident)
-   - [Step 3b — Mentor-Optimal Run](#step-3b--mentor-optimal-run-hospital_resident_mentor_optimal)
-   - [Step 4 — Fairness Comparison](#step-4--fairness-comparison-pick_fairer_matching)
-   - [Step 5 — Stability Verification](#step-5--stability-verification-verify_stability)
-   - [Step 6 — Safety Net](#step-6--safety-net-_apply_safety_net)
-   - [Step 7 — Build Match Records](#step-7--build-match-records)
+1. [System Overview & Architecture](#part-a-system-overview--architecture)
+   - [What Is Fortis Nexus](#a1-what-is-fortis-nexus)
+   - [Users and Roles](#a2-users-and-roles)
+   - [System Layers and Modules](#a3-system-layers-and-modules)
+   - [Database Schema](#a4-database-schema)
+   - [Key Files and Directories](#a5-key-files-and-directories)
+   - [Auth and Access Control](#a6-auth-and-access-control)
+2. [Matching Algorithm](#part-b-matching-algorithm)
+   - [Fair Matching](#b1-fair-matching)
+   - [Pipeline](#b2-pipeline)
+   - [Pipeline Flowchart](#b3-pipeline-flowchart)
+   - [Algorithm Mechanics](#b4-algorithm-mechanics)
+   - [Algorithmic Guarantees](#b5-algorithmic-guarantees)
+   - [Keyword Scoring — Semantic Method](#b6-keyword-scoring--semantic-method)
+   - [Communication Mode Inference](#b7-communication-mode-inference)
+   - [Data Structures](#b8-data-structures)
+   - [Match Effectiveness Metrics](#b9-match-effectiveness-metrics)
+   - [Evaluation Tooling](#b10-evaluation-tooling)
+3. [Time Complexity Analysis](#part-c-time-complexity-analysis)
+4. [Effectiveness Metrics](#part-d-effectiveness-metrics)
+5. [Comparison Baselines](#part-e-comparison-baselines)
+6. [Research Questions Mapped to Metrics](#part-f-research-questions-mapped-to-metrics)
+7. [How to Run](#part-g-how-to-run)
+8. [Proposal Explanation (Step-by-Step)](#part-h-proposal-explanation-step-by-step)
+9. [System Diagrams](#part-i-system-diagrams)
+10. [Survey Instruments](#part-j-survey-instruments)
+11. [Technical Q&A](#part-k-technical-qa)
+12. [References](#references)
 
 ---
 
-## 1. System Overview
+# PART A: System Overview & Architecture
 
-### 1.1 Fair Matching
+## A.1 What Is Fortis Nexus?
+
+Fortis Nexus is a web platform built for a Computer Science department that automatically pairs faculty mentors with student research groups using a stable matching algorithm, then supports the ongoing mentoring relationship through scheduling, paper review, and milestone tracking.
+
+The system follows a **layered and modular architecture** — three clearly separated layers where each layer has a single responsibility, and each layer is divided into independent modules.
+
+| Layer | What it is | Examples |
+|---|---|---|
+| **Presentation** | Website portals users interact with | Admin Portal, Mentor Portal, Mentee Portal, Login & Registration |
+| **Application** | Business logic and data processing | Access Control, Profile Management, Matching Engine, Paper Review, Meeting Scheduler, Milestone Tracker, Announcements |
+| **Data** | Persistent storage | User accounts, profiles, matches, meetings, papers, milestones, announcements, uploaded files |
+
+---
+
+## A.2 Users and Roles
+
+| Role | Who they are | How they access the system |
+|---|---|---|
+| **Admin** | Program administrators | Created directly in the database; access the Admin Portal |
+| **Mentor** | Faculty members | Accounts created by admins; complete a profile on first login |
+| **Mentee** | Student research groups | Self-register; one account per group |
+
+### Role Permissions Matrix
+
+| | Admin | Mentor | Mentee |
+|---|---|---|---|
+| Sign in and manage account | Yes | Yes | Yes |
+| Run the matching process | Yes | — | — |
+| View all users and profiles | Yes | — | — |
+| Create and delete accounts | Yes | — | — |
+| Post system-wide announcements | Yes | — | — |
+| View and edit own profile | — | Yes | Yes |
+| View matched partners | — | Yes | Yes |
+| Schedule meetings | — | Yes | — |
+| Review papers and leave feedback | — | Yes | — |
+| Create and manage milestones | — | Yes | — |
+| Post announcements to their groups | — | Yes | — |
+| Submit research papers | — | — | Yes |
+| Track milestones and meetings | — | — | Yes |
+| View mentor announcements | — | — | Yes |
+
+---
+
+## A.3 System Layers and Modules
+
+### Layer 1 — Presentation (What Users See)
+
+| Portal | Who uses it | What they can do |
+|---|---|---|
+| **Admin Portal** | Program administrators | Manage all accounts, trigger matching, post announcements, view system logs |
+| **Mentor Portal** | Faculty mentors | View matched groups, review papers, schedule meetings, set milestones, post announcements |
+| **Mentee Portal** | Student research groups | View assigned mentor, submit papers, track milestones, view meeting schedules |
+| **Login & Registration** | Everyone | Create an account, sign in, reset a password |
+
+### Layer 2 — Application (What the System Does)
+
+**Module 1 — Access Control:** Verifies identity, resolves role (admin/mentor/mentee), and routes users to the correct portal. Protects all pages from unauthorized access.
+
+**Module 2 — Profile Management:** Handles creation and editing of mentor and mentee profiles. Mentors fill in expertise, availability, and research background. Mentee groups enter research topic and team details.
+
+**Module 3 — Matching Engine:** The core of the platform. Triggered by admin, it collects all profiles, extracts key topics, scores every possible mentor–mentee pairing across five factors, runs the Gale-Shapley algorithm from both sides, selects the fairer result, and saves match records to the database.
+
+**Module 4 — Paper Review:** Student groups submit one research paper at a time (PDF, max 5 MB). Their mentor downloads it, leaves written feedback, and marks it as reviewed. The submission slot reopens only after a review is posted.
+
+**Module 5 — Meeting Scheduler:** Handles recurring meeting arrangements. Mentors set day and time for each group's sessions. Both sides can view upcoming meetings and mentors can add session notes.
+
+**Module 6 — Milestone Tracker:** Mentors set goals (milestones) with a title, description, and due date. Mentors mark milestones complete. Mentees see a read-only checklist showing done, overdue, and upcoming milestones.
+
+**Module 7 — Announcements:** Two channels — admin announcements (broadcast to all users, mentors only, or mentees only) and mentor announcements (posted by a mentor, visible to their assigned groups only).
+
+---
+
+## A.4 Database Schema
+
+| Table | What it stores |
+|---|---|
+| `mentor` | Mentor profiles; `profile_completed` flag gates the onboarding redirect |
+| `MENTEE_GROUPS` | Mentee group profiles |
+| `matches` | Pairing results: `mentor_id`, `mentee_group_id`, `compatibility_score`, `matched_keywords`, `algorithm`, `is_stable` |
+| `meetings` | Recurring meeting schedules and session notes |
+| `papers` | Paper submissions with status (`pending` / `reviewed`) |
+| `paper_comments` | Mentor feedback on submitted papers |
+| `milestones` | Goals assigned to mentee groups with completion tracking |
+| `announcements` | Admin-created announcements with audience targeting |
+| `mentor_announcements` | Mentor-to-group announcements |
+| `mentor_preferences` | Ranked mentor preference lists produced by the matching engine |
+| `mentee_preferences` | Ranked mentee preference lists produced by the matching engine |
+| `algorithm_logs` | Outcome records from each matching run (JSONB — all phases, scores, events, timestamps) |
+
+---
+
+## A.5 Key Files and Directories
+
+| Path | What it is |
+|---|---|
+| `/app` | Next.js frontend (App Router, React 19) |
+| `/app/context/` | React context providers for auth, mentor, and mentee state |
+| `/app/algo/preprocess/` | Python matching engine (5-stage pipeline) |
+| `/app/algo/preprocess/text_processing.py` | Keyword extraction — vocab scan + TF-IDF residuals |
+| `/app/algo/preprocess/domain_expander.py` | Domain expansion — broadens keyword overlap across related CS subfields |
+| `/app/algo/preprocess/scoring.py` | 5-pillar weighted scoring + cosine similarity |
+| `/app/algo/preprocess/matching.py` | HR algorithm — both variants, fairness comparison, stability verification |
+| `/app/algo/preprocess/main.py` | Pipeline orchestrator — fetches from and writes to Supabase |
+| `/app/algo/preprocess/benchmark.py` | Synthetic O(n) scaling test; generates `benchmark_results.png` |
+| `/app/algo/preprocess/metrics.py` | Computes all thesis metrics against live Supabase data |
+| `/backend/` | Express server (port 8000) that spawns the Python process |
+| `/backend/MatchingService.js` | Spawn subprocess, parse `__MATCHING_LOG_START/END__` stdout markers, 409 guard |
+| `/lib/actions/` | Server actions — sole interface between Next.js and the database |
+| `/lib/rateLimit.ts` | In-memory rate limiting (login: 5/5 min, password reset: 3/hr) |
+| `/components/ui/` | Shared UI components wrapping Radix UI primitives |
+| `/tests/unit/` | Unit tests (Vitest + React Testing Library) |
+| `proxy.ts` | Middleware — auth check, role cache (5-min TTL, HMAC-signed cookie), route guard |
+
+---
+
+## A.6 Auth and Access Control
+
+- Authentication is handled by Supabase Auth (email + password). Sessions are stored in HTTP-only cookies via `@supabase/ssr`.
+- User role is determined by which table the auth ID appears in (`mentor`, `MENTEE_GROUPS`, or `admin`).
+- The resolved role + `profile_completed` status are cached in a signed HMAC cookie (`x-role-cache`) with a 5-minute TTL to avoid a database round-trip on every page request.
+- Middleware (`proxy.ts`) enforces all routing rules:
+  - Unauthenticated → `/` (login)
+  - Mentor with incomplete profile → `/mentor/complete-profile`
+  - Mentor complete → `/mentor/mentor-dashboard`
+  - Mentee → `/mentee/mentee-dashboard`
+  - Admin → `/admin`
+- Passwords are hashed by Supabase Auth (bcrypt) and are never accessible to the application layer.
+
+---
+
+# PART B: Matching Algorithm
+
+## B.1 Fair Matching
 
 The system always runs **fair matching**: both variants of the Hospital-Resident (Gale-Shapley) algorithm are executed on every run, and the result with lower combined dissatisfaction is selected as the final assignment.
 
 | Internal Variant | Who Proposes | Optimality Guarantee |
-|-----------------|-------------|---------------------|
+|---|---|---|
 | Mentee-proposing HR | Mentees propose to mentors | Best possible outcome for mentees (mentee-optimal) |
 | Mentor-proposing HR | Mentors propose to mentees | Best possible outcome for mentors (mentor-optimal) |
 
-Both variants produce *stable* matchings. The fair-matching selection step (Section 2.1, Phase 3) picks whichever variant yields lower combined rank dissatisfaction across both sides, ensuring neither mentees nor mentors are systematically disadvantaged.
+Both variants produce *stable* matchings. The fair-matching selection step picks whichever variant yields lower combined rank dissatisfaction across both sides, ensuring neither side is systematically disadvantaged.
 
-### 1.2 Pipeline
+---
+
+## B.2 Pipeline
 
 ```
 Phase 1: Preprocessing
   ├─ Load mentor/mentee profiles from Supabase
-  ├─ Extract keywords via vocabulary scan (CS_TECH_VOCAB, ~500 terms)
+  ├─ Extract keywords via vocabulary scan (CS_TECH_VOCAB, ~950 terms)
   ├─ TF-IDF residual keyword extraction                          [Salton & Buckley, 1988]
   └─ Domain expansion (DOMAIN_MAP — e.g. "nlp" → ["natural language processing", "tokenization", ...])
 
 Phase 2: Compatibility Scoring
-  ├─ TF-IDF vectorization of all profiles → cosine similarity matrix (n × m)  [Salton & Buckley, 1988] [Pedregosa et al., 2011]
+  ├─ TF-IDF vectorization of all profiles → cosine similarity matrix (n × m)  [Salton & Buckley, 1988]
   ├─ Availability overlap matrix (Jaccard similarity of days + time slots)     [Jaccard, 1901]
   ├─ Experience score vector (normalized mentor background)
   ├─ Communication preference matrix
   ├─ Meeting frequency overlap matrix
-  └─ Weighted combination → final score matrix (n × m), clipped to [0.70, 1.00]
+  └─ Weighted combination → final score matrix (n × m)
 
 Phase 3: Stable Matching (Fair-Matching)
   ├─ Generate preference lists (mentees rank mentors, mentors rank mentees)
   ├─ Run HR algorithm — mentee-proposing variant (mentee-optimal)   [Roth, 1984]
   ├─ Run HR algorithm — mentor-proposing variant (mentor-optimal)   [Roth, 1984]
   ├─ Select fairer result (minimize combined rank dissatisfaction across both sides)
-  ├─ Collect proposal phase events for both variants (propose/accept/reject/replace per round)
+  ├─ Collect proposal phase events for both variants
   ├─ Verify stability of selected result (check for blocking pairs)
   └─ Write matches + full audit log to Supabase
 ```
@@ -85,202 +216,422 @@ Phase 3: Stable Matching (Fair-Matching)
 **Outputs:**
 
 | Artifact | Table | Contents |
-|----------|-------|----------|
+|---|---|---|
 | Match assignments | `matches` | mentor_id, mentee_group_id, compatibility_score, matched_keywords, algorithm, is_stable |
 | Full audit log | `algorithm_logs` | JSONB — all phases, scores, preferences, proposal events, timestamps |
 | Mentee preference lists | `mentee_preferences` | Full ranked mentor list per mentee group |
 | Mentor preference lists | `mentor_preferences` | Full ranked mentee list per mentor |
 
-**Scoring weights:**
+**Scoring weights (baseline reference — do not update):**
 
 | Component | Weight | What it measures |
-|-----------|--------|-----------------|
-| Keyword similarity | **75%** | TF-IDF cosine similarity of research profiles [(Salton & Buckley, 1988)](https://doi.org/10.1016/0306-4573(88)90021-0) |
-| Experience | **10%** | Mentor's advising background |
-| Availability | **10%** | Jaccard overlap of available days and time slots [(Jaccard, 1901)](https://doi.org/10.2307/3771392) |
-| Communication preference | **2.5%** | Matching communication mode (F2F, online chat, online call) |
-| Meeting frequency | **2.5%** | Number of shared available days |
+|---|---|---|
+| Keyword similarity | **60%** | TF-IDF cosine similarity of research profiles |
+| Experience | **20%** | Mentor's advising background |
+| Availability | **10%** | Jaccard overlap of available days and time slots |
+| Communication preference | **5%** | Matching communication mode (F2F, online, flexible) |
+| Meeting frequency | **5%** | Number of shared available days |
 
-### 1.3 Matching Algorithm Mechanics
-
-Both HR variants share the same fundamental proposal cycle. This section explains how proposals work, what each variant guarantees, and how the system selects between them.
+> **Note:** The weights above are the fixed baseline reference for documentation and stakeholders. Actual runtime weights in `scoring.py` may differ — see the Change Log in `docs/context.md`.
 
 ---
 
-#### 1.3.1 The Proposal Phase (Step-by-Step)
+## B.3 Pipeline Flowchart
 
-The HR algorithm proceeds in discrete *rounds*. Each round, one free proposer — a mentee group (mentee-proposing variant) or a mentor (mentor-proposing variant) — selects the next best candidate from their preference list and sends a proposal. Three outcomes are possible:
+```mermaid
+flowchart TD
+    A([Admin clicks\nRun Matching]) --> B[POST /api/run-matching\nNext.js API Route]
+    B --> C[Express Backend\nport 8000]
+    C -->|already running?| D{{409 — Already\nin progress}}
+    C --> E[Spawn Python subprocess\nmain.py]
+
+    E --> F1
+
+    subgraph PHASE1 ["Phase 1 · Data Collection & Preprocessing"]
+        F1[Connect to Supabase\nvia service role key]
+        F1 --> F2[Fetch all mentor profiles]
+        F1 --> F3[Fetch all mentee groups]
+        F2 & F3 --> F4[Normalize array fields]
+        F4 --> F5{Any mentors\nor mentees missing?}
+        F5 -->|Yes| F6([Exit — insufficient data])
+        F5 -->|No| F7
+
+        subgraph KEYWORD ["Keyword Extraction — per profile"]
+            F7[Vocabulary scan\nCS_TECH_VOCAB ~950 terms]
+            F7 --> F8[TF-IDF residual fill]
+            F8 --> F9[Pre-normalization\nc++ → cpp  node.js → nodejs  etc.]
+        end
+    end
+
+    F9 --> S1
+
+    subgraph PHASE2 ["Phase 2 · Compatibility Scoring — 5 Pillars"]
+        S1[Build TF-IDF vectors\nfor all mentor & mentee texts]
+        S1 --> S2[Cosine similarity\non keyword vectors]
+        S2 --> S3[Domain expansion\nbroaden keyword overlap]
+        S3 --> S4[Availability score\nOverlapping days × time slots]
+        S3 --> S5[Experience score]
+        S3 --> S6[Communication score\nINFERRED from available_days]
+        S3 --> S7[Meeting frequency score]
+        S4 & S5 & S6 & S7 --> S8["Weighted Final Score\nkeyword×0.75 + experience×0.10\n+ availability×0.10\n+ comm×0.025 + freq×0.025"]
+        S8 --> S9[Score matrix\nmentees × mentors]
+    end
+
+    S9 --> P1
+
+    subgraph PHASE3 ["Phase 3 · Preference Lists + Hospital-Resident Matching"]
+        P1[Generate preference lists]
+        P1 --> HR1 & HR2
+
+        subgraph HR_MO ["HR — Mentee-Optimal"]
+            HR1[Mentees propose to\ntop-ranked mentor]
+            HR1 --> HR1h[Mentee-optimal\nassignment A₁]
+        end
+
+        subgraph HR_MEO ["HR — Mentor-Optimal"]
+            HR2[Mentors propose to\ntop-ranked mentee]
+            HR2 --> HR2h[Mentor-optimal\nassignment A₂]
+        end
+
+        HR1h & HR2h --> FAIR
+
+        subgraph FAIR ["Fairness Comparison"]
+            FAIR3{Which has lower\ncombined dissatisfaction?}
+            FAIR3 -->|A₁ ≤ A₂| FAIR4[Select mentee-optimal]
+            FAIR3 -->|A₂ lower| FAIR5[Select mentor-optimal]
+        end
+
+        FAIR4 & FAIR5 --> STAB
+
+        subgraph STAB ["Stability Verification"]
+            STAB2{Any blocking pair?}
+            STAB2 -->|Yes| STAB3[Flag UNSTABLE]
+            STAB2 -->|No| STAB4[Confirm STABLE]
+        end
+    end
+
+    STAB3 & STAB4 --> OUT1
+
+    subgraph PHASE4 ["Phase 4 · Output & Persistence"]
+        OUT1[Build match records] --> OUT2[Clear existing matches]
+        OUT2 --> OUT3[Insert new match records]
+        OUT3 --> OUT4[Upsert preference lists]
+        OUT4 --> OUT5[Insert structured JSON log]
+        OUT5 --> OUT6[Print JSON between\n__MATCHING_LOG_START/END__ markers]
+    end
+
+    OUT6 --> RESULT[Express reads stdout\nParses JSON log]
+    RESULT --> NEXT[Next.js API returns\nsummary to admin dashboard]
+```
+
+---
+
+## B.4 Algorithm Mechanics
+
+### B.4.1 The Proposal Phase (Step-by-Step)
+
+The HR algorithm proceeds in discrete rounds. Each round, one free proposer sends a proposal. Three outcomes are possible:
 
 | Outcome | Condition | Effect |
-|---------|-----------|--------|
+|---|---|---|
 | **Accept** | Candidate has spare capacity | Proposer is tentatively assigned; candidate's roster grows by 1 |
 | **Reject** | Candidate is full AND prefers all current matches over this proposer | Proposer advances to their next preference and re-enters the queue |
-| **Replace** | Candidate is full BUT prefers the new proposer over their current worst match | Current worst match is freed and re-enters the queue; new proposer takes their slot |
+| **Replace** | Candidate is full BUT prefers the new proposer over their current worst match | Current worst match is freed and re-enters the queue; new proposer takes the slot |
 
 The algorithm terminates when no free proposer has any remaining candidates to propose to.
 
-**Worked example** (3 mentee groups — A, B, C — and 2 mentors — X, Y — each with capacity 1):
+**Worked example** (3 mentee groups A, B, C and 2 mentors X, Y with capacity 1):
 
-Assume the scored preference lists are:
 ```
 Mentees:  A → [X, Y]   B → [X, Y]   C → [Y, X]
 Mentors:  X → [B, A, C]   Y → [A, B, C]
 ```
 
-Proposal trace (mentee-proposing):
-
 | Round | Proposer | To | Outcome | Queue after |
-|-------|----------|----|---------|-------------|
+|---|---|---|---|---|
 | 1 | A | X | **Accept** (X empty) | B, C free |
 | 2 | B | X | **Replace** (X prefers B over A; A freed) | C, A free |
 | 3 | C | Y | **Accept** (Y empty) | A free |
-| 4 | A | Y | **Reject** (Y full; Y prefers C over A) | A → tries no more |
+| 4 | A | Y | **Reject** (Y full; Y prefers C over A) | A → exhausted |
 
-Final assignment: B→X, C→Y. A is unmatched (safety net applies; see Section 3.1, Metric #2).
+Final assignment: B→X, C→Y. A is unmatched (safety net applies).
 
-All four event types — `propose`, `accept`, `reject`, `replace` — are collected per round and stored in `algorithm_logs.log_data.phase3.proposal_events_mo` (mentee-proposing) and `proposal_events_meo` (mentor-proposing) for full auditability.
-
----
-
-#### 1.3.2 Mentee-Optimal Matching (Mentee-Proposing HR)
+### B.4.2 Mentee-Optimal Matching
 
 **Implementation:** `hospital_resident()` in `matching.py`
 
-In the mentee-proposing variant, mentee groups hold the proposing role:
+Mentee groups hold the proposing role. The result is **mentee-optimal** — every mentee group is assigned to the best mentor they could receive in any stable matching. This is simultaneously the worst stable matching for mentors.
 
-1. All mentee groups start free and are added to the proposal queue
-2. Each mentee proposes to their highest-ranked not-yet-proposed mentor
-3. Mentors tentatively hold their best offers up to `mentor_capacity`, replacing the worst match whenever a better proposer arrives
-4. Freed mentees continue proposing down their list
-5. Terminates when the queue is empty
+**Data structures used:** `free_residents` deque · `next_proposal[r_id]` index dict · `hospital_rank[h_id][r_id]` rank dict · `hospital_assignments[h_id]` roster list
 
-**Optimality guarantee [(Gale & Shapley, 1962)](https://doi.org/10.2307/2300560):** The resulting matching is *mentee-optimal* — every mentee group is assigned to the best mentor they could receive in *any* stable matching. Equivalently, no other stable matching exists where any mentee would prefer their assignment. This is simultaneously the worst stable matching for mentors: every mentor receives the least preferred group they must accept in any stable outcome.
-
-**Data structures used:**
-- `free_residents` — deque of proposing mentees
-- `next_proposal[r_id]` — index of next mentor to propose to (prevents repeated proposals, ensures O(1) advance)
-- `hospital_rank[h_id][r_id]` — precomputed rank dict for O(1) preference comparisons
-- `hospital_assignments[h_id]` — mentor's current tentative roster
-
----
-
-#### 1.3.3 Mentor-Optimal Matching (Mentor-Proposing HR)
+### B.4.3 Mentor-Optimal Matching
 
 **Implementation:** `hospital_resident_mentor_optimal()` in `matching.py`
 
-The mentor-proposing variant inverts the roles:
+Mentors hold the proposing role. The result is **mentor-optimal** — every mentor receives the best mentee group they could get in any stable matching. This is simultaneously the worst stable matching for mentees.
 
-1. All mentors start active; they propose to their highest-ranked not-yet-proposed mentee
-2. Each mentee group tentatively holds the best offer received so far
-3. When a better proposal arrives the previous offer is released, returning that mentor to the active queue
-4. A mentor refills from their preference list until all capacity slots are filled or the list is exhausted
-5. Terminates when the active-mentor queue is empty
+**Data structures used:** `active_hospitals` deque · `hospital_proposal_index[h_id]` index dict · `hospital_remaining_slots[h_id]` · `resident_rank[r_id][h_id]` rank dict · `resident_holding[r_id]` best offer
 
-**Optimality guarantee [(Roth, 1984)](https://doi.org/10.2307/1912320):** The resulting matching is *mentor-optimal* — every mentor receives the best mentee group they could get in any stable matching. This is simultaneously the worst stable matching for mentees.
+### B.4.4 Fair-Matching Selection
 
-**Data structures used:**
-- `active_hospitals` — deque of proposing mentors
-- `hospital_proposal_index[h_id]` — index of next mentee to propose to
-- `hospital_remaining_slots[h_id]` — remaining capacity during proposals
-- `resident_rank[r_id][h_id]` — precomputed rank dict for O(1) mentee-side comparisons
-- `resident_holding[r_id]` — best offer the mentee group currently holds
+**Implementation:** `pick_fairer_matching()` in `matching.py`
 
----
-
-#### 1.3.4 Fair-Matching Selection
-
-**Implementation:** `pick_fairer_matching()` in `matching.py` (lines 263–295)
-
-The system runs **both** HR variants on every execution and selects the result that is fairest to both parties:
-
-**Dissatisfaction metric:** For each matched pair, the *dissatisfaction* of one side equals the rank position of their assigned match in their preference list (rank 1 = top choice; lower is always better). The average dissatisfaction across all mentees gives `mentee_dissatisfaction`; the equivalent average across all mentor slots gives `mentor_dissatisfaction`.
-
-**Selection rule:**
 ```
-total_mo  = mentee_dissatisfaction(mentee-optimal result)
-           + mentor_dissatisfaction(mentee-optimal result)
-
-total_meo = mentee_dissatisfaction(mentor-optimal result)
-           + mentor_dissatisfaction(mentor-optimal result)
-
+total_mo  = mentee_dissatisfaction(mentee-optimal) + mentor_dissatisfaction(mentee-optimal)
+total_meo = mentee_dissatisfaction(mentor-optimal) + mentor_dissatisfaction(mentor-optimal)
 selected  = mentee-optimal if total_mo ≤ total_meo, else mentor-optimal
 ```
 
-Ties break in favor of mentee-optimal. The selected variant's match records are written to the `matches` table tagged `algorithm = "fair-matching"`. Both `proposal_events_mo` and `proposal_events_meo` are retained in `algorithm_logs` regardless of which variant is selected.
+Dissatisfaction = average rank of matched partner in preference list (0-indexed; 0 = top choice).
 
-**Why this is fair:** The mentee-optimal result gives mentees their best possible outcome at mentors' expense; the mentor-optimal result gives mentors their best at mentees' expense. The combined dissatisfaction sum measures the total "unhappiness" imposed on the system. Selecting the minimum ensures neither side is systematically disadvantaged across runs.
-
-| Variant | Optimally favors | Stability | Selected when |
-|---------|-----------------|-----------|--------------|
-| Mentee-optimal | Mentees | ✓ Guaranteed | Combined dissatisfaction ≤ mentor-optimal total |
-| Mentor-optimal | Mentors | ✓ Guaranteed | Combined dissatisfaction < mentee-optimal total |
-| **Fair-matching (system output)** | **Neither systematically** | **✓ Guaranteed** | **Always — one of the above is chosen per run** |
+Both sets of proposal events are retained in `algorithm_logs` regardless of which variant is selected.
 
 ---
 
-### 1.4 Evaluation Tooling
+## B.5 Algorithmic Guarantees
+
+| Property | Guarantee |
+|---|---|
+| **Stability** | No blocking pair exists — no mentor-mentee pair where both would prefer each other over their current assignment |
+| **Mentee-optimality** | Mentee-proposing HR produces the best stable matching possible for mentees |
+| **Mentor-optimality** | Mentor-proposing HR produces the best stable matching possible for mentors |
+| **Fairness** | Running both variants and selecting lower combined dissatisfaction prevents systematically favoring one side |
+| **Completeness** | Every mentee is matched — the safety net catches any mentee left unmatched after HR |
+
+A **blocking pair** `(mentee m, mentor M)` exists if:
+- `m` prefers `M` over their currently assigned mentor, AND
+- `M` has a spare slot OR prefers `m` over their current worst-held mentee
+
+The stability check runs in O(N×M) after matching and logs any violations as `blocking_pairs_count` in `algorithm_logs`.
+
+---
+
+## B.6 Keyword Scoring — Semantic Method
+
+The default `"semantic"` method replaces exact keyword intersection with pairwise cosine similarity.
+
+**How it works — per pair:**
+
+1. Extract CS vocab keywords from both profiles using `_extract_vocab_matches()` — longest-first scan against ~950-term `CS_TECH_VOCAB`.
+2. Normalize abbreviations via `normalize_keyword()` (e.g. `"nlp"` → `"natural language processing"`).
+3. **Step 1 — Exact matching:** Count normalized vocab terms that appear in both profiles directly (O(1) set lookup).
+4. **Step 2 — Semantic near-matching:** For remaining unmatched mentee keywords, fit a word-level TF-IDF vectorizer on the combined keyword list and compute an `n_mentee × n_mentor` cosine similarity matrix. A mentee keyword is counted as **matched** if its best cosine similarity with any mentor keyword ≥ 0.45 (`KW_SIMILARITY_THRESHOLD`).
+
+**Tiered keyword score from matched count:**
+
+| Matched keywords | Score |
+|---|---|
+| ≥ 4 | 1.0 (ceiling) |
+| ≥ 3 | 0.85 |
+| ≥ 2 | 0.60 |
+| ≥ 1 | 0.35 |
+
+**Soft additive bonus** applied on top of the weighted score:
+
+| Matched keywords | Bonus |
+|---|---|
+| ≥ 4 | +0.08 |
+| ≥ 2 | +0.04 |
+| ≥ 1 | +0.02 |
+
+**Why pairwise instead of set intersection?**
+Set intersection requires exact string match after normalization. Pairwise cosine catches semantic relatives — `"machine learning"` and `"deep learning"` share the token `"learning"` and score ~0.45–0.55, clearing the threshold.
+
+---
+
+## B.7 Communication Mode Inference
+
+Communication preference is not stored — it is inferred at runtime from a mentor's or mentee's selected available days.
+
+| Available Days | Inferred Mode |
+|---|---|
+| Tuesday and/or Friday only | ONLINE_MEETING |
+| Monday, Wednesday, Thursday, Saturday only | FACE_TO_FACE |
+| Mix of both sets (or unrecognized pattern) | FLEXIBLE |
+
+FLEXIBLE is compatible with both ONLINE_MEETING and FACE_TO_FACE partners.
+
+---
+
+## B.8 Data Structures
+
+The matching engine relies on four core data structures. Each was chosen because it is the most efficient tool for a specific job.
+
+### Hash Map (Lookup Table)
+
+A hash map stores paired entries — a unique identifier on one side and a value on the other. Looking up any entry takes the same amount of time regardless of how many entries are stored.
+
+**Where it is used:** During the matching process, questions like "what is this mentor's ranking of that mentee?" are answered by a hash map pre-built before the matching loop begins.
+
+| What is stored | What it enables |
+|---|---|
+| Each mentor's ranking of every mentee (and vice versa) | Instant comparison during proposal decisions |
+| Each mentor's current assignment count | Instant check of whether a mentor has open capacity |
+| Profile lookup by user ID | Instant retrieval of any profile when building results |
+| Score matrix position by user ID | Instant navigation into the compatibility score grid |
+
+**How a hash map improves performance over a plain array:**
+
+The critical difference is what happens during a proposal. Each time a mentee proposes to a mentor, the mentor must compare the new applicant against its current worst assignment — requiring the rank of both candidates in its preference list.
+
+**With a plain array only:** The preference list is stored as `["Group A", "Group B", "Group C", ...]`. To find where "Group B" sits, the system scans from position 0. With 21 mentee groups, this checks up to 21 entries per lookup. Every proposal triggers two scans. In the worst case across 168 proposals (21 mentees × 8 mentors): **168 × 2 × 21 = 7,056 individual comparisons** just for rank lookups.
+
+**With a hash map:** Each mentor's preference list is pre-converted to `{"Group A": 0, "Group B": 1, ...}`. Looking up any group's rank is a single direct access. The same 168 proposals require only **168 × 2 × 1 = 336 lookups** — a reduction of more than 20× at the current dataset scale.
+
+| Approach | Operation per rank lookup | Total lookups (21 mentees × 8 mentors) |
+|---|---|---|
+| Plain array (`list.index()`) | Up to O(M) — scans up to 21 entries | Up to 7,056 |
+| Hash map (`dict[id]`) | O(1) — single direct access | 336 |
+
+This gain compounds at scale. At 50 mentors × 200 mentees, array-based lookups would require up to 200 scans per proposal — hundreds of thousands of unnecessary comparisons per run. The hash map keeps each lookup at a single operation regardless of participant count.
+
+### Set (Unique Collection)
+
+A set stores unique items with no duplicates. Checking membership and computing intersection are both O(1) or O(min(|A|,|B|)) operations.
+
+**Where it is used:** Availability matching uses sets — finding shared days is one set intersection operation. The CS_TECH_VOCAB (~950 terms) is also stored as a set so checking whether a word is a recognized CS term is an instant yes/no, not a sequential scan.
+
+### Queue (First-In First-Out List)
+
+A queue adds items to the back and removes from the front in arrival order.
+
+**Where it is used:** The HR algorithm uses a deque to manage which mentee groups still need to be matched. When a group is displaced by a higher-ranked applicant, it is placed back in the queue. This ensures every group gets a fair chance and the algorithm terminates predictably.
+
+### Matrix (Two-Dimensional Grid)
+
+A matrix organizes numbers in rows and columns. In this system, rows represent mentee groups and columns represent mentors — each cell holds the compatibility score for one specific pair.
+
+**Where it is used:** All compatibility scores (168 in the current deployment) are stored in one matrix. This allows scoring weights, keyword bonuses, and preference list generation to operate on the full grid in one efficient NumPy broadcast operation rather than computing each pair individually in sequence.
+
+### Summary Table
+
+| Data Structure | Role | Where it appears |
+|---|---|---|
+| **Hash Map** | Instant lookup by ID — eliminates searching | Rank lookups during HR matching, profile lookups, assignment tracking |
+| **Set** | Fast membership check and overlap detection | Available days matching, time slot overlap, CS vocabulary scan |
+| **Queue** | Ordered waiting line for unmatched groups | HR algorithm's pending-proposals list |
+| **Matrix** | Grid of all pairwise scores | Compatibility score storage, preference list generation |
+
+---
+
+## B.9 Match Effectiveness Metrics
+
+### Formal Guarantee — Stability
+
+The most rigorous indicator of match effectiveness is **stability**. A matching is stable when no blocking pair exists. This is verified explicitly after every run by checking all unassigned pairs. The result is stored as `is_stable` in `matches` and `blocking_pairs_count` in `algorithm_logs`.
+
+### Per-Run Quantitative Metrics
+
+| Metric | What it measures | Good value |
+|---|---|---|
+| **Match rate** | Fraction of mentee groups successfully paired | 100% |
+| **Unmatched count** | Mentees not paired by HR | 0 |
+| **Stability flag** | Whether any blocking pairs exist | `true` |
+| **Blocking pair count** | Number of unstable pairs found | 0 |
+| **Mentee dissatisfaction** | Average rank of assigned mentor in each mentee's preference list | As low as possible |
+| **Mentor dissatisfaction** | Average rank of assigned mentees in each mentor's preference list | As low as possible |
+| **Combined dissatisfaction** | Sum of both sides — the selection criterion between HR variants | Minimized |
+
+**Dissatisfaction interpretation:**
+
+| Combined dissatisfaction | What it means |
+|---|---|
+| < 1.0 | Both sides got, on average, a top-2 match |
+| 1.0 – 3.0 | Both sides got, on average, a top-3 or top-4 match |
+| > 5.0 | Some participants received lower-ranked matches — may indicate insufficient mentor diversity |
+
+### Per-Pair Score Breakdown
+
+| Pillar | Weight | Effectiveness signal |
+|---|---|---|
+| **Keyword similarity** | 75% (runtime) | Degree of research topic alignment |
+| **Experience** | 10% | Mentor's depth of prior mentoring |
+| **Availability** | 10% | Fraction of schedule that overlaps |
+| **Communication mode** | 2.5% | Whether both prefer online or face-to-face |
+| **Meeting frequency** | 2.5% | Number of shared available days |
+
+**Score interpretation:**
+
+| Score | Interpretation |
+|---|---|
+| ≥ 0.80 | Strong match — substantial keyword overlap with good schedule and experience fit |
+| 0.60 – 0.79 | Good match — meaningful research alignment with reasonable availability |
+| 0.40 – 0.59 | Moderate match — some keyword overlap, or strong non-keyword factors compensating |
+| < 0.40 | Constrained match — limited research alignment; likely no higher-scoring option remained |
+
+### Matched Keywords as Explainability Evidence
+
+Each match record stores `matched_keywords` — shared CS vocabulary terms verified via pairwise cosine similarity ≥ 0.45. These appear in the algorithm log dashboard and provide human-readable justification for each compatibility score.
+
+### Post-Assignment Effectiveness Signals
+
+| Signal | Source | What it indicates |
+|---|---|---|
+| **Milestone completion rate** | Milestone tracker | Whether research goals are being met on schedule |
+| **Paper submission and review activity** | Paper review module | Whether the relationship is academically productive |
+| **Meeting regularity** | Meeting scheduler | Whether scheduled meetings are being maintained |
+| **Mentor announcement activity** | Mentor announcements | Whether mentors are actively communicating |
+
+---
+
+## B.10 Evaluation Tooling
 
 | Script | Purpose | Data Source |
-|--------|---------|-------------|
+|---|---|---|
 | `benchmark.py` | Synthetic O(n) scaling test; generates `benchmark_results.png` | Synthetic random profiles |
 | `test_pipeline.py` | Interactive test harness with hardcoded mentor/mentee data | Hardcoded profiles |
 | **`metrics.py`** | **Computes all thesis metrics against live production data** | **Live Supabase tables** |
 
 ---
 
-## 2. Time Complexity Analysis
+# PART C: Time Complexity Analysis
 
 ### Notation
 - **n** = number of mentee groups
 - **m** = number of mentors
 - **k** = average profile text length (words)
 - **f** = TF-IDF feature count (capped at 500)
-- **v** = vocabulary size (~500 terms in `CS_TECH_VOCAB`)
+- **v** = vocabulary size (~950 terms in `CS_TECH_VOCAB`)
 
 ---
 
-### 2.1 Per-Stage Breakdown
+## C.1 Per-Stage Breakdown
 
-#### Phase 1 — Text Preprocessing
+### Phase 1 — Text Preprocessing
 
 | Operation | Complexity | Notes |
-|-----------|-----------|-------|
-| Vocabulary scan per profile (`text_processing.py`) | O(v · k) | Match ~500 patterns against profile text; patterns are pre-compiled regex |
+|---|---|---|
+| Vocabulary scan per profile | O(v · k) | Match ~950 patterns against profile text; patterns are pre-compiled regex |
 | TF-IDF residual fill per profile | O(k log k) | Vectorize remaining text after vocab scan |
 | **Keyword extraction for all m+n profiles** | **O((m+n) · k log k)** | Per-profile cost applied to all documents |
-| Domain expansion per mentor/mentee | O(v · k) | Scan DOMAIN_MAP keys (~35 entries) with word-boundary regex |
+| Domain expansion per profile | O(v · k) | Scan DOMAIN_MAP keys with word-boundary regex |
 | **Domain expansion for all profiles** | **O((m+n) · k)** | Linear in total text volume |
 
-#### Phase 2 — Compatibility Scoring
+### Phase 2 — Compatibility Scoring
 
 | Operation | Complexity | Notes |
-|-----------|-----------|-------|
-| TF-IDF vectorization (`scoring.py`) | O((m+n) · k) | Build vocabulary + feature extraction for all docs |
+|---|---|---|
+| TF-IDF vectorization | O((m+n) · k) | Build vocabulary + feature extraction for all docs |
 | Cosine similarity matrix | O(n · m · f) | Sparse matrix multiplication; f ≤ 500 |
-| Availability matrix | O(n · m · d) | d = number of days/slots ≈ 5–7; effectively O(n·m) |
+| Availability matrix | O(n · m · d) | d = number of days/slots ≈ 5–7 |
 | Experience scores | O(m) | One value per mentor, broadcast O(n·m) |
 | Communication scores | O(n · m) | O(1) per pair |
-| Meeting frequency scores | O(n · m) | O(|days|) per pair ≈ O(5) |
-| Weighted combination + normalization | O(n · m) | Element-wise operations on matrices |
-| **Scoring subtotal** | **O(n · m · (k + f))** | TF-IDF cosine dominates for large k |
+| Weighted combination + normalization | O(n · m) | Element-wise numpy operations |
+| **Scoring subtotal** | **O(n · m · (k + f))** | TF-IDF cosine dominates |
 
-#### Phase 3 — Stable Matching
+### Phase 3 — Stable Matching
 
 | Operation | Complexity | Notes |
-|-----------|-----------|-------|
-| Preference list generation — mentee side | O(n · m log m) | Each of n mentees sorts m mentors by score |
-| Preference list generation — mentor side | O(m · n log n) | Each of m mentors sorts n mentees by score |
-| **Preference generation total** | **O((n+m) · max(n,m) · log max(n,m))** | Sorting dominates |
-| Hospital-Resident, mentee-proposing [(Roth, 1984)](https://doi.org/10.2307/1912320) | O(n · m) | Each resident proposes to ≤ m hospitals; O(1) per proposal with precomputed ranks |
-| Hospital-Resident, mentor-proposing [(Roth, 1984)](https://doi.org/10.2307/1912320) | O(n · m) | Symmetric |
-| Proposal event collection | O(n · m) | O(1) append per proposal; worst case O(n·m) events total (Section 2.5) |
-| Fairness comparison (pick better variant) | O(n + m) | Dissatisfaction rank sum lookup |
-| Stability verification | O(n · m) | Check all n × m pairs for blocking conditions |
-| **Matching subtotal** | **O(n · m + (n+m) · max(n,m) · log max(n,m))** | For n ≈ m: O(n² log n) |
+|---|---|---|
+| Preference list generation | O((n+m) · max(n,m) · log max(n,m)) | Sorting dominates |
+| Hospital-Resident (each variant) | O(n · m) | O(1) per proposal with precomputed ranks |
+| Fairness comparison | O(n + m) | Dissatisfaction rank sum lookup |
+| Stability verification | O(n · m) | Check all pairs for blocking conditions |
+| **Matching subtotal** | **O(n · m)** | For fixed m, simplifies to O(n) |
 
 ---
 
-### 2.2 Full Pipeline Complexity
+## C.2 Full Pipeline Complexity
 
 **Theoretical worst-case:**
 
@@ -290,34 +641,27 @@ O(n · m · k)
 
 where TF-IDF vectorization and cosine similarity dominate for realistic profile lengths (k ≈ 50–300 words).
 
-The preference generation term O(n · m · log max(n,m)) is absorbed into O(n · m · k) because k >> log(n) for any practical dataset.
-
 **Simplified for the academic context (m and k treated as bounded constants):**
 
 ```
 O(n)   — linear in the number of mentee groups
 ```
 
-This is the relevant complexity for FEU Tech's deployment, where faculty size (m) is fixed per semester at approximately 10–50, and profile length (k) is bounded by the form fields.
+This is the relevant complexity for FEU Tech's deployment, where faculty size (m) is fixed per semester at approximately 10–50.
 
 ---
 
-### 2.3 Empirical Scaling (Benchmark Results)
-
-The file `app/algo/preprocess/benchmark.py` measures actual runtime across increasing n with m = 10 fixed.
+## C.3 Empirical Scaling (Benchmark Results)
 
 **Methodology:**
-- Vary n from 25 to 200 mentee groups (step 25)
-- Fix m = 10 synthetic mentors
-- Measure wall-clock time for each pipeline stage separately (keyword extraction, TF-IDF, Gale-Shapley, total)
-- Fit linear regression: `time = a·n + b`
-- Report R² to confirm linear scaling
-- Repeat each measurement 3 times, report average
+- Vary n from 25 to 200 mentee groups (step 25), fix m = 10 synthetic mentors
+- Measure wall-clock time for each pipeline stage separately (3-run average)
+- Fit linear regression: `time = a·n + b`; report R² to confirm linear scaling
 
-**Results from `benchmark_results.png`:**
+**Results:**
 
 | Stage | R² | Conclusion |
-|-------|----|-----------|
+|---|---|---|
 | Keyword extraction | > 0.95 | O(n) confirmed ✓ |
 | TF-IDF similarity | > 0.95 | O(n) confirmed ✓ |
 | Gale-Shapley matching | > 0.95 | O(n) confirmed ✓ |
@@ -326,1137 +670,903 @@ The file `app/algo/preprocess/benchmark.py` measures actual runtime across incre
 **Runtime estimates (10 mentors, single run):**
 
 | n (mentees) | Approx. total time |
-|-------------|-------------------|
+|---|---|
 | 25 | ~0.5 s |
 | 50 | ~0.9 s |
 | 100 | ~1.8 s |
 | 200 | ~3.5 s |
 
-Note: `benchmark.py` uses synthetic data. For wall-clock latency of an actual production run, see `metrics.py` metric #11 which reads `started_at` and `timestamp` from `algorithm_logs`.
+**Current deployment (real dataset):**
+- 21 mentee groups × 29 mentors (8 at time of initial run)
+- Wall-clock latency: **59.783 seconds** (includes Supabase fetch + write)
+- Throughput: **0.35 matches/second**
+- Pure computation (without network): **< 10 seconds**
 
 ---
 
-### 2.4 Is O(n) Achievable?
+## C.4 Is O(n) Achievable?
 
 **Short answer: Yes — when faculty size (m) is treated as a constant, which is realistic.**
 
-**Long answer:**
+Any algorithm that produces a *provably stable* matching must inspect at least Ω(n · m) input in the worst case [(Gusfield & Irving, 1989)](https://mitpress.mit.edu/9780262071703). Therefore:
 
-The algorithm already achieves O(n) empirically because m is bounded in the deployment context. This is the correct way to state the complexity for the thesis.
+> **Theorem:** No algorithm can guarantee stability and run in o(n · m) time.
 
-#### Why true O(n) independent of m is impossible for stable matching:
-
-Any algorithm that produces a *provably stable* matching must inspect at least Ω(n · m) input in the worst case [(Gusfield & Irving, 1989)](https://mitpress.mit.edu/9780262071703). This is an information-theoretic lower bound — you cannot determine a stable assignment without knowing every mentee's relative ranking of all mentors. Therefore:
-
-> **Theorem:** No algorithm can guarantee stability and run in o(n · m) time. [(Gusfield & Irving, 1989)](https://mitpress.mit.edu/9780262071703)
-
-#### What alternatives exist if m is not bounded:
-
-| Alternative | Complexity | Trade-off |
-|-------------|-----------|-----------|
-| Approximate nearest-neighbor (FAISS/HNSW) for scoring | O(n log m) | Loses exact TF-IDF scores; approximate matches only |
-| Greedy first-fit (max-score assignment) | O(n log m) using max-heap | Not stable; blocking pairs may exist |
-| Linear programming relaxation | O(n^2.5) | Slower; only approximate integer solution |
-| The current HR implementation (fixed m) | **O(n)** | Optimal, stable, exact — best option for fixed faculty |
-
-#### Formal claim for the thesis:
+**Formal claim for the thesis:**
 
 > The proposed system operates in **O(n)** time complexity with respect to the number of mentee groups, given a fixed institutional faculty size m. This is consistent with the theoretical lower bound for stable matching algorithms when m is treated as a constant, and is empirically validated by benchmark results showing linear scaling across n = 25 to n = 200 mentee groups (R² > 0.95).
 
 ---
 
-### 2.5 Proposal Phase Complexity
+## C.5 Proposal Phase Complexity
 
-The system logs every individual proposal event (propose / accept / reject / replace) during each HR algorithm run. These events are collected in memory and included in `algorithm_logs.log_data.phase3.proposal_events_mo` and `proposal_events_meo`.
-
-#### Per-variant complexity
-
-**Mentee-proposing (mentee-optimal):**
-
-Each mentee proposes to each mentor *at most once* — once rejected, the proposer never returns to the same mentor. With n mentees and m mentors, the maximum number of proposals is n · m.
-
-Each proposal is O(1): the mentor's current worst match is found via `max()` over at most `mentor_capacity` entries (bounded constant in practice), and the preference comparison uses the precomputed `hospital_rank[h_id][r_id]` dict.
-
-**Mentor-proposing (mentor-optimal):**
-
-Symmetric argument: each mentor proposes to each mentee at most once, giving O(n · m) proposals. Each proposal is O(1) via the precomputed `resident_rank[r_id][h_id]` dict.
-
-**Fair-matching overhead:**
-
-The system runs both variants in full on every execution. Total HR cost is 2 × O(n · m) = **O(n · m)** (the constant factor 2 is absorbed). The dissatisfaction comparison step that selects the winner (`pick_fairer_matching`) is **O(n + m)** — one pass over all matches on each side — and does not change the asymptotic class.
-
-#### Event count bounds
+Each proposer proposes to each candidate *at most once* — once rejected, the proposer never returns to the same candidate. This means every rejected proposal permanently eliminates one possible pairing. With n mentees and m mentors, the maximum number of proposals is n · m, each evaluated in O(1) via precomputed rank dicts.
 
 | Scenario | Events per HR run |
-|----------|-----------------|
-| Best case (all first-choice accepts) | O(n) — each mentee/mentor accepted immediately |
-| Typical case | O(n · c) where c is average proposal rounds per proposer (c ≈ 1.2–2.0 empirically) |
-| Worst case | O(n · m) — every proposer cycles through the full preference list |
+|---|---|
+| Best case | O(n) — each proposer accepted immediately |
+| Typical case | O(n · c) where c ≈ 1.2–2.0 empirically |
+| Worst case | O(n · m) — every proposer cycles the full list |
 
-**Fair-matching total (both variants):** 2 × (above) = **O(n · m)** worst case.
+**Fair-matching total (both variants):** 2 × O(n · m) = **O(n · m)** worst case.
 
-#### Collection and storage cost
-
-**Collection:** O(1) per event (list append). The total additional overhead of event collection is O(n · m) in the worst case, which is already within the existing O(n · m) bounds for the HR algorithm. No asymptotic regression.
-
-**Storage:** Both event lists (`proposal_events_mo` and `proposal_events_meo`) are persisted as JSONB in `algorithm_logs`. Worst-case DB payload is 2 × O(n · m) events. For n = 100, m = 10, typical total event count ≈ 240–400 events across both runs. At ~150 bytes per event, this is roughly 36–60 KB per `algorithm_logs` row, well within Supabase JSONB limits.
+For FEU Tech's current scale (21 mentees × 8 mentors): worst-case proposals = 168 per variant × 2 = 336 events total — completing in well under one second.
 
 ---
 
-#### Plain-Language Explanation of Proposal Phase Time Complexity
+## C.6 Complexity Reduction Alternatives
 
-The proposal phase is the part of the algorithm where actual assignments are made. It works like a structured application process: each unassigned student group sends a request to their most-preferred mentor, and mentors either accept, reject, or swap out a less-preferred current hold in favor of the new request.
+| Alternative | Complexity | Trade-off |
+|---|---|---|
+| Truncated preference lists (top-k, Roth & Peranson 1999) | O(n · k · f), k << m | Stability only within retained top-k; unmatched rate increases slightly |
+| ANN pre-filtering (FAISS/HNSW) | O(n · log m + n · k · f) | Approximate recall; adds index dependency |
+| Incremental cached scoring | O(Δ · m · f) per re-run | Requires profile change tracking and cache invalidation |
+| **Current (fixed m)** | **O(n)** | Optimal, stable, exact — best for fixed faculty |
 
-**Why the process must eventually stop**
-
-The key insight is that each request permanently eliminates one possible pairing from the student's list. Once a student group has been turned down by a mentor, they never ask that same mentor again. Since the number of possible (student, mentor) pairings is finite — there are `n` student groups and `m` mentors, giving exactly `n × m` possible pairings — the process is guaranteed to finish.
-
-**How many rounds are needed?**
-
-The number of rounds depends on how contested the mentors are.
-
-| Situation | What happens | Number of rounds |
-|-----------|--------------|-----------------|
-| Best case | Every student group is accepted immediately by their first-choice mentor | Equal to the number of student groups (n) |
-| Typical case | Each student group is turned down once or twice before being accepted | Roughly 1.2 to 2 times the number of student groups |
-| Worst case | Every student group is turned down by every mentor before being accepted by one | Up to n × m (student groups × mentors) |
-
-In the best case, all preferences are spread out so no mentor is overloaded — every first request is accepted, and the phase completes in as many rounds as there are students. In the worst case, every student chases the same few mentors, getting turned down repeatedly until they exhaust their list, producing the maximum n × m rounds.
-
-**What O(n × m) means for this system**
-
-For FEU Tech's current scale — approximately 21 student groups and 16 mentors — the worst-case number of proposal rounds is 21 × 16 = 336. Each individual round takes a fixed, constant amount of work (one comparison to decide accept, reject, or replace), so the total time is simply proportional to the number of rounds. Doubling the number of student groups doubles the number of rounds in the worst case; the algorithm scales predictably.
-
-**Why running two variants does not change the complexity class**
-
-The system runs the proposal phase twice on every execution — once where student groups do the asking, and once where mentors do the asking — in order to pick the fairer result. This doubles the worst-case event count to 2 × (n × m), but because the two runs happen sequentially, the combined cost is still expressed as O(n × m). The factor of 2 is a fixed constant and does not change how the runtime grows as the number of participants increases.
-
-**Why no proposal round is wasted**
-
-Every rejected request moves the proposer one step forward on their preference list and can never happen again. This means the algorithm makes measurable progress toward termination with every single round — there is no scenario where the same sequence of proposals repeats or where the algorithm gets stuck.
-
-**Formal statement for the thesis:**
-
-> The proposal phase of the Hospital-Resident algorithm executes in O(n · m) time, where n is the number of student groups and m is the number of mentors. Each student group proposes to each mentor at most once, and each proposal is evaluated in constant time using precomputed preference rankings. For FEU Tech's deployment scale, this produces at most a few hundred proposal events per run, completing in well under one second. Running both the student-proposing and mentor-proposing variants doubles the event count by a fixed factor of 2, which does not affect the asymptotic growth class.
+For the current FEU Tech deployment (n ≤ 100, m ≤ 50), **no optimization is needed** — the full pipeline runs in under 2 seconds empirically.
 
 ---
 
-### 2.6 Complexity Reduction Alternatives (Same Algorithm, Different Approach)
-
-**Current bottleneck:** Phase 2 TF-IDF cosine matrix is **O(n · m · f)** (f ≤ 500 TF-IDF features). For n = 100, m = 50, f = 500 this means ~2.5 million scalar operations. The HR algorithm itself is O(n · m), which is absorbed by this dominant term. The fair-matching step runs HR twice, doubling the HR cost but not changing the complexity class.
-
-The question is: can we reduce complexity while keeping the HR (Gale-Shapley) stable matching algorithm? Yes — by reducing the work done *before* HR runs.
-
----
-
-#### Approach A — Truncated Preference Lists (HR with Incomplete Lists)
-
-**How it works:** Instead of scoring all n × m pairs and generating full preference lists, compute only the top-k highest-scoring candidates per mentee/mentor (k ≈ 5–10) and run HR on those truncated lists. This is the approach used in the real NRMP (National Resident Matching Program) since 1998. [(Roth & Peranson, 1999)](https://doi.org/10.1257/aer.89.4.748)
-
-**Complexity improvement:**
-
-| Stage | Current | With top-k |
-|-------|---------|-----------|
-| TF-IDF cosine scoring | O(n · m · f) | O(n · k · f) — only score top-k candidates |
-| Preference generation | O((n+m) · m · log m) | O((n+m) · k · log k) |
-| HR algorithm | O(n · m) | O(n · k) |
-| **Total** | **O(n · m · f)** | **O(n · k · f), k << m** |
-
-**Trade-off:** Stability is guaranteed only within the retained top-k preferences. A mentee not appearing in a mentor's top-k list cannot be matched to that mentor even if no other stable match exists, potentially leaving more mentees unmatched. Empirically, for the NRMP with k ≥ 10, unmatched rates are near-identical to the full-list version. [(Roth & Peranson, 1999)](https://doi.org/10.1257/aer.89.4.748)
-
-**Applicability to this system:** With m ≤ 50 mentors at FEU Tech, k = m and this optimization is moot. It becomes relevant when m exceeds ~100. The current codebase already supports this as a future parameter: `generate_preferences()` in `matching.py` returns full ranked lists with no truncation — adding a `top_k` parameter requires only a `.[:top_k]` slice before the HR call.
-
----
-
-#### Approach B — Approximate Nearest-Neighbor Pre-filtering (ANN)
-
-**How it works:** Compute dense profile embeddings (e.g., sentence-BERT or TF-IDF sparse vectors projected to lower dimensions via SVD/PCA), then use an ANN index (FAISS HNSW) to retrieve the top-k most similar mentors per mentee in O(log m) per query. Run exact TF-IDF scoring only on those k pairs.
-
-**Complexity improvement:**
-
-| Stage | Current | With ANN |
-|-------|---------|---------|
-| Embedding / index build | — | O((n+m) · d) once, cached |
-| ANN query (per mentee) | — | O(n · log m) |
-| Exact TF-IDF on shortlist | O(n · m · f) | O(n · k · f) |
-| **Total (cold)** | **O(n · m · f)** | **O((n+m)·d + n·k·f)** |
-| **Total (warm, cached index)** | **O(n · m · f)** | **O(n · k · f)** |
-
-**Trade-off:** Adds a dependency (FAISS or `hnswlib`), adds an index build step, and introduces approximate recall (top-k list may miss a true best match with low probability). ANN recall@10 is typically > 98% for text embeddings. Not worthwhile at FEU Tech's scale.
-
----
-
-#### Approach C — Incremental / Cached Scoring
-
-**How it works:** Store TF-IDF vectors per profile in the database. On each re-run, only recompute scores for the Δ profiles that changed since the last run; reuse cached dot products for the rest.
-
-**Complexity improvement:**
-
-| Scenario | Complexity |
-|----------|-----------|
-| First run (cold) | O(n · m · f) — no savings |
-| Re-run with Δ changed profiles | O(Δ · m · f) — typically Δ ≈ 2–5 per week |
-| Re-run with no changes | O(1) — return cached result |
-
-**Trade-off:** Requires profile change tracking (e.g., `updated_at` timestamps) and cache invalidation logic. Adds operational complexity. Suitable if the matching algorithm is run frequently (e.g., daily) with few profile changes.
-
----
-
-#### Summary Recommendation
-
-For the current FEU Tech deployment (n ≤ 100, m ≤ 50), **no optimization is needed** — the full pipeline runs in under 2 seconds empirically. The table below documents the path for each scaling scenario:
-
-| Faculty grows to… | Recommended approach | Expected complexity |
-|-------------------|---------------------|-------------------|
-| m ≤ 100 | No change needed | O(n) with fixed m |
-| m = 100–500 | Truncated preference lists (k = 15–20) | O(n · k · f) |
-| m > 500 | ANN pre-filtering + truncated lists | O(n · log m + n · k · f) |
-| Frequent re-runs (daily) | Incremental cached scoring | O(Δ · m · f) per re-run |
-
-**Formal claim for thesis:**
-> The system's O(n · m · f) scoring phase can be reduced to O(n · k · f) (k ≪ m) by truncating preference lists to the top-k highest-scoring candidates before the HR algorithm runs. This preserves the HR algorithm's stability guarantee within the retained preference set (Roth & Peranson, 1999) and reduces the HR runtime from O(n · m) to O(n · k). For FEU Tech's deployment scale (m ≤ 50), the full-list approach is optimal; preference truncation represents the primary scalability path for institutional growth beyond m = 100.
-
----
-
-## 3. Effectiveness Metrics
+# PART D: Effectiveness Metrics
 
 The algorithm's effectiveness is measured across four categories. Metrics #1–12 are computed automatically by `metrics.py`. Metrics #13–17 require post-deployment data.
 
 ---
 
-### 3.1 Algorithmic Correctness Metrics
+## D.1 Algorithmic Correctness Metrics
 
----
+### Metric #1 — Stability Rate
 
-#### Metric #1 — Stability Rate [(Gale & Shapley, 1962)](https://doi.org/10.2307/2300560)
-
-**Definition:** Percentage of all algorithm runs that produced a stable matching (no blocking pairs).
-
-**Formulas:**
 ```
-stability_rate (run-level)   = (stable_runs / total_runs) × 100%
-stability_rate (per-match)   = (stable_match_records / total_match_records) × 100%
+stability_rate (run-level)  = (stable_runs / total_runs) × 100%
+stability_rate (per-match)  = (stable_match_records / total_match_records) × 100%
 ```
 
-A *blocking pair* (mentee i, mentor j) exists if both:
-- Mentee i prefers mentor j over their assigned mentor, AND
-- Mentor j prefers mentee i over their worst current assigned mentee (or has spare capacity)
+**Target:** 100% · **Measured:** 100% (1/1 runs, 21/21 matches)
 
-**Target:** 100% (the HR algorithm is proven to always produce stable matchings; any deviation indicates a bug or degenerate input).
+A blocking pair `(mentee i, mentor j)` exists if mentee i prefers mentor j over their assigned mentor AND mentor j prefers mentee i over their worst current match (or has spare capacity).
 
-**SQL query:**
-```sql
-SELECT
-  COUNT(*) FILTER (WHERE (log_data->>'is_stable')::boolean = true)  AS stable_runs,
-  COUNT(*)                                                           AS total_runs,
-  ROUND(
-    COUNT(*) FILTER (WHERE (log_data->>'is_stable')::boolean = true)
-    * 100.0 / NULLIF(COUNT(*), 0), 1
-  ) AS stability_rate_pct
-FROM algorithm_logs;
-```
+### Metric #2 — Match Coverage
 
-**Interpretation:**
-- 100% → System is working correctly. Report as "the proposed algorithm achieved stable matchings in 100% of test runs."
-- < 100% → Investigate: likely a capacity constraint violation (total mentor capacity < total mentees) or a data integrity issue.
-
-**Edge case:** If `total_runs = 0`, report "No runs recorded."
-
----
-
-#### Metric #2 — Match Coverage
-
-**Definition:** Percentage of mentee groups that received a mentor assignment in the latest run.
-
-**Formula:**
 ```
 match_coverage = (matched / (matched + unmatched)) × 100%
 ```
 
-**Target:** 100% (all mentees should be matched when total mentor capacity ≥ n).
+**Target:** 100% · **Measured:** 100% (21/21 matched)
 
-**SQL query:**
-```sql
-SELECT
-  log_data->>'matched'   AS matched,
-  log_data->>'unmatched' AS unmatched,
-  ROUND(
-    (log_data->>'matched')::numeric * 100.0
-    / NULLIF((log_data->>'matched')::numeric + (log_data->>'unmatched')::numeric, 0),
-    1
-  ) AS coverage_pct
-FROM algorithm_logs
-ORDER BY created_at DESC
-LIMIT 1;
-```
+### Metric #3 — Capacity Utilization
 
-**Interpretation:**
-- 100% → Every mentee group received a mentor.
-- < 100% → Some mentees are unmatched. Check that `SUM(mentor.mentor_capacity) >= COUNT(MENTEE_GROUPS)`. The safety net in `matching.py` assigns remaining mentees to the mentor with most remaining capacity, so coverage should be 100% unless total capacity is genuinely exhausted.
-
----
-
-#### Metric #3 — Capacity Utilization
-
-**Definition:** Percentage of total available mentor slots that were filled.
-
-**Formula:**
 ```
 capacity_utilization = (total_assigned / total_capacity) × 100%
 ```
-where `total_capacity = SUM(mentor.mentor_capacity)`.
 
-**Target:** ≥ 80% (high utilization indicates good use of faculty resources; < 80% suggests over-provisioned capacity).
+**Target:** ≥ 80% · **Measured:** 16.0% (21/131 slots — indicates over-provisioned capacity relative to mentee count)
 
-**SQL queries:**
-```sql
--- Total assigned
-SELECT COUNT(*) AS assigned FROM matches WHERE status = 'active';
+### Metric #4 — Fairness (Gini Coefficient)
 
--- Total capacity
-SELECT SUM(COALESCE(mentor_capacity, 1)) AS total_capacity FROM mentor;
-
--- Per-mentor fill
-SELECT
-  m.first_name || ' ' || m.last_name AS mentor_name,
-  COALESCE(m.mentor_capacity, 1)     AS capacity,
-  COUNT(mt.mentor_id)                AS assigned,
-  ROUND(COUNT(mt.mentor_id) * 100.0 / NULLIF(COALESCE(m.mentor_capacity, 1), 0), 0) AS fill_pct
-FROM mentor m
-LEFT JOIN matches mt ON mt.mentor_id = m.id AND mt.status = 'active'
-GROUP BY m.id, m.first_name, m.last_name, m.mentor_capacity
-ORDER BY fill_pct DESC;
+```
+Sort scores ascending: s₁ ≤ s₂ ≤ ... ≤ sₙ
+G = (2 · Σᵢ (i · sᵢ)) / (n · Σᵢ sᵢ)  −  (n + 1) / n
 ```
 
-**Interpretation:**
-- ≥ 80% → Resources are well-utilized.
-- Mentors with fill_pct = 0% → Underloaded; consider reducing their capacity setting or flagging for the coordinator.
-- Mentors with fill_pct > 100% → Over-assigned (safety net triggered); consider increasing their stated capacity.
+**Targets:** G_score ≤ 0.10 | G_workload ≤ 0.15 · **Measured:** G_score = 0.3604, G_workload = 0.6995
 
----
-
-#### Metric #4 — Fairness (Gini Coefficient) [(Gini, 1912)](https://doi.org/10.2307/2223319)
-
-**Definition:** Measures inequality in two dimensions: compatibility score distribution across matched pairs (Score Equity) and assignment load across mentors relative to their capacity (Workload Equity). Lower is fairer in both cases.
-
-**Formula — Score Equity Gini (normalized, non-negative values):**
-```
-Sort scores in ascending order: s₁ ≤ s₂ ≤ ... ≤ sₙ
-
-G_score = (2 · Σᵢ₌₁ⁿ (i · sᵢ)) / (n · Σᵢ₌₁ⁿ sᵢ)  −  (n + 1) / n
-```
-
-**Formula — Workload Equity Gini:**
-```
-Uₘ = assigned_m / capacity_m       (utilization ratio per mentor m)
-
-G_workload = gini_coefficient([U₁, U₂, ..., Uₘ])
-```
-
-where `gini_coefficient` uses the same normalized formula above applied to the utilization vector.
-
-**Step-by-step example** (n = 4 scores: [0.72, 0.80, 0.85, 0.93]):
-```
-Sorted:  0.72, 0.80, 0.85, 0.93
-Σ sᵢ   = 3.30
-Σ i·sᵢ = 1(0.72) + 2(0.80) + 3(0.85) + 4(0.93)
-       = 0.72 + 1.60 + 2.55 + 3.72 = 8.59
-G = 2(8.59) / (4 · 3.30)  −  5/4
-  = 17.18 / 13.20  −  1.25
-  = 1.301  −  1.25
-  = 0.051
-```
-
-A Gini of 0.051 indicates very low inequality — the matches are fairly distributed.
-
-**Interpretation scale:**
 | G value | Interpretation |
-|---------|---------------|
-| 0.00 | All matches have identical scores (perfectly equal) |
-| 0.00–0.10 | Very low inequality — target range |
-| 0.10–0.20 | Moderate inequality — some mentees are significantly better matched than others |
-| > 0.20 | High inequality — a few matches are very good while others are poor; investigate |
+|---|---|
+| 0.00 – 0.10 | Very low inequality — target range |
+| 0.10 – 0.20 | Moderate inequality |
+| > 0.20 | High inequality — investigate |
 
-**Targets:** G_score ≤ 0.10  |  G_workload ≤ 0.15
+### Metric #5 — Score Floor Compliance
 
-**SQL query:**
-```sql
--- Gini numerator/denominator for manual computation
-SELECT
-  score_rank,
-  compatibility_score,
-  score_rank * compatibility_score AS weighted
-FROM (
-  SELECT
-    ROW_NUMBER() OVER (ORDER BY compatibility_score) AS score_rank,
-    compatibility_score
-  FROM matches
-  WHERE status = 'active'
-) ranked;
-```
-
-**Edge cases:**
-- If n = 1: G is undefined; return 0 (single match cannot have inequality).
-- If all scores are identical: G = 0.
-- The scoring system clips all scores to [0.70, 1.00], which compresses the range and will naturally keep G low.
-
----
-
-#### Metric #5 — Score Floor Compliance
-
-**Definition:** Percentage of matches where `compatibility_score ≥ 0.70`.
-
-**Formula:**
 ```
 floor_compliance = (matches_with_score ≥ 0.70 / total_matches) × 100%
 ```
 
-**Target:** 100% (the 0.70 floor is enforced by `np.clip()` in `scoring.py`, so this is always 100% in a correctly functioning system).
+**Target:** 100% · **Measured:** 33.3% (log from initial run before keyword vocabulary expansion)
 
-**Purpose:** This is a sanity check. Reporting 100% confirms the scoring pipeline is functioning as intended and that no un-clipped scores leaked into the database.
+### Metric #5b — Dissatisfaction Score
 
-**SQL query:**
-```sql
-SELECT
-  COUNT(*)                                            AS total_matches,
-  COUNT(*) FILTER (WHERE compatibility_score >= 0.70) AS compliant,
-  COUNT(*) FILTER (WHERE compatibility_score <  0.70) AS violations
-FROM matches
-WHERE status = 'active';
 ```
-
-**Interpretation:** Any violation (score < 0.70) indicates a data integrity issue or a regression in the scoring pipeline. Flag immediately.
-
----
-
-#### Metric #5b — Dissatisfaction Score
-
-**Definition:** For each matched pair, the dissatisfaction of one side equals the rank position of their assigned match in their preference list. Lower values indicate the algorithm produced outcomes closer to each party's top preference. Used internally to select between the mentee-optimal and mentor-optimal HR runs.
-
-**Formulas:**
-```
-D_mentee = (1 / |G|) · Σ_{g ∈ G} rank_g(M(g))
-
-D_mentor  = (1 / Σ capacity_m) · Σ_{m ∈ M} Σ_{g ∈ assigned(m)} rank_m(g)
-
+D_mentee = (1/|G|) · Σ_{g ∈ G} rank_g(M(g))
+D_mentor  = (1/Σ capacity_m) · Σ_{m ∈ M} Σ_{g ∈ assigned(m)} rank_m(g)
 D_total   = D_mentee + D_mentor
 ```
 
-where:
-- `rank_g(M(g))` = position of assigned mentor M(g) in mentee g's preference list (0-indexed: 0 = top choice)
-- `rank_m(g)` = position of assigned mentee g in mentor m's preference list
-- `|G|` = total number of mentee groups
-- `Σ capacity_m` = total mentor slots
+**Measured results:**
 
-**Selection rule:**
-```
-selected = mentee-optimal   if  D_total(mentee-optimal) ≤ D_total(mentor-optimal)
-           mentor-optimal   otherwise
-```
+| Variant | Mentee dissatisfaction | Mentor dissatisfaction |
+|---|---|---|
+| Mentee-optimal | **0.0000** | 2.7143 |
+| Mentor-optimal | **0.0000** | 2.7143 |
 
-Ties break in favor of mentee-optimal. Both variants' dissatisfaction values are stored in `algorithm_logs.log_data.dissatisfaction` for every run.
-
-**Interpretation:**
-- D_mentee = 0 → every mentee received their top-ranked mentor
-- D_mentor = 0 → every mentor received their top-ranked mentee group
-- Lower D_total → less overall system "unhappiness"
+Both variants produced identical results — meaning only one stable matching was possible given the preference lists (unique stable matching). Mentees received their top-ranked mentor (D_mentee = 0). Mentors received groups ranked ~3rd on average.
 
 ---
 
-### 3.2 Semantic Match Quality Metrics
+## D.2 Semantic Match Quality Metrics
 
----
+### Metric #6 — Keyword Precision
 
-#### Metric #6 — Keyword Precision [(Salton & Buckley, 1988)](https://doi.org/10.1016/0306-4573(88)90021-0)
-
-**Definition:** For each matched pair, the proportion of keywords in `matched_keywords` that genuinely appear in both the mentor's and mentee's profile text.
-
-**Formula:**
 ```
 precision_per_pair = hits / total_keywords_for_pair
-
-where a "hit" = keyword appears (case-insensitive) in mentor text AND mentee text
-
-keyword_precision = MEAN(precision_per_pair) × 100%
+keyword_precision  = MEAN(precision_per_pair) × 100%
 ```
 
-**Profile text sources:**
-- Mentor text: `forte` array + `technical_skills` array + `prev_mentored_thesis` array (joined as a single string)
-- Mentee text: `research_description` + `mentor_preference` + `research_title` (joined)
+A "hit" = keyword appears (case-insensitive) in BOTH mentor text AND mentee text.
 
-**Automated check (Python):**
-```python
-mentor_text = " ".join([
-    *mentor.get("forte", []),
-    *mentor.get("technical_skills", []),
-    *mentor.get("prev_mentored_thesis", []),
-]).lower()
+**Target:** ≥ 80% · **Measured:** 78.2% (19 pairs · avg 2.29 kw/pair · 31 unique keywords)
 
-mentee_text = " ".join([
-    mentee.get("research_description", ""),
-    mentee.get("mentor_preference", ""),
-    mentee.get("research_title", ""),
-]).lower()
+### Metric #7 — Domain Overlap Rate
 
-hits = sum(1 for kw in match["matched_keywords"] if kw.lower() in mentor_text and kw.lower() in mentee_text)
-precision = hits / len(match["matched_keywords"])
-```
-
-**Target:** ≥ 80%
-
-**Interpretation:**
-- ≥ 90% → Excellent. Matched keywords are strong evidence of alignment.
-- 80–90% → Good. Minor false positives from domain expansion (expected).
-- < 80% → Investigate. May indicate domain expansion is too aggressive or the keyword extractor is picking up unrelated bigrams.
-
-**Note on domain expansion:** Keywords added via `DOMAIN_MAP` expansion may appear in neither raw profile verbatim (e.g., "tokenization" expanded from "nlp"). These count as imprecise by the above definition. This is expected and acceptable; note it in the thesis as "domain-expanded keywords are semantically but not textually present."
-
-**Edge case:** If a match has zero `matched_keywords`, it is excluded from the precision calculation (undefined). Report the number of pairs checked separately.
-
----
-
-#### Metric #7 — Domain Overlap Rate
-
-**Definition:** Average number of shared research domains per matched pair, as recorded by the scoring pipeline.
-
-**Formula:**
 ```
 domain_overlap_rate = MEAN(len(shared_domains)) across all scored pairs
 ```
 
-**Data source:** `algorithm_logs.log_data.phase2.scores[*].top_matches[*].shared_domains`
+**Target:** ≥ 1.0 · **Measured:** 10.40 avg shared domains per pair ✓
 
-The `shared_domains` field is populated by `scoring.py` via `DOMAIN_MAP` expansion. If both mentor and mentee profiles contain terms that expand to the same canonical domain (e.g., both have "nlp" → `["natural language processing", "tokenization", ...]`), that domain is listed as shared.
+### Metric #8 — Mentee Preferred-Match Rate
 
-**Target:** ≥ 1.0 average shared domains per pair (at least one domain in common for the top match)
-
-**Interpretation:**
-- ≥ 2.0 → Strong domain alignment. Pairs share multiple research areas.
-- 1.0–2.0 → Moderate alignment. Typical for CS faculty with broad profiles.
-- < 1.0 → Low domain overlap. The keyword-only TF-IDF cosine score is carrying most of the compatibility signal. Check if profiles are too sparse.
-
----
-
-#### Metric #8 — Mentee Preferred-Match Rate
-
-**Definition:** Percentage of mentees whose assigned mentor was ranked #1 or #2 in their personal preference list.
-
-**Formula:**
 ```
-preferred_match_rate = (mentees_whose_assigned_mentor_ranked ≤ 2 / total_mentees) × 100%
+preferred_match_rate = (mentees whose assigned mentor ranked ≤ 2 / total_mentees) × 100%
 ```
 
-**Data sources:**
-- Preference list: `mentee_preferences.ranked_mentors` (array of `{rank, mentor_id, ...}` objects)
-- Actual assignment: `matches.mentor_id`
+**Target:** ≥ 60% · **Measured:** 100% (21/21 mentees received a top-2 mentor) ✓
 
-**SQL query:**
-```sql
-SELECT
-  COUNT(*) AS total,
-  COUNT(*) FILTER (
-    WHERE pref_rank <= 2
-  ) AS top_2_preferred,
-  ROUND(
-    COUNT(*) FILTER (WHERE pref_rank <= 2) * 100.0 / COUNT(*),
-    1
-  ) AS preferred_rate_pct
-FROM (
-  SELECT
-    m.mentee_group_id,
-    (
-      SELECT rm->>'rank'
-      FROM mentee_preferences mp,
-           jsonb_array_elements(mp.ranked_mentors) rm
-      WHERE mp.mentee_group_id = m.mentee_group_id
-        AND (rm->>'mentor_id') = m.mentor_id
-      LIMIT 1
-    )::int AS pref_rank
-  FROM matches m
-  WHERE m.status = 'active'
-) ranked;
+### Metric #9 — Mentor Preferred-Match Rate
+
 ```
-
-**Target:** ≥ 60%
-
-**Interpretation:**
-- ≥ 80% → Excellent. Most mentees received their top-choice mentor.
-- 60–80% → Good. The algorithm is finding near-optimal mentee outcomes.
-- < 60% → Investigate capacity constraints. If mentors have capacity = 1 and many mentees share the same top-ranked mentor, lower-preferred assignments are inevitable.
-
-**Note on mode:** The `mentee-optimal` mode maximizes this metric by design. The `fair-matching` mode may produce slightly lower mentee preferred rates in exchange for better mentor preferred rates.
-
----
-
-#### Metric #9 — Mentor Preferred-Match Rate
-
-**Definition:** Percentage of mentor-mentee assignments where the mentee group fell within the mentor's top ⌈n/3⌉ ranked mentees.
-
-**Formula:**
-```
-top_tier = ceil(total_mentees / 3)   ← top third of mentor's preference list
-
+top_tier = ceil(total_mentees / 3)
 preferred_rate = (assignments where mentee rank ≤ top_tier / total_assignments) × 100%
 ```
 
-**Rationale for ⌈n/3⌉:** Mentors assess many groups; being assigned a group in the top third of their ranking represents genuine preference alignment. Using rank ≤ 2 (as for mentees) would be too strict when a mentor is evaluating 25+ groups.
-
-**Target:** ≥ 60%
-
-**Data sources:** `mentor_preferences.ranked_mentees`, `matches`
-
-**Interpretation:** Symmetric to metric #8 but from the mentor's perspective. The `mentor-optimal` mode maximizes this metric.
+**Target:** ≥ 60% · **Measured:** 95.2% (top-7 tier, 21 checked) ✓
 
 ---
 
-### 3.3 Efficiency Metrics
+## D.3 Efficiency Metrics
 
----
+### Metric #10 — Throughput
 
-#### Metric #10 — Throughput
-
-**Definition:** Number of stable match pairs produced per second of wall-clock time.
-
-**Formula:**
 ```
 throughput = matched / wall_clock_latency_seconds   (matches/sec)
 ```
 
-**Data source:** `algorithm_logs.log_data.matched` and `algorithm_logs.log_data.started_at` / `.timestamp`
+**Measured:** 0.35 matches/sec (21 matches / 59.783 s)
 
-**Note:** The `started_at` field is captured at the very start of the `if __name__ == "__main__"` block in `main.py` (before Supabase connection). The `timestamp` field is captured immediately before writing to the database. The latency therefore includes: Supabase data fetch, keyword extraction, TF-IDF scoring, Gale-Shapley, and all logging — but excludes the final database write.
+### Metric #11 — Wall-Clock Latency
 
-**Typical range (10 mentors, n = 25):** ~50–100 matches/sec
-
----
-
-#### Metric #11 — Wall-Clock Latency
-
-**Definition:** End-to-end time from algorithm invocation to results ready (pre-DB write).
-
-**Formula:**
 ```
 latency = timestamp − started_at   (in seconds)
 ```
 
-Both fields are ISO-8601 UTC timestamps stored in `algorithm_logs.log_data`.
+**Measured:** 59.783 seconds (includes Supabase fetch + write; pure computation < 10 s)
 
-**SQL query:**
-```sql
-SELECT
-  (log_data->>'timestamp')::timestamptz - (log_data->>'started_at')::timestamptz AS latency,
-  log_data->>'matched' AS matched,
-  created_at
-FROM algorithm_logs
-ORDER BY created_at DESC
-LIMIT 1;
-```
+### Metric #12 — Score Distribution (n=21)
 
-**Interpretation:**
-- < 2 s for n ≤ 50 → Fast; well within real-time expectations.
-- 2–10 s for n ≤ 200 → Acceptable for a scheduled/batch job.
-- > 10 s → Profile texts may be very long, or scoring.py TF-IDF is receiving many documents; check `k` (profile word count).
-
----
-
-#### Metric #12 — Score Distribution
-
-**Definition:** Statistical summary of all `compatibility_score` values in the current match set.
-
-**Statistics reported:** mean, median, standard deviation, minimum, maximum, P25, P75, skewness, kurtosis, SEM, 95% CI.
-
-**Formulas:**
-```
-Mean       x̄  = (1/n) · Σᵢ sᵢ
-
-Std Dev     σ  = √( (1/(n−1)) · Σᵢ (sᵢ − x̄)² )
-
-SEM            = σ / √n
-
-95% CI         = [ x̄ − t(0.025, n−1)·SEM ,  x̄ + t(0.025, n−1)·SEM ]
-
-Skewness       = (1/n) · Σᵢ ((sᵢ − x̄)/σ)³           (Fisher's, moment-based)
-
-Kurtosis       = (1/n) · Σᵢ ((sᵢ − x̄)/σ)⁴  −  3     (Fisher's excess; 0 = normal)
-```
-
-A **platykurtic** distribution (kurtosis < 0) has thinner tails than a normal distribution — as observed in the bimodal score pattern where high-overlap pairs cluster near 0.80 and low-overlap pairs cluster near 0.10, with few pairs in between.
-
-**SQL query:**
-```sql
-SELECT
-  ROUND(AVG(compatibility_score)::numeric, 4)                   AS mean,
-  ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY compatibility_score)::numeric, 4) AS median,
-  ROUND(STDDEV(compatibility_score)::numeric, 4)                AS std,
-  ROUND(MIN(compatibility_score)::numeric, 4)                   AS min,
-  ROUND(MAX(compatibility_score)::numeric, 4)                   AS max,
-  ROUND(PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY compatibility_score)::numeric, 4) AS p25,
-  ROUND(PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY compatibility_score)::numeric, 4) AS p75
-FROM matches
-WHERE status = 'active';
-```
-
-**Interpretation:**
-- High mean (> 0.80) + low std (< 0.05) → Matches are consistently strong and fair.
-- Low mean (< 0.75) → Profiles may be semantically sparse; keyword extraction is finding few overlaps.
-- High std (> 0.08) → Some pairs are excellent while others are marginal; consider checking for Gini > 0.10 as well.
-- P25 close to min → A significant tail of poor matches; investigate unmatched-keyword pairs.
+| Statistic | Value |
+|---|---|
+| Mean | 0.4309 |
+| Median | 0.2508 |
+| Std | 0.2916 |
+| Min | 0.0867 |
+| Max | 0.8033 |
+| P25 | 0.1850 |
+| P75 | 0.8023 |
+| Skewness | 0.3361 |
+| Kurtosis | −1.6192 (platykurtic — bimodal distribution) |
+| 95% CI | [0.2981, 0.5636] |
 
 ---
 
-### 3.4 User Outcome Metrics
+## D.4 User Outcome Metrics (Post-Deployment)
 
-These require post-deployment data collection (surveys, system logs over one semester).
-
-| # | Metric | Measurement method | Scale |
-|---|--------|-------------------|-------|
-| 13 | **Peak memory usage** | `tracemalloc.get_traced_memory()[1]` in `main.py` before DB write | MB |
-| 14 | **Post-match satisfaction score** | End-of-semester Likert survey: "How satisfied are you with your matched mentor/mentee?" | 1–5 |
-| 15 | **Meeting adherence rate** | `(actual meetings logged / scheduled recurring meetings) × 100%` | % |
-| 16 | **Paper submission rate** | Papers submitted per mentee group per semester | count |
-| 17 | **Thesis completion rate** | % of matched groups that complete and submit their final thesis chapter | % |
-
-**How to measure #13 (peak memory):**
-Add to `main.py` before the `if __name__ == "__main__":` block:
-```python
-import tracemalloc
-tracemalloc.start()
-```
-At the end, before DB write:
-```python
-current, peak = tracemalloc.get_traced_memory()
-print(f"  Peak memory: {peak / 1024 / 1024:.1f} MB")
-tracemalloc.stop()
-```
-
-**Suggested survey questions for #14:**
-- Mentee: "My assigned mentor has relevant expertise in my research area." (1–5)
-- Mentee: "I am satisfied with the matching result." (1–5)
-- Mentor: "The mentee group assigned to me aligns with my research focus." (1–5)
-- Mentor: "I am satisfied with the matching result." (1–5)
+| # | Metric | Measurement method |
+|---|---|---|
+| 13 | Peak memory usage | `tracemalloc.get_traced_memory()[1]` in `main.py` |
+| 14 | Post-match satisfaction score | End-of-semester Likert survey (1–5) |
+| 15 | Meeting adherence rate | actual meetings logged / scheduled recurring meetings |
+| 16 | Paper submission rate | Papers submitted per mentee group per semester |
+| 17 | Thesis completion rate | % of matched groups that submit their final thesis chapter |
 
 ---
 
-### 3.5 Running All Metrics
-
-The `metrics.py` script (`app/algo/preprocess/metrics.py`) computes metrics #1–12 automatically from live Supabase data.
-
-**Prerequisites:** Run the matching algorithm at least once (any mode) to populate `algorithm_logs`, `matches`, `mentee_preferences`, and `mentor_preferences`.
+## D.5 Running All Metrics
 
 ```bash
-# Activate the Python virtual environment
 source app/algo/venv/bin/activate
-
 cd app/algo/preprocess
 
-# Full report + all charts + text log (default)
-python3 metrics.py
-
-# Save results as JSON (for thesis appendix)
-python3 metrics.py --save metrics_output.json
-
-# Machine-readable JSON only (no report, no charts)
-python3 metrics.py --json
-
-# Report + log only, skip chart generation
-python3 metrics.py --no-charts
-
-# Evaluate a specific past run (by algorithm_logs ID)
-python3 metrics.py --log-id <uuid>
+python3 metrics.py                        # full report + all charts + text log
+python3 metrics.py --save metrics.json    # also write JSON
+python3 metrics.py --no-charts            # skip chart generation
+python3 metrics.py --log-id <uuid>        # use a specific past run
 ```
 
-**Output files** (all in `app/algo/preprocess/`, overwritten on every run):
+**Output charts** (all in `app/algo/preprocess/`):
 
 | File | Content |
-|------|---------|
-| `metrics_log.txt` | Full text report identical to stdout + scipy stats |
-| `metrics_score_distribution.png` | Histogram + KDE [(Pedregosa et al., 2011)](https://jmlr.csail.mit.edu/papers/v12/pedregosa11a.html) + mean/median lines + skewness/kurtosis annotation |
-| `metrics_lorenz_curve.png` | Lorenz curves [(Gini, 1912)](https://doi.org/10.2307/2223319) — Score Equity (G_score) and Workload Equity (G_workload) with shaded inequality areas |
-| `metrics_capacity.png` | Horizontal bar chart per mentor, color-coded by fill % |
-| `metrics_summary.png` | 2×2 dashboard: score distribution, Lorenz curves, capacity utilization, preferred-match rates |
-| `metrics_stability.png` | 1×2: run-history stability timeline + blocking pairs bar chart per run |
-| `metrics_keyword_precision.png` | 1×2: keyword precision per matched pair + matched keyword count distribution |
-| `metrics_combined.png` | All 9 panels in a single 5-row figure — complete metrics dashboard |
-
-**Sample output:**
-```
-══════════════════════════════════════════════════════
-  FORTIS NEXUS — THESIS METRICS REPORT
-  Run: 2026-05-10 14:32:01 UTC  ·  fair-matching
-══════════════════════════════════════════════════════
-
-  ──────────────────────────────────────────────────
-  3.1  CORRECTNESS METRICS
-  ──────────────────────────────────────────────────
-  [#1] Stability Rate .............. 100.0%  ✅  (3/3 stable runs)
-  [#2] Match Coverage .............. 100.0%  ✅  (25/25 matched)
-  [#3] Capacity Utilization ......... 83.3%  ✅  (25/30 slots used)
-  [#4] Gini Coefficient .............. 0.04  ✅  (≤ 0.10 target)
-  [#5] Score Floor Compliance ...... 100.0%  ✅  (all ≥ 0.70)
-
-  ──────────────────────────────────────────────────
-  3.2  SEMANTIC QUALITY METRICS
-  ──────────────────────────────────────────────────
-  [#6] Keyword Precision ............. 91.3%  ✅  (avg per match)
-  [#7] Domain Overlap Rate ........... 2.4   ✅  (avg shared domains)
-  [#8] Mentee Preferred-Match Rate .. 72.0%  ✅  (top-2 mentor)
-  [#9] Mentor Preferred-Match Rate .. 68.0%  ✅  (top-tier mentees)
-
-  ──────────────────────────────────────────────────
-  3.3  EFFICIENCY METRICS
-  ──────────────────────────────────────────────────
-  [#10] Throughput ............. 13.9 matches/sec
-  [#11] Wall-Clock Latency ..........  1.8 s
-  [#12] Score Distribution  (n=25)
-         Mean   : 0.8470    Median : 0.8510
-         Std    : 0.0430    Min    : 0.7120    Max : 0.9410
-         P25    : 0.8190    P75    : 0.8780
-
-══════════════════════════════════════════════════════
-
-  Mentor Capacity Breakdown:
-  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
-  Dr. Santos             3/3  [███]  100%
-  Dr. Reyes              3/4  [███░]  75%
-  Dr. Cruz               2/3  [██░]   67%
-```
+|---|---|
+| `metrics_log.txt` | Full text report |
+| `metrics_score_distribution.png` | Histogram + KDE + mean/median lines |
+| `metrics_lorenz_curve.png` | Lorenz curves — Score Equity + Workload Equity |
+| `metrics_capacity.png` | Horizontal bar chart per mentor |
+| `metrics_stability.png` | Run-history stability timeline + blocking pairs |
+| `metrics_keyword_precision.png` | Keyword precision + matched keyword count per pair |
+| `metrics_combined.png` | All panels in one 5-row figure |
 
 ---
 
-## 4. Comparison Baselines
-
-To demonstrate that the system improves on alternatives, compare against:
+# PART E: Comparison Baselines
 
 | Baseline | Method | Stability | Expected avg score |
-|----------|--------|-----------|-------------------|
+|---|---|---|---|
 | **Random assignment** | Assign mentors randomly (respecting capacity) | ✗ Not stable | Low (~0.70, floor) |
-| **Manual/historical** | Use previous semester's coordinator-assigned pairings (if available) | Unknown | Medium |
-| **Greedy first-fit** | Assign each mentee to their highest-scoring available mentor | ✗ Not stable | High, but some mentees get poor matches |
-| **Proposed system (HR + TF-IDF)** | This system | ✓ Guaranteed stable | High, balanced (low Gini) |
-
-**Metrics to report in the comparison table:**
+| **Manual/historical** | Coordinator-assigned pairings | Unknown | Medium |
+| **Greedy first-fit** | Assign each mentee to their highest-scoring available mentor | ✗ Not stable | High but uneven |
+| **Proposed system (HR + TF-IDF)** | This system | ✓ Guaranteed stable | High and balanced |
 
 | Metric | Random | Greedy | Proposed System |
-|--------|--------|--------|----------------|
+|---|---|---|---|
 | Stability rate (#1) | 0% | 0% | 100% |
-| Mean compatibility score (#12 mean) | ~0.70 | High but uneven | High and even |
-| Gini coefficient (#4) | High | Moderate | ≤ 0.10 |
+| Mean compatibility score | ~0.70 | High but uneven | High and even |
+| Gini coefficient (#4) | High | Moderate | ≤ 0.10 (target) |
 | Mentee preferred-match rate (#8) | ~1/m × 100% | Variable | ≥ 60% |
 
-**How to simulate Random and Greedy for comparison:**
-- Random: shuffle mentees and assign round-robin to mentors up to capacity. Compute scores from existing `matches` data re-assigned randomly.
-- Greedy: for each mentee in order of highest top-1 score, assign to their top mentor if capacity remains, else second-best, etc. Verify no stability guarantees.
-Both baselines can be implemented in `test_pipeline.py` with the `--baseline` flag (future work).
+---
+
+# PART F: Research Questions Mapped to Metrics
+
+| Research Question | Primary Metrics | How to Compute |
+|---|---|---|
+| Does the algorithm produce stable matches? | #1 Stability rate | `algorithm_logs.is_stable` across all runs |
+| How efficiently does it match all groups? | #2 Match coverage, #3 Capacity utilization | Count rows in `matches` vs. total capacity |
+| Are the matches semantically meaningful? | #6 Keyword precision, #7 Domain overlap | String overlap check + JSONB query |
+| Is the algorithm fair to both parties? | #4 Gini coefficient, #8–9 Preferred-match rates | Score distribution analysis |
+| Does it scale for institutional deployment? | #10 Throughput, #11 Latency | `metrics.py` + `benchmark.py` output |
+| Is the time complexity manageable? | R² of linear regression in benchmark | Run `benchmark.py`, read printed R² |
+| Do matched pairs achieve better thesis outcomes? | #14 Satisfaction, #16 Paper rate, #17 Completion | Survey + system logs (future work) |
 
 ---
 
-## 5. Research Questions Mapped to Metrics
-
-| Research Question | Primary Metrics | `metrics.py` Output Section | How to Compute |
-|-------------------|----------------|----------------------------|---------------|
-| Does the algorithm produce stable matches? | #1 Stability rate | 3.1 Correctness | `algorithm_logs.is_stable` across all runs |
-| How efficiently does it match all groups? | #2 Match coverage, #3 Capacity utilization | 3.1 Correctness | Count rows in `matches` vs. total capacity |
-| Are the matches semantically meaningful? | #6 Keyword precision, #7 Domain overlap | 3.2 Semantic Quality | String overlap check + JSONB query |
-| Is the algorithm fair to both parties? | #4 Gini coefficient, #8–9 Preferred-match rates | 3.1 + 3.2 | Score distribution analysis |
-| Does it scale for institutional deployment? | #10 Throughput, #11 Latency, #12 Scaling coeff. | 3.3 Efficiency | `metrics.py` + `benchmark.py` output |
-| Is the time complexity manageable? | R² of linear regression in benchmark | N/A (benchmark.py) | Run `benchmark.py`, read printed R² |
-| Do matched pairs achieve better thesis outcomes? | #14 Satisfaction, #16 Paper rate, #17 Completion | Post-semester survey | Survey + system logs (future work) |
-
----
-
-## 6. How to Run the Benchmark
+# PART G: How to Run
 
 ```bash
-# Activate the Python virtual environment
+# Activate Python virtual environment
 source app/algo/venv/bin/activate
 
-# Synthetic O(n) scaling benchmark (generates benchmark_results.png)
+# Synthetic O(n) scaling benchmark
 cd app/algo/preprocess
 python3 benchmark.py
 
-# Interactive test pipeline with hardcoded data (100 mentees, 15 mentors)
+# Interactive test pipeline (100 mentees, 15 mentors)
 python3 test_pipeline.py
-
-# Test pipeline options:
-python3 test_pipeline.py --scores-only     # scoring stage only (skip matching)
-python3 test_pipeline.py --matching-only   # matching only
-python3 test_pipeline.py --summary         # compact output
-python3 test_pipeline.py --pair 0 3        # diagnose mentor 0 vs mentee 3 specifically
+python3 test_pipeline.py --scores-only
+python3 test_pipeline.py --matching-only
+python3 test_pipeline.py --summary
+python3 test_pipeline.py --pair 0 3    # diagnose mentor 0 vs mentee 3
 
 # Live metrics report against production Supabase data
 python3 metrics.py
 python3 metrics.py --save metrics_output.json
 ```
 
-**Relationship between the scripts:**
-
 | Script | Data | Purpose | When to use |
-|--------|------|---------|-------------|
-| `benchmark.py` | Synthetic | Proves O(n) scaling; generates timing plot | For thesis complexity section |
-| `test_pipeline.py` | Hardcoded | Validates algorithm behavior in isolation | During development/debugging |
+|---|---|---|---|
+| `benchmark.py` | Synthetic | Proves O(n) scaling | For thesis complexity section |
+| `test_pipeline.py` | Hardcoded | Validates algorithm behavior | During development/debugging |
 | `metrics.py` | Live Supabase | Computes all thesis effectiveness metrics | For thesis results chapter |
 
-The benchmark confirms linear O(n) scaling and produces a plot of wall-clock time vs. n with a linear regression overlay and R² score. The `metrics.py` script reports real-world performance on actual FEU Tech profiles and provides the numbers to include directly in the thesis.
-
 ---
 
-## 7. Proposal Explanation
+# PART H: Proposal Explanation (Step-by-Step)
 
-This section walks through the complete execution of the fair-matching pipeline — from raw profiles to final match records — in the exact order the code runs. It is written to be readable as a standalone explanation suitable for the thesis methodology chapter.
-
----
-
-### Step 1 — Compatibility Scoring
-
-Before any matching happens, every possible mentor–mentee pair receives a single compatibility score between 0 and 1.
-
-#### Weighted Compatibility Score
+## Step 1 — Compatibility Scoring
 
 ```
-S(m, g) = 0.75 · k + 0.10 · e + 0.10 · a + 0.025 · c + 0.025 · f
+S(m, g) = 0.75·k + 0.10·e + 0.10·a + 0.025·c + 0.025·f
 ```
 
-where:
-- `k` = keyword similarity (TF-IDF cosine similarity)
-- `e` = experience score (normalized mentor background)
-- `a` = availability overlap (Jaccard similarity of days + time slots)
-- `c` = communication preference match
-- `f` = meeting frequency overlap
+where k = keyword similarity, e = experience, a = availability, c = communication, f = meeting frequency.
 
-#### TF-IDF Weighting [(Salton & Buckley, 1988)](https://doi.org/10.1016/0306-4573(88)90021-0)
-
-For term `t` in document `d`, across a corpus of `N` documents:
-
+**TF-IDF Weighting:**
 ```
 TF-IDF(t, d) = TF(t, d) × log(N / df(t))
 ```
 
-where `TF(t, d)` = frequency of term `t` in document `d`, and `df(t)` = number of documents containing `t`.
-
-#### Cosine Similarity
-
-For TF-IDF vector `A` (mentor profile) and vector `B` (mentee profile):
-
+**Cosine Similarity:**
 ```
-cos(θ) = (A · B) / (‖A‖ · ‖B‖)
-       = Σᵢ AᵢBᵢ / (√Σ Aᵢ² · √Σ Bᵢ²)
+cos(θ) = (A · B) / (‖A‖ · ‖B‖) = Σᵢ AᵢBᵢ / (√Σ Aᵢ² · √Σ Bᵢ²)
 ```
 
-This is the `keyword_similarity` component `k` in the weighted score formula above.
-
-#### Availability Overlap (Jaccard Similarity) [(Jaccard, 1901)](https://doi.org/10.2307/3771392)
-
+**Availability Overlap (Jaccard):**
 ```
 J(A, B) = |A ∩ B| / |A ∪ B|
 ```
 
-where `A` and `B` are the sets of available days and time slots for the mentor and mentee group respectively.
-
-#### Score Floor Boost
-
-After the weighted score is computed, domain alignment is rewarded via floor boosts:
-
+**Score Floor Boost:**
 ```
-S'(m, g) = max(S(m, g), 0.80)   if |K_shared| ≥ 4
-          max(S(m, g), 0.50)   if |K_shared| ≥ 2
-          S(m, g)               otherwise
+S'(m, g) = max(S(m, g), 0.80)  if |K_shared| ≥ 4
+            max(S(m, g), 0.50)  if |K_shared| ≥ 2
+            S(m, g)              otherwise
 ```
 
-where `K_shared` = set of keywords appearing in both the mentor's and mentee's profile text.
-
-#### Top-1 Preference Boost
-
-After base scoring, a small boost is applied before preference lists are generated to make top-1 preferences stickier in the HR algorithm:
-
+**Top-1 Preference Boost:**
 ```
-S_boosted(i, j*) = min(S'(i, j*) + 0.05, 1.0)   where j* = argmax_j S'(i, j)   (per mentee i)
-S_boosted(i*, j) = min(S'(i*, j) + 0.05, 1.0)   where i* = argmax_i S'(i, j)   (per mentor j)
+S_boosted(i, j*) = min(S'(i, j*) + 0.05, 1.0)   j* = argmax_j S'(i, j)  (per mentee i)
+S_boosted(i*, j) = min(S'(i*, j) + 0.05, 1.0)   i* = argmax_i S'(i, j)  (per mentor j)
 ```
 
-Mutual top-1 pairs receive the boost from both directions. Boosted scores are used **only** for preference list generation — the original `S'` scores are stored as `compatibility_score` in the `matches` table.
-
-The result is a complete **n × m score matrix** (n mentee groups × m mentors). All subsequent steps derive from this matrix.
+Boosted scores are used **only** for preference list generation — original S' scores are stored as `compatibility_score`.
 
 ---
 
-### Step 2 — Preference Lists
+## Step 2 — Preference Lists
 
 Both sides build a fully ranked list from the score matrix:
+- Each mentee sorts all mentors by `scores[i][j]` descending
+- Each mentor sorts all mentees by `scores[i][j]` descending
 
-- **Each mentee group** sorts all mentors by `scores[i][j]` descending — producing their personal ranked list of mentors from most to least preferred.
-- **Each mentor** sorts all mentees by `scores[i][j]` descending — producing their personal ranked list of mentee groups from most to least preferred.
-
-These are **complete, untruncated lists**. Truncating preference lists is intentionally avoided because it causes mentees to go unmatched when their top-choice mentors fill up — any mentee not on a mentor's retained list can never be assigned to them, even if no other stable match exists.
-
-The output is two dictionaries:
-- `mentee_prefs`: `{ mentee_id → [mentor_id, ...] }` ranked best → worst
-- `mentor_prefs`: `{ mentor_id → [mentee_id, ...] }` ranked best → worst
+Lists are **complete and untruncated**. Truncating would leave mentees unmatched when their top-choice mentors fill up.
 
 ---
 
-### Step 3a — Mentee-Optimal Run (`hospital_resident`)
+## Step 3a — Mentee-Optimal Run
 
-This is the **mentees-propose** variant of the Hospital-Resident (Gale-Shapley) algorithm. Mentees hold the proposing role; mentors hold and compare offers.
-
-**Setup:**
-- All mentee groups are placed in a free queue.
-- Each mentor pre-computes a rank dictionary `hospital_rank[mentor_id][mentee_id]` for O(1) preference comparisons.
-- Each mentor tracks their current tentative roster up to their stated capacity.
-
-**Round-by-round execution:**
-
-1. A free mentee is dequeued and proposes to the next mentor on their preference list (tracked by `next_proposal[mentee_id]` — a mentee never proposes to the same mentor twice).
-2. The mentor evaluates the proposal:
+Mentees propose; mentors hold and compare. At each proposal:
 
 | Outcome | Condition | Effect |
-|---------|-----------|--------|
-| **Accept** | Mentor has a free slot | Mentee joins the roster; both are tentatively matched |
-| **Reject** | Mentor is full AND ranks all current mentees above the proposer | Proposer is re-queued and advances to their next choice |
-| **Replace** | Mentor is full BUT ranks the proposer above their current worst-held mentee | Worst-held mentee is freed and re-queued; proposer takes the slot |
+|---|---|---|
+| **Accept** | Mentor has a free slot | Mentee joins the roster |
+| **Reject** | Mentor is full AND ranks all current mentees above proposer | Proposer advances to next choice |
+| **Replace** | Mentor is full BUT ranks proposer above current worst-held | Worst match freed; proposer takes slot |
 
-3. Freed or rejected mentees continue proposing down their list.
-4. The algorithm terminates when the free queue is empty.
-
-**Guarantee:** The result is **mentee-optimal** — every mentee group receives the best mentor they could get in any stable matching. No other stable matching exists where any mentee would prefer their assignment. This is simultaneously the worst stable matching for mentors.
-
-**Data structures:** `free_residents` deque, `next_proposal` index dict, `hospital_rank` rank dict, `hospital_assignments` roster list per mentor.
+**Guarantee:** The result is *mentee-optimal*.
 
 ---
 
-### Step 3b — Mentor-Optimal Run (`hospital_resident_mentor_optimal`)
+## Step 3b — Mentor-Optimal Run
 
-This is the **mentors-propose** variant — the same algorithm with roles inverted. Mentors hold the proposing role; mentees hold and compare offers.
+Mentors propose; mentees hold and compare. Symmetric logic with inverted roles.
 
-**Setup:**
-- All mentors with available capacity are placed in an active queue.
-- Each mentee pre-computes a rank dictionary `resident_rank[mentee_id][mentor_id]` for O(1) comparisons.
-- Each mentee tracks their single best-held offer (`resident_holding[mentee_id]`).
-
-**Round-by-round execution:**
-
-1. An active mentor is dequeued and proposes to the next mentee on their preference list (tracked by `hospital_proposal_index[mentor_id]`).
-2. The mentee evaluates the proposal:
-
-| Outcome | Condition | Effect |
-|---------|-----------|--------|
-| **Accept** | Mentee holds no offer yet | Mentee tentatively accepts; mentor's remaining slots decrement |
-| **Reject** | Mentee already holds a preferred offer | Proposing mentor is re-queued to try their next mentee |
-| **Replace** | Mentee holds an offer but prefers the new proposer | Previous mentor's slot is restored and they re-enter the active queue; new mentor takes the slot |
-
-3. A mentor stays active (re-enters the queue) until all their capacity slots are filled or their preference list is exhausted.
-4. The algorithm terminates when the active-mentor queue is empty.
-
-**Guarantee:** The result is **mentor-optimal** — every mentor receives the best set of mentees they could get in any stable matching. This is simultaneously the worst stable matching for mentees.
-
-Both runs are fully independent and produce a different, internally stable assignment. The two assignments are passed to the fairness comparison step.
+**Guarantee:** The result is *mentor-optimal*.
 
 ---
 
-### Step 4 — Fairness Comparison (`pick_fairer_matching`)
-
-Both assignments are stable, but they systematically favor opposite sides. The system selects the fairer result by measuring **combined dissatisfaction** from both sides.
-
-**Dissatisfaction definition:** For a matched pair, the dissatisfaction of one party equals the **rank position** of their assigned partner in their own preference list (0-indexed: rank 0 = top choice, rank 1 = second choice, etc.). Lower is always better.
-
-**Computation for each of the two assignments:**
+## Step 4 — Fairness Comparison
 
 ```
-mentee_dissatisfaction  = average rank of assigned mentor across all mentees
-mentor_dissatisfaction  = average rank of each assigned mentee across all mentor slots
-                          (capacity > 1 handled by summing across every assigned mentee per mentor)
-
-total_dissatisfaction   = mentee_dissatisfaction + mentor_dissatisfaction
-```
-
-**Selection rule:**
-
-```
-total_mo  = total dissatisfaction for the mentee-optimal result
-total_meo = total dissatisfaction for the mentor-optimal result
-
-selected  = mentee-optimal  if  total_mo ≤ total_meo
-            mentor-optimal  otherwise
+total_mo  = mentee_dissatisfaction(A₁) + mentor_dissatisfaction(A₁)
+total_meo = mentee_dissatisfaction(A₂) + mentor_dissatisfaction(A₂)
+selected  = A₁ (mentee-optimal) if total_mo ≤ total_meo, else A₂
 ```
 
 Ties break in favor of mentee-optimal.
 
-**Why this is fair:** The mentee-optimal result gives mentees their best possible outcome at mentors' expense; the mentor-optimal result gives mentors their best at mentees' expense. The combined dissatisfaction sum quantifies the total "unhappiness" imposed on the entire system. Selecting the minimum ensures neither side is systematically disadvantaged across runs.
+---
 
-| Variant | Favors | Combined dissatisfaction selected when |
-|---------|--------|---------------------------------------|
-| Mentee-optimal | Mentees | `total_mo ≤ total_meo` (tie → mentee-optimal wins) |
-| Mentor-optimal | Mentors | `total_meo < total_mo` |
-| **Fair-matching output** | **Neither systematically** | **One of the above is chosen per run** |
+## Step 5 — Stability Verification
 
-Both sets of proposal events (`proposal_events_mo` and `proposal_events_meo`) are retained in `algorithm_logs` regardless of which variant is selected, providing full auditability.
+Checks every possible (mentee, mentor) combination — O(n × m) — using precomputed rank dicts for O(1) per-pair evaluation. Expected result: zero blocking pairs. Result stored as `is_stable` in `matches`.
 
 ---
 
-### Step 5 — Stability Verification (`verify_stability`)
+## Step 6 — Safety Net
 
-The selected assignment is checked for **blocking pairs** — any (mentee, mentor) pair where both would mutually prefer each other over their current match.
-
-A blocking pair `(mentee m, mentor M)` exists when **all three** conditions hold:
-1. Mentee `m` prefers mentor `M` over their currently assigned mentor.
-2. Either mentor `M` has a spare capacity slot, **or** mentor `M` would rank `m` above their current worst-held mentee.
-
-The verifier iterates over every possible (mentee, mentor) combination — O(n × m) checks — using precomputed rank dictionaries for O(1) per-pair evaluation.
-
-**Expected result:** Zero blocking pairs. Both HR variants are mathematically proven to produce stable matchings [(Gale & Shapley, 1962)](https://doi.org/10.2307/2300560); any blocking pair found in practice indicates a capacity constraint violation or a data integrity issue.
-
-The stability flag (`is_stable: true/false`) is stored in both the `matches` table and `algorithm_logs` for every run.
+Any mentee that remains unmatched after HR is force-assigned to the mentor with the most remaining capacity. This is a fallback — not part of the stable matching and not covered by stability guarantees. Frequent warnings indicate total mentor capacity needs to be increased.
 
 ---
 
-### Step 6 — Safety Net (`_apply_safety_net`)
-
-After the HR algorithm terminates, any mentee that remains unmatched — which only occurs when total mentor capacity is less than the number of mentee groups — is force-assigned to the mentor with the **most remaining capacity**.
-
-This is a fallback mechanism, not part of the stable matching:
-- It produces warnings in the log for every forced assignment.
-- The resulting assignments are not guaranteed stable (no blocking-pair check is performed for safety-net pairs).
-- Frequent warnings indicate that the sum of all `mentor.mentor_capacity` values needs to be increased to meet demand.
-
-Under normal operation (total capacity ≥ n), this step completes immediately with no assignments made.
-
----
-
-### Step 7 — Build Match Records
-
-For every pair in the final assignment, one record is written to the `matches` table:
+## Step 7 — Build Match Records
 
 | Field | Value | Source |
-|-------|-------|--------|
+|---|---|---|
 | `mentee_group_id` | Mentee's UUID | Assignment dict key |
 | `mentor_id` | Mentor's UUID | Assignment dict value |
-| `compatibility_score` | `scores[mentee_i][mentor_j]` | Score matrix from Step 1 |
-| `matched_keywords` | Shared technical vocabulary | `get_matched_keywords(mentor, mentee)` |
+| `compatibility_score` | Raw pair score from Phase 2 matrix | **Not recalculated** |
+| `matched_keywords` | Shared technical vocabulary | `get_matched_keywords()` |
 | `status` | `"active"` | Fixed |
-| `algorithm` | `"fair-matching"` | Fixed for this mode |
+| `algorithm` | `"fair-matching"` | Fixed |
 | `is_stable` | `True` / `False` | From Step 5 |
 
-The `compatibility_score` is the **raw pair score from the Phase 2 matrix** — not recalculated, not averaged. It reflects the actual five-pillar weighted compatibility between that specific mentor and mentee group as computed before any matching logic ran.
+The `compatibility_score` is the raw Phase 2 score — not recalculated, not averaged. It is the same score that drove the preference list and the matching decision.
 
 ---
 
-## References
+# PART I: System Diagrams
 
-- **Gale, D. & Shapley, L.S. (1962).** College Admissions and the Stability of Marriage. *The American Mathematical Monthly*, 69(1), 9–15. — Original stable matching / Gale-Shapley algorithm paper. https://doi.org/10.2307/2300560
+## I.1 User Login & Role-Based Routing
 
-- **Gusfield, D. & Irving, R.W. (1989).** *The Stable Marriage Problem: Structure and Algorithms.* MIT Press. — Proves Ω(n·m) lower bound for stable matching (Section 2.4). https://mitpress.mit.edu/9780262071703
+```mermaid
+sequenceDiagram
+    actor User as User (any role)
+    participant Browser
+    participant Auth Middleware
+    participant Auth Service
+    participant Database
 
-- **Roth, A.E. (1984).** The Evolution of the Labor Market for Medical Interns and Residents: A Case Study in Game Theory. *Journal of Political Economy*, 92(6), 991–1016. — Hospital-Resident (HR) algorithm as applied to real-world many-to-one matching. https://doi.org/10.2307/1912320
+    User->>Browser: Navigate to /
+    Browser->>Auth Middleware: HTTP request
+    Auth Middleware->>Auth Middleware: Check role cache (x-role-cache cookie, 5-min TTL)
 
-- **Roth, A.E. & Sotomayor, M. (1990).** *Two-Sided Matching: A Study in Game-Theoretic Modeling and Analysis.* Cambridge University Press. — Comprehensive theoretical treatment of HR and two-sided matching. https://doi.org/10.1017/CCOL052139015X
+    alt Cache miss or expired
+        Auth Middleware->>Database: Look up role (mentor / mentee / admin)
+        Database-->>Auth Middleware: role + profile_completed
+        Auth Middleware->>Auth Middleware: Set signed role cookie
+    end
 
-- **Salton, G. & Buckley, C. (1988).** Term-weighting approaches in automatic text retrieval. *Information Processing & Management*, 24(5), 513–523. — TF-IDF term weighting scheme used in `scoring.py`. https://doi.org/10.1016/0306-4573(88)90021-0
+    alt No valid session
+        Auth Middleware-->>Browser: Redirect → / (login page)
+    end
 
-- **Pedregosa, F. et al. (2011).** Scikit-learn: Machine Learning in Python. *Journal of Machine Learning Research*, 12, 2825–2830. — TF-IDF vectorizer and cosine similarity implementation. https://jmlr.csail.mit.edu/papers/v12/pedregosa11a.html
+    User->>Browser: Submit credentials (email + password)
+    Browser->>Auth Service: signInWithPassword(email, password)
+    Auth Service->>Database: Validate credentials
+    Database-->>Auth Service: JWT + session cookie
 
-- **Jaccard, P. (1901).** Étude comparative de la distribution florale dans une portion des Alpes et des Jura. *Bulletin de la Société Vaudoise des Sciences Naturelles*, 37, 547–579. — Jaccard similarity index used for availability overlap scoring. https://doi.org/10.2307/3771392
+    Auth Service->>Database: Lookup role
+    Database-->>Auth Service: Matched role record
 
-- **Gini, C. (1912).** Variabilità e mutabilità. Reprinted in *Memorie di metodologica statistica* (1955). — Original Gini coefficient definition used for match fairness (metric #4). https://doi.org/10.2307/2223319
+    alt Mentor — profile incomplete
+        Auth Service-->>Browser: Redirect → Complete Profile
+    else Mentor — profile complete
+        Auth Service-->>Browser: Redirect → Mentor Dashboard
+    else Mentee
+        Auth Service-->>Browser: Redirect → Mentee Dashboard
+    else Admin
+        Auth Service-->>Browser: Redirect → Admin Panel
+    end
+```
 
-- **Roth, A.E. & Peranson, E. (1999).** The Redesign of the Matching Market for American Physicians: Some Engineering Aspects of Economic Design. *American Economic Review*, 89(4), 748–780. — HR algorithm with incomplete (truncated) preference lists; basis for Section 2.6 complexity reduction discussion. https://doi.org/10.1257/aer.89.4.748
+---
 
-- **Davis, F.D. (1989).** Perceived Usefulness, Perceived Ease of Use, and User Acceptance of Information Technology. *MIS Quarterly*, 13(3), 319–340. — Technology Acceptance Model (TAM); basis for T1–T12 constructs (Perceived Usefulness, Perceived Ease of Use, Behavioral Intention to Use) in the user satisfaction survey. https://doi.org/10.2307/249008
+## I.2 Admin Runs the Matching Algorithm
+
+```mermaid
+sequenceDiagram
+    actor Admin
+    participant Browser
+    participant Matching API
+    participant Backend Service
+    participant Matching Engine
+    participant Database
+
+    Admin->>Browser: Click "Run Matching"
+    Browser->>Matching API: POST /api/run-matching
+
+    Matching API->>Backend Service: Forward request
+    Backend Service->>Backend Service: Check if already running
+    alt Already running
+        Backend Service-->>Matching API: 409 — Already in progress
+    end
+
+    Backend Service->>Matching Engine: Spawn python3 main.py (subprocess)
+
+    Matching Engine->>Database: Fetch mentor profiles
+    Matching Engine->>Database: Fetch mentee groups
+
+    Matching Engine->>Matching Engine: Extract keywords (text_processing.py)
+    Matching Engine->>Matching Engine: Expand domains (domain_expander.py)
+    Matching Engine->>Matching Engine: Compute weighted scores (scoring.py)
+    Matching Engine->>Matching Engine: Generate preference lists (matching.py)
+    Matching Engine->>Matching Engine: Run Gale-Shapley mentee-proposing
+    Matching Engine->>Matching Engine: Run Gale-Shapley mentor-proposing
+    Matching Engine->>Matching Engine: Select fairer result (lower combined dissatisfaction)
+    Matching Engine->>Matching Engine: Verify stability (blocking pair check)
+
+    Matching Engine->>Database: Clear previous matches
+    Matching Engine->>Database: Save match results + preference lists
+    Matching Engine->>Database: Insert algorithm_logs entry
+
+    Matching Engine-->>Backend Service: Emit __MATCHING_LOG_START__ JSON __MATCHING_LOG_END__
+    Backend Service-->>Matching API: Parsed result summary
+    Matching API-->>Browser: Match summary
+    Browser->>Browser: Display results to admin
+```
+
+---
+
+## I.3 Mentee Submits a Paper
+
+```mermaid
+sequenceDiagram
+    actor Student as Mentee Group
+    participant Portal as Mentee Portal
+    participant Module as Paper Review Module
+    participant Store as Database + File Storage
+
+    Student->>Portal: Upload research paper (PDF)
+    Portal->>Module: Send paper + title
+    Module->>Store: Check for pending paper
+    Store-->>Module: No pending paper found
+    Module->>Store: Save PDF to Supabase Storage (papers bucket)
+    Module->>Store: Create paper record (status: pending)
+    Module-->>Portal: Submission confirmed
+    Portal-->>Student: "Paper submitted — awaiting mentor review"
+```
+
+---
+
+# PART J: Survey Instruments
+
+## J.1 Developer Professional Survey (ISO/IEC 25010)
+
+**Target:** External Developer Evaluators / Technical Reviewers  
+**Standard:** ISO/IEC 25010 Software Product Quality  
+**Rating scale:** 1 (Strongly Disagree) → 5 (Strongly Agree)
+
+### Section 1 — Maintainability
+
+**1.1 Modularity**
+| # | Statement |
+|---|---|
+| M1 | The system is composed of clearly distinct components (user interface, data processing, matching engine) that operate independently. |
+| M2 | A failure or change in one component does not cascade unexpectedly into other components. |
+| M3 | Each component serves a well-defined purpose with minimal overlap in responsibility. |
+
+**1.2 Reusability**
+| # | Statement |
+|---|---|
+| M4 | System components appear designed in a way that would allow them to be reused in a related or future system. |
+| M5 | Common behaviors (authentication, profile management) are handled consistently across different parts of the system. |
+| M6 | The system avoids duplicating logic by consolidating shared behavior into reusable parts. |
+
+**1.3 Analysability**
+| # | Statement |
+|---|---|
+| M7 | When the system encounters an error, it provides clear and informative feedback. |
+| M8 | The system's behavior is predictable enough that the impact of a proposed change can be assessed with confidence. |
+| M9 | System logs and diagnostic information are sufficient to trace the source of a problem. |
+| M10 | The overall structure makes it straightforward to locate where a specific function originates. |
+
+**1.4 Modifiability**
+| # | Statement |
+|---|---|
+| M11 | Modifying one part of the system is unlikely to break unrelated features. |
+| M12 | The system appears designed to accommodate new features without requiring major structural changes. |
+| M13 | System configuration (environments, parameters) can be changed without altering core behavior. |
+
+**1.5 Testability**
+| # | Statement |
+|---|---|
+| M14 | The system's components can be evaluated individually to verify they behave as intended. |
+| M15 | The system produces consistent and verifiable outputs that make it straightforward to confirm correctness. |
+| M16 | The system's behavior under various inputs is predictable and can be validated through systematic testing. |
+
+### Section 2 — Portability
+
+| # | Statement | Sub-Characteristic |
+|---|---|---|
+| Po1 | The system can be configured for different environments (development, staging, production) without changes to core functionality. | Adaptability |
+| Po2 | The matching engine operates independently of the web interface. | Adaptability |
+| Po3 | All required services and configuration steps are clearly defined and straightforward to provision. | Installability |
+| Po4 | The system could replace a manual or spreadsheet-based matching process without loss of functionality. | Replaceability |
+| Po5 | Individual services (database, authentication, matching algorithm) could be substituted without a complete rebuild. | Replaceability |
+
+### Section 3 — Functional Suitability
+
+| # | Statement | Sub-Characteristic |
+|---|---|---|
+| FS1 | The system covers all core functions required for mentor-mentee matching. | Functional Completeness |
+| FS2 | The matching results are accurate and consistent with the stated algorithm and inputs. | Functional Correctness |
+| FS3 | The system produces correct outputs even with varied or edge-case inputs. | Functional Correctness |
+| FS4 | Features are appropriate and proportional to the needs of a thesis mentoring program. | Functional Appropriateness |
+| FS5 | The system's outputs (match assignments, compatibility scores, audit trail) align with the described algorithm. | Functional Correctness |
+
+### Section 4 — Performance Efficiency
+
+| # | Statement | Sub-Characteristic |
+|---|---|---|
+| PE1 | The system responds to user interactions within an acceptable timeframe. | Time Behaviour |
+| PE2 | The matching process completes within a reasonable time given the expected number of participants. | Time Behaviour |
+| PE3 | The system uses computational resources proportional to the complexity of the task. | Resource Utilization |
+| PE4 | Long-running operations (matching algorithm) do not degrade the responsiveness of other features. | Resource Utilization |
+| PE5 | The system can handle the expected number of concurrent users without performance degradation. | Capacity |
+
+### Section 5 — Security
+
+| # | Statement | Sub-Characteristic |
+|---|---|---|
+| SE1 | The system grants access only to users who have been properly authenticated. | Authenticity |
+| SE2 | Users can access only the data and functions appropriate to their role. | Confidentiality |
+| SE3 | The system prevents one user from viewing or modifying another user's private information. | Confidentiality |
+| SE4 | The system rejects unauthorized attempts to access restricted features. | Integrity |
+| SE5 | Sensitive information is not exposed through system responses, error messages, or interface elements. | Confidentiality |
+
+---
+
+## J.2 End-User Satisfaction Survey (ISO/IEC 25010 + TAM)
+
+**Target:** Mentors, Mentees, Admins  
+**Rating scale:** 1 (Strongly Disagree) → 5 (Strongly Agree)
+
+| # | Statement | Role |
+|---|---|---|
+| F1 | The system provides all the features I need to complete my tasks. | All |
+| F2 | The matching results accurately reflect my profile and stated preferences. | Mentor, Mentee |
+| F3 | The system correctly displays my assigned mentor/mentee group information. | Mentor, Mentee |
+| U1 | I was able to learn how to use the system quickly without extensive help. | All |
+| U2 | The navigation and layout are intuitive and easy to follow. | All |
+| U3 | I can complete my tasks without making frequent mistakes. | All |
+| U4 | When I make an error, the system provides clear feedback on how to correct it. | All |
+| U5 | The visual design is clean and professional. | All |
+| R1 | The system is available and accessible whenever I need to use it. | All |
+| R2 | I have not experienced unexpected errors or crashes. | All |
+| P1 | Pages and features load within an acceptable amount of time. | All |
+| P4 | The matching process completes in a reasonable timeframe. | Admin |
+
+---
+
+## J.3 User Acceptance Survey (Mentors and Mentee Groups)
+
+**Target:** Thesis Mentors and Mentee Groups (End Users)
+
+| # | Statement | For |
+|---|---|---|
+| U1 | The system is easy to use and navigate. | All |
+| U2 | I understood the purpose of the system as soon as I accessed it. | All |
+| U3 | I was able to complete my tasks without needing help from others. | All |
+| F1 | The system covered all features I needed for the matching process. | All |
+| F2 | My profile captured enough information about my expertise/thesis topic to support an accurate match. | All |
+| F5 | The system behaved consistently — the same actions produced the same results every time. | All |
+| MQ1 | My assigned mentor has expertise relevant to our thesis topic. | Mentee |
+| MQ2 | The mentee group assigned to me aligns with my research focus. | Mentor |
+| MQ3 | The matching process felt fair and transparent. | All |
+| MQ4 | I am satisfied with the mentor/mentee assigned to me through the system. | All |
+| MQ5 | The system improved on the manual matching process previously used. | All |
+
+---
+
+# PART K: Technical Q&A
+
+This section compiles possible questions from panelists, evaluators, or oral defense committees — covering algorithm design, system architecture, scoring, performance, fairness, security, and extensibility.
+
+---
+
+## Algorithm Design
+
+**Q: Why did you choose the Gale-Shapley Hospital-Resident algorithm instead of simpler methods like greedy assignment?**
+
+Gale-Shapley guarantees *stable* matchings — no mentor and mentee are left outside the assignment who would both prefer each other over their current partners. Greedy assignment can produce unstable outcomes where a "obviously better" pairing was overlooked. Stability is important in an academic setting because it means no participant can legitimately argue the algorithm produced an unfair result they could have avoided. The Hospital-Resident extension handles mentor capacities > 1, matching the real-world scenario where one mentor can guide multiple groups.
+
+---
+
+**Q: What is a stable matching and why does it matter for this system?**
+
+A matching is stable when no "blocking pair" exists — no unmatched mentor-mentee pair where both would prefer each other over their current assignments. Stability matters because it is a formal fairness guarantee: if a mentee is assigned to their 3rd choice mentor, it is because their top two choices were not available to them in any stable outcome — not because the algorithm made an error. This makes results defensible to participants.
+
+---
+
+**Q: Why do you run both mentee-optimal and mentor-optimal variants instead of just one?**
+
+The mentee-proposing variant guarantees the best possible outcome for mentees but gives mentors their worst acceptable match. The mentor-proposing variant does the reverse. Running both and selecting the result with lower combined dissatisfaction ensures neither side is systematically disadvantaged across runs. This is the "fair-matching" mechanism.
+
+---
+
+**Q: What happens if a mentee's top 3 mentors are all taken? Who do they get matched to?**
+
+The preference lists used by Gale-Shapley are **complete and untruncated** — every mentee ranks all available mentors, not just their top 3. If the top 3 reject or displace them, they continue proposing down the full list. No mentee gets stranded because their first 3 choices filled up. The "top 3" visible in the UI is a display feature showing the strongest keyword matches; it has no bearing on how many mentors a mentee can propose to.
+
+---
+
+**Q: What happens if total mentor capacity is less than the number of mentee groups?**
+
+The HR algorithm leaves some mentees unmatched. A safety net (`_apply_safety_net`) then force-assigns remaining mentees to the mentor with the most remaining capacity. These forced assignments are logged as warnings and are **not** covered by the stability guarantee. This scenario is prevented in normal operation by ensuring the sum of all `mentor_capacity` values is at least equal to the number of mentee groups.
+
+---
+
+**Q: Can the algorithm produce different results on successive runs with the same data?**
+
+No. Given the same profiles and score matrix, the HR algorithm is deterministic — it always produces the same preference lists and the same assignment. Results only change when profile data changes between runs.
+
+---
+
+**Q: Does the system generate scores before or after matching? Are they the same score?**
+
+Scores are generated **before** matching — they are the input to the algorithm, not its output. The same compatibility score computed in Phase 2 is used to build the preference lists, drive the matching, and is then stored as `compatibility_score` in the `matches` table and displayed on dashboards. There is no separate post-matching scoring step. The number a mentee sees is the same number that caused their pairing.
+
+---
+
+## Scoring and Keyword Extraction
+
+**Q: Why is keyword similarity weighted at 75% (runtime) / 60% (reference)?**
+
+Research topic alignment is the most critical factor for effective mentoring in a thesis context — a mentor cannot meaningfully guide a student whose research area they do not understand. The remaining weight covers logistical factors (schedule, experience, communication) that affect relationship quality but are secondary to content fit.
+
+---
+
+**Q: What is TF-IDF and why use it for mentor-mentee matching?**
+
+TF-IDF (Term Frequency-Inverse Document Frequency) weights each term by how often it appears in a document relative to how common it is across all documents. Common words like "the" get near-zero weight; domain-specific terms like "convolutional neural network" get high weight. This makes cosine similarity between profiles focus on meaningful research terms rather than filler words, producing more relevant compatibility scores than simple keyword counting.
+
+---
+
+**Q: What is domain expansion and why is it needed?**
+
+Research profiles often use abbreviated or related terms — a mentor who lists "NLP" may not list "natural language processing" explicitly. Domain expansion uses a curated map (`DOMAIN_MAP`) that expands recognized terms to related vocabulary. This ensures that profiles with equivalent expertise but different vocabulary still score well together.
+
+---
+
+**Q: Why use semantic pairwise cosine similarity instead of exact keyword matching?**
+
+Exact matching fails on near-synonyms. "Machine learning" and "deep learning" share the concept of "learning" but would not match exactly. Pairwise TF-IDF cosine similarity captures these semantic relationships — two keywords that share significant tokens score above the threshold (0.45) and are counted as matched. This catches meaningful research overlaps that exact matching would miss.
+
+---
+
+**Q: What is the purpose of the top-1 preference boost?**
+
+Before preference lists are generated, a +0.05 bonus is added to each participant's single best-matching partner. This makes mutual top-1 pairs stickier in the HR algorithm — without it, two participants who are each other's top choice might still be separated if a small score margin causes one to be displaced during proposals. The boost is discarded after preference generation and is not stored in the database.
+
+---
+
+**Q: What is the keyword similarity threshold (0.45) and how was it chosen?**
+
+The threshold is the minimum cosine similarity between a mentee keyword and a mentor keyword for the pair to be counted as "matched." At 0.45, semantically related terms like "machine learning" ↔ "deep learning" (~0.45–0.55) pass, while unrelated terms like "python" ↔ "java" (0.0) do not. The value was calibrated to balance precision (avoiding false matches) with recall (catching genuine semantic relationships).
+
+---
+
+## System Architecture
+
+**Q: Why is the matching engine a separate Python subprocess instead of being integrated into the Node.js backend?**
+
+Python has a mature scientific computing ecosystem (scikit-learn, NumPy, SciPy) that is not available in Node.js at comparable maturity. Running it as a subprocess allows the best tools for each job: Next.js handles web serving and UI; Python handles heavy numerical computation. The tradeoff is subprocess communication overhead, which is negligible for a batch process that runs once per semester.
+
+---
+
+**Q: How does the system prevent the matching algorithm from running twice simultaneously?**
+
+The Express backend checks if a matching process is already running (409 guard) before spawning a new subprocess. If a run is in progress, it immediately returns a 409 Conflict response to the admin's request rather than starting a second process.
+
+---
+
+**Q: How does role-based routing work?**
+
+User role is determined by which database table the authenticated user's ID appears in (`mentor`, `MENTEE_GROUPS`, or `admin`). The resolved role + `profile_completed` status are cached in a signed HMAC cookie with a 5-minute TTL to avoid a database lookup on every page request. The middleware (`proxy.ts`) reads this cookie on every request and redirects users to their correct portal.
+
+---
+
+**Q: Why are there no direct database calls from client components?**
+
+All database access from the Next.js layer goes through server actions in `/lib/actions/`. This enforces a consistent security boundary — client components never have access to database credentials or raw query results. Server actions run on the server, apply access control, and return only the data needed for rendering.
+
+---
+
+**Q: What is the middleware (proxy.ts) responsible for?**
+
+It intercepts every HTTP request before it reaches any page, validates the Supabase session JWT, resolves the user's role from either the role cache cookie or a fresh database lookup, and redirects to the appropriate portal. For mentors whose profile is incomplete, it redirects to the profile completion page.
+
+---
+
+## Performance
+
+**Q: What is the measured wall-clock latency of a full matching run?**
+
+59.783 seconds for the real dataset (21 mentee groups, 29 mentors). This includes Supabase network round-trips for fetching profiles and writing results. Pure computation is under 10 seconds at this scale. For a batch process run once per semester, this is well within acceptable limits.
+
+---
+
+**Q: What is the time complexity of the algorithm?**
+
+O(n · m · k) in the general case, where n = mentee groups, m = mentors, k = average profile text length. With m and k treated as bounded constants (fixed faculty size, bounded profile length), this simplifies to **O(n) — linear in the number of mentee groups**. The benchmark confirms this empirically with R² > 0.95 across n = 25 to n = 200.
+
+---
+
+**Q: Why use a hash map for rank lookups instead of searching the preference list array?**
+
+Array search (`list.index()`) takes O(M) per lookup — it scans from position 0. With 21 mentees and 8 mentors, the worst case across 168 proposals produces 168 × 2 × 21 = 7,056 comparisons just for rank checks. A pre-built hash map reduces each lookup to O(1), giving 168 × 2 × 1 = 336 lookups — a 20× reduction at this scale that compounds further as participant counts grow.
+
+---
+
+**Q: Was the runtime formally measured?**
+
+Yes. `benchmark.py` measures actual pipeline stages across n = 25 to 200 with m = 10 fixed (3-run averages). It fits a linear regression and reports R² to confirm O(n) scaling. `metrics.py` measures the real production run's wall-clock latency from `started_at` to `timestamp` in `algorithm_logs`.
+
+---
+
+## Fairness and Dissatisfaction
+
+**Q: Which side was more satisfied with the matching results — mentors or mentees?**
+
+Mentees were perfectly satisfied: dissatisfaction = 0.0000, meaning every mentee received their top-ranked mentor. Mentors had an average dissatisfaction of 2.7143, meaning they received mentee groups ranked approximately 3rd on average. This is the expected and correct behavior of mentee-proposing Gale-Shapley, which is mathematically proven to produce the best possible outcome for the proposing side.
+
+---
+
+**Q: Did you observe a trade-off between mentee-optimal and mentor-optimal results?**
+
+In the actual run, both variants produced identical dissatisfaction scores on both sides. This means only one stable matching was possible given the preference lists and capacities — a **unique stable matching**. When this occurs, both HR variants converge to the same assignment and the fair-matching selection defaults to mentee-optimal by the tie-breaking rule. This is a strong result: a unique stable matching means the outcome is unambiguous.
+
+---
+
+**Q: How do you measure fairness?**
+
+Through two complementary metrics: (1) **Dissatisfaction scores** — the average rank position of each side's assigned partner in their preference list (0 = top choice, lower = better). (2) **Gini coefficient** — the statistical inequality in compatibility score distribution across all matched pairs. G ≤ 0.10 indicates equitable distribution.
+
+---
+
+## Security
+
+**Q: How does the system protect against unauthorized access?**
+
+Three layers: (1) Supabase Auth validates the session JWT on every request. (2) The middleware (`proxy.ts`) resolves the user's role and enforces portal-level access control. (3) Server actions enforce data-level access so users can only read and write their own records.
+
+---
+
+**Q: How are passwords stored?**
+
+Passwords are hashed by Supabase Auth (bcrypt) and are never accessible to the application layer. The application never handles plaintext passwords.
+
+---
+
+**Q: Is there rate limiting?**
+
+Yes. Login attempts are limited to 5 per 5 minutes per IP. Password reset requests are limited to 3 per hour. Both are enforced in-memory in `rateLimit.ts`. Note: the in-memory implementation resets on server restart and does not persist across deployments.
+
+---
+
+## Extensibility and Scalability
+
+**Q: How would the system scale to more users?**
+
+For m ≤ 100 mentors: no changes needed — the current pipeline handles this comfortably. For m = 100–500: truncate preference lists to top-k (k ≈ 15–20) to reduce HR runtime from O(n·m) to O(n·k). For m > 500: add ANN pre-filtering (FAISS/HNSW) to shortlist candidates before exact scoring. Incremental cached scoring can also reduce re-run cost when only a few profiles change between runs.
+
+---
+
+**Q: How would you add a new scoring pillar?**
+
+Add a new score vector computation to `scoring.py`, include it in the weighted combination formula with a corresponding weight, and ensure the weights sum to 1.0. No changes are needed to the matching algorithm, preference list generation, or any frontend code — the score matrix is the only interface between scoring and matching.
+
+---
+
+**Q: Can the algorithm run without an internet connection?**
+
+The Python matching engine itself has no external dependencies at runtime — it uses pre-installed scikit-learn, NumPy, and SciPy packages. It does require a network connection to Supabase to fetch profiles and write results. The algorithm computation itself could run entirely offline given a local data source.
+
+---
+
+**Q: What would you change if you were to rebuild the system?**
+
+The in-memory rate limiter would be replaced with a persistent Redis-based limiter to survive server restarts. The Python subprocess communication (stdout markers) would be replaced with a proper task queue (e.g., Celery or Redis Queue) for better observability. The CS vocabulary would be managed as a database table to allow admin-level updates without code deployments.
+
+---
+
+# References
+
+- **Gale, D. & Shapley, L.S. (1962).** College Admissions and the Stability of Marriage. *The American Mathematical Monthly*, 69(1), 9–15. https://doi.org/10.2307/2300560
+
+- **Gusfield, D. & Irving, R.W. (1989).** *The Stable Marriage Problem: Structure and Algorithms.* MIT Press. — Proves Ω(n·m) lower bound for stable matching. https://mitpress.mit.edu/9780262071703
+
+- **Roth, A.E. (1984).** The Evolution of the Labor Market for Medical Interns and Residents. *Journal of Political Economy*, 92(6), 991–1016. https://doi.org/10.2307/1912320
+
+- **Roth, A.E. & Sotomayor, M. (1990).** *Two-Sided Matching: A Study in Game-Theoretic Modeling and Analysis.* Cambridge University Press. https://doi.org/10.1017/CCOL052139015X
+
+- **Salton, G. & Buckley, C. (1988).** Term-weighting approaches in automatic text retrieval. *Information Processing & Management*, 24(5), 513–523. https://doi.org/10.1016/0306-4573(88)90021-0
+
+- **Pedregosa, F. et al. (2011).** Scikit-learn: Machine Learning in Python. *Journal of Machine Learning Research*, 12, 2825–2830. https://jmlr.csail.mit.edu/papers/v12/pedregosa11a.html
+
+- **Jaccard, P. (1901).** Étude comparative de la distribution florale dans une portion des Alpes et des Jura. *Bulletin de la Société Vaudoise des Sciences Naturelles*, 37, 547–579. https://doi.org/10.2307/3771392
+
+- **Gini, C. (1912).** Variabilità e mutabilità. Reprinted in *Memorie di metodologica statistica* (1955). https://doi.org/10.2307/2223319
+
+- **Roth, A.E. & Peranson, E. (1999).** The Redesign of the Matching Market for American Physicians. *American Economic Review*, 89(4), 748–780. https://doi.org/10.1257/aer.89.4.748
+
+- **Davis, F.D. (1989).** Perceived Usefulness, Perceived Ease of Use, and User Acceptance of Information Technology. *MIS Quarterly*, 13(3), 319–340. https://doi.org/10.2307/249008
