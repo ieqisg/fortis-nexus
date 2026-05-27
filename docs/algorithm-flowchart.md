@@ -390,9 +390,22 @@ Specific uses:
 | Profile lookup by user ID | Instant retrieval of any mentor or mentee's full profile when building the results log |
 | Score matrix row/column position by user ID | Instant navigation into the compatibility score grid |
 
-**Why the panelists' recommendation is valid — and already applied:**
+**How a hash map improves performance over a plain array:**
 
-Without hash maps, every time the algorithm compares two candidates during a proposal, it would scan through the entire preference list to find their positions. With 21 mentees and 8 mentors, that inner scan runs hundreds of times per matching round. Hash maps eliminate this scan entirely, reducing that step from a search to a single direct lookup. This is the reason the algorithm completes in under 10 seconds regardless of how many proposals are made.
+The critical difference is what happens during a proposal inside the HR algorithm. Each time a mentee group proposes to a mentor, the mentor must compare the new applicant against its current worst assignment and decide whether to accept or reject. That comparison requires knowing the rank of both candidates in the mentor's preference list.
+
+**With a plain array only:**
+The preference list is stored as an ordered array — for example, `["Group A", "Group B", "Group C", ...]`. To find where "Group B" sits, the system starts at position 0 and scans forward one entry at a time until it finds a match. If there are 21 mentee groups, this scan checks up to 21 entries per lookup. Every proposal triggers two of these scans — one for the new applicant, one for the current worst match. In the worst case across 168 proposals (21 mentees × 8 mentors), this produces up to **168 × 2 × 21 = 7,056 individual comparisons** just for the rank-lookup step.
+
+**With a hash map:**
+Before the matching loop starts, each mentor's preference list is converted into a hash map of the form `{"Group A": 0, "Group B": 1, "Group C": 2, ...}`. Looking up any group's rank is now a single direct access — the system goes straight to the answer without scanning. The same 168 proposals now require only **168 × 2 × 1 = 336 lookups** — a reduction of more than 20× at the current dataset scale.
+
+| Approach | Operation per rank lookup | Total lookups (21 mentees × 8 mentors) |
+|---|---|---|
+| Plain array (`list.index()`) | Up to O(M) — scans up to 21 entries | Up to 7,056 |
+| Hash map (`dict[id]`) | O(1) — single direct access | 336 |
+
+This gain compounds as the dataset grows. At 50 mentors × 200 mentees, array-based rank lookups would require up to **200 scans per proposal**, accumulating into hundreds of thousands of unnecessary comparisons per matching run. The hash map keeps each lookup at a single operation regardless of how many participants are registered — which is why the HR matching step alone runs in well under one second even at larger scales, and is not the bottleneck of the pipeline.
 
 ---
 
