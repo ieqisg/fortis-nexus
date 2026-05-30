@@ -58,7 +58,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog, fetchPapersByORCID, fetchPapersByIEEE, setMentorAdminRole, adminUpdateMentorPassword, adminUpdateMentorEmail, getMockUserData, getLatestMockAlgorithmLog, rollbackMockMatches, getMockPaperStats, getMockPapers } from "@/lib/actions/adminActions"
+import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog, fetchPapersByORCID, fetchPapersByIEEE, setMentorAdminRole, adminUpdateMentorPassword, adminUpdateMentorEmail, getMockUserData, getLatestMockAlgorithmLog, rollbackMockMatches, getMockPaperStats, getMockPapers, getDemoUserData, getLatestDemoAlgorithmLog, rollbackDemoMatches } from "@/lib/actions/adminActions"
 import type { PublishedPaper, PrevMentoredThesis } from "@/types/mentorTypes"
 import type { GroupMembers } from "@/types/menteeTypes"
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector"
@@ -110,7 +110,7 @@ export default function Admin() {
   const [deletingUser, setDeletingUser] = useState(false)
   const [matchingMode, setMatchingMode] = useState<string | null>(null)
   const matching = matchingMode !== null
-  const [dataSource, setDataSource] = useState<"supabase" | "mock">("supabase")
+  const [dataSource, setDataSource] = useState<"supabase" | "mock" | "demo">("supabase")
   const [mockPaperStats, setMockPaperStats] = useState<{ total: number; pending: number; reviewed: number } | null>(null)
   const [mockPapers, setMockPapers] = useState<any[]>([])
   const [expandedComment, setExpandedComment] = useState<string | null>(null)
@@ -169,17 +169,21 @@ export default function Admin() {
   const [editNewPassword, setEditNewPassword] = useState("")
   const [showEditPassword, setShowEditPassword] = useState(false)
 
-  const refreshData = async (source: "supabase" | "mock") => {
+  const refreshData = async (source: "supabase" | "mock" | "demo") => {
     const [userResult, logResult] = await Promise.all([
-      source === "mock" ? getMockUserData() : getAllUserData(),
-      source === "mock" ? getLatestMockAlgorithmLog() : getLatestAlgorithmLog(),
+      source === "mock" ? getMockUserData()
+      : source === "demo" ? getDemoUserData()
+      : getAllUserData(),
+      source === "mock" ? getLatestMockAlgorithmLog()
+      : source === "demo" ? getLatestDemoAlgorithmLog()
+      : getLatestAlgorithmLog(),
     ])
     if (userResult.success) {
       setMentors(userResult.data.mentors ?? [])
       setMentees(userResult.data.mentee ?? [])
     }
     if (logResult.success && logResult.log) setMatchLog(logResult.log)
-    else if (source === "mock") setMatchLog(null)
+    else if (source === "mock" || source === "demo") setMatchLog(null)
     if (source === "mock") {
       const [paperStats, papersResult] = await Promise.all([getMockPaperStats(), getMockPapers()])
       if (paperStats.success) setMockPaperStats({ total: paperStats.total, pending: paperStats.pending, reviewed: paperStats.reviewed })
@@ -227,7 +231,9 @@ export default function Admin() {
 
   const handleRollback = async () => {
     setRollingBack(true)
-    const result = dataSource === "mock" ? await rollbackMockMatches() : await rollbackMatches()
+    const result = dataSource === "mock" ? await rollbackMockMatches()
+      : dataSource === "demo" ? await rollbackDemoMatches()
+      : await rollbackMatches()
     if (result.success) {
       setMentors(prev => prev.map(m => ({ ...m, matches: [] })))
       setMentees(prev => prev.map(m => ({ ...m, matches: null })))
@@ -672,6 +678,17 @@ export default function Admin() {
                   >
                     Mock Data
                   </button>
+                  <button
+                    onClick={() => setDataSource("demo")}
+                    disabled={matching || rollingBack}
+                    className={`px-4 py-2 text-sm font-medium transition-colors border-l border-slate-200 ${
+                      dataSource === "demo"
+                        ? "bg-purple-600 text-white"
+                        : "bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    O(n) Demo
+                  </button>
                 </div>
                 {dataSource === "mock" && (
                   <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1 w-fit">
@@ -681,6 +698,11 @@ export default function Admin() {
                     )}
                   </p>
                 )}
+                {dataSource === "demo" && (
+                  <p className="text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded px-2 py-1 w-fit">
+                    O(n) demo &middot; 6 mentors &middot; 6 mentees &middot; disjoint domains &middot; completes in 1 round with zero rejections
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-3">
@@ -688,17 +710,21 @@ export default function Admin() {
                   <Button
                     onClick={() => handleRunMatching()}
                     disabled={matching || rollingBack}
-                    className={dataSource === "mock" ? "bg-amber-500 hover:bg-amber-600" : "bg-blue-600 hover:bg-blue-700"}
+                    className={
+                      dataSource === "mock" ? "bg-amber-500 hover:bg-amber-600"
+                      : dataSource === "demo" ? "bg-purple-600 hover:bg-purple-700"
+                      : "bg-blue-600 hover:bg-blue-700"
+                    }
                   >
                     {matching ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Running{dataSource === "mock" ? " (Mock)" : ""}...
+                        Running{dataSource === "mock" ? " (Mock)" : dataSource === "demo" ? " (O(n) Demo)" : ""}...
                       </>
                     ) : (
                       <>
                         <Scale className="w-4 h-4 mr-2" />
-                        Run Matching{dataSource === "mock" ? " (Mock)" : ""}
+                        Run Matching{dataSource === "mock" ? " (Mock)" : dataSource === "demo" ? " (O(n) Demo)" : ""}
                       </>
                     )}
                   </Button>

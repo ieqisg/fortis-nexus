@@ -221,6 +221,51 @@ export async function rollbackMockMatches() {
     return { success: true }
 }
 
+export async function getDemoUserData() {
+    const [{ data: mentors }, { data: mentee }] = await Promise.all([
+        supabase
+            .from("demo_mentor")
+            .select(`
+                id, first_name, last_name, email, mentor_capacity, is_admin,
+                matches:demo_matches(
+                    status, compatibility_score, matched_keywords,
+                    mentee:demo_matches_mentee_group_id_fkey(id, group_name, research_title)
+                )
+            `),
+        supabase
+            .from("demo_mentee_groups")
+            .select(`
+                id, group_name, email, research_title, group_members,
+                matches:demo_matches(
+                    status, compatibility_score,
+                    mentor:demo_matches_mentor_id_fkey(first_name, last_name)
+                )
+            `),
+    ])
+
+    return { success: true, data: { mentee, mentors } }
+}
+
+export async function getLatestDemoAlgorithmLog() {
+    const { data, error } = await supabase
+        .from("demo_algorithm_logs")
+        .select("log_data, created_at")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single()
+
+    if (error || !data) return { success: false, log: null }
+    return { success: true, log: data.log_data }
+}
+
+export async function rollbackDemoMatches() {
+    const { error } = await supabase.from("demo_matches").delete().not("id", "is", null)
+    if (error) return { success: false, message: error.message }
+    const { error: logsError } = await supabase.from("demo_algorithm_logs").delete().not("id", "is", null)
+    if (logsError) return { success: false, message: logsError.message }
+    return { success: true }
+}
+
 export async function getMockPaperStats() {
     const { data, error } = await supabase.from("mock_papers").select("status")
     if (error || !data) return { success: false, total: 0, pending: 0, reviewed: 0 }

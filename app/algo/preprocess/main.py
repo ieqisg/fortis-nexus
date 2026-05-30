@@ -225,9 +225,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--source",
-        choices=["supabase", "mock", "file"],
+        choices=["supabase", "mock", "file", "demo"],
         default="supabase",
-        help="Data source: 'supabase' (live DB), 'mock' (demo data), 'file' (exported JSON)",
+        help="Data source: 'supabase' (live DB), 'mock' (mock data), 'demo' (O(n) demo), 'file' (JSON)",
     )
     parser.add_argument(
         "--data-file",
@@ -236,10 +236,17 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     mode = "fair-matching"
-    use_supabase = args.source in ("supabase", "mock")
-    TABLE_PREFIX  = "mock_" if args.source == "mock" else ""
+    use_supabase = args.source in ("supabase", "mock", "demo")
+    if args.source == "mock":
+        TABLE_PREFIX = "mock_"
+        mentee_table = "mock_mentee_groups"
+    elif args.source == "demo":
+        TABLE_PREFIX = "demo_"
+        mentee_table = "demo_mentee_groups"
+    else:
+        TABLE_PREFIX = ""
+        mentee_table = "MENTEE_GROUPS"
     mentor_table  = f"{TABLE_PREFIX}mentor"
-    mentee_table  = "MENTEE_GROUPS" if TABLE_PREFIX == "" else "mock_mentee_groups"
     matches_table = f"{TABLE_PREFIX}matches"
     logs_table    = f"{TABLE_PREFIX}algorithm_logs"
 
@@ -254,7 +261,7 @@ if __name__ == "__main__":
     # ── Step 1: Connect / Load data ───────────────────────────────────────────
     print(f"\n{SEP}")
     if use_supabase:
-        label = "mock tables" if TABLE_PREFIX else "Supabase"
+        label = f"{args.source} tables" if TABLE_PREFIX else "Supabase"
         print(f"  STEP 1 · Connecting to {label}")
         print(SEP)
         supabase = get_supabase()
