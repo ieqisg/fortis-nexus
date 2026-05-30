@@ -176,6 +176,72 @@ export async function rollbackMatches() {
     return { success: true }
 }
 
+export async function getMockUserData() {
+    const [{ data: mentors }, { data: mentee }] = await Promise.all([
+        supabase
+            .from("mock_mentor")
+            .select(`
+                id, first_name, last_name, email, mentor_capacity, is_admin,
+                matches:mock_matches(
+                    status, compatibility_score, matched_keywords,
+                    mentee:mock_matches_mentee_group_id_fkey(id, group_name, research_title)
+                )
+            `),
+        supabase
+            .from("mock_mentee_groups")
+            .select(`
+                id, group_name, email, research_title, group_members,
+                matches:mock_matches(
+                    status, compatibility_score,
+                    mentor:mock_matches_mentor_id_fkey(first_name, last_name)
+                )
+            `),
+    ])
+
+    return { success: true, data: { mentee, mentors } }
+}
+
+export async function getLatestMockAlgorithmLog() {
+    const { data, error } = await supabase
+        .from("mock_algorithm_logs")
+        .select("log_data, created_at")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single()
+
+    if (error || !data) return { success: false, log: null }
+    return { success: true, log: data.log_data }
+}
+
+export async function rollbackMockMatches() {
+    const { error } = await supabase.from("mock_matches").delete().not("id", "is", null)
+    if (error) return { success: false, message: error.message }
+    const { error: logsError } = await supabase.from("mock_algorithm_logs").delete().not("id", "is", null)
+    if (logsError) return { success: false, message: logsError.message }
+    return { success: true }
+}
+
+export async function getMockPaperStats() {
+    const { data, error } = await supabase.from("mock_papers").select("status")
+    if (error || !data) return { success: false, total: 0, pending: 0, reviewed: 0 }
+    const reviewed = data.filter((p: { status: string }) => p.status === "reviewed").length
+    return { success: true, total: data.length, pending: data.length - reviewed, reviewed }
+}
+
+export async function getMockPapers() {
+    const { data, error } = await supabase
+        .from("mock_papers")
+        .select(`
+            id, title, status, submitted_at,
+            mentee_group:mock_mentee_groups(group_name),
+            mentor:mock_mentor(first_name, last_name),
+            comments:mock_paper_comments(comment, created_at)
+        `)
+        .order("submitted_at", { ascending: false })
+    if (error || !data) return { success: false, papers: [] }
+    return { success: true, papers: data }
+}
+
 export async function adminCreateMentor(payload: {
     email: string
     password: string

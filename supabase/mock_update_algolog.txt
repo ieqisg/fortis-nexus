@@ -1,0 +1,6 @@
+-- Run this in the Supabase SQL Editor to clear any pre-seeded mock algorithm log.
+-- After running, switch to Mock Data in the admin dashboard and click
+-- "Run Matching (Mock)" to generate a real computed log (keyword extraction,
+-- TF-IDF scoring, Gale-Shapley proposal events) from the mock profiles.
+
+DELETE FROM mock_algorithm_logs;

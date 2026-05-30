@@ -9,7 +9,7 @@ const PYTHON_BIN = path.join(PROJECT_ROOT, "app/algo/venv/bin/python3") // ← f
 let isRunning = false
 let lastResult = null
 
-function runMatchingScript(mode = "fair-matching") {
+function runMatchingScript(mode = "fair-matching", source = "supabase") {
     return new Promise((resolve, reject) => {
         if (isRunning) {
             return reject(new Error("Matching is already running"))
@@ -27,12 +27,16 @@ function runMatchingScript(mode = "fair-matching") {
             return reject({ success: false, message: `Script not found: ${PYTHON_SCRIPT}` })
         }
 
+        const validSources = ["supabase", "mock", "file"]
+        const safeSource = validSources.includes(source) ? source : "supabase"
+
         console.log("🔗 Spawning Python matching script...")
         console.log("  Binary:", PYTHON_BIN)
         console.log("  Script:", PYTHON_SCRIPT)
         console.log("  Mode:  ", mode)
+        console.log("  Source:", safeSource)
 
-        const proc = spawn(PYTHON_BIN, [PYTHON_SCRIPT], {
+        const proc = spawn(PYTHON_BIN, [PYTHON_SCRIPT, "--source", safeSource], {
             cwd: path.join(PROJECT_ROOT, "app/algo/preprocess"), // ← set working dir so imports work
             env: { ...process.env }
         })
