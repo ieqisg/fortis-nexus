@@ -1,0 +1,84 @@
+-- Run this in the Supabase SQL Editor to fix time_slot values on already-seeded rows.
+-- Paste everything below and click Run.
+
+-- ── Update mock_mentor time slots ────────────────────────────────────────────
+
+UPDATE mock_mentor SET time_slot = '["Monday:9:00-10:00", "Monday:10:00-11:00", "Wednesday:9:00-10:00", "Friday:14:00-15:00"]'::jsonb
+WHERE id = 'a0000000-0000-0000-0000-000000000001'; -- Ana Reyes
+
+UPDATE mock_mentor SET time_slot = '["Tuesday:14:00-15:00", "Thursday:14:00-15:00", "Thursday:15:00-16:00", "Friday:17:00-18:00"]'::jsonb
+WHERE id = 'a0000000-0000-0000-0000-000000000002'; -- Ben Santos
+
+UPDATE mock_mentor SET time_slot = '["Monday:8:00-9:00", "Monday:9:00-10:00", "Wednesday:8:00-9:00", "Thursday:8:00-9:00"]'::jsonb
+WHERE id = 'a0000000-0000-0000-0000-000000000003'; -- Clara Mendoza
+
+UPDATE mock_mentor SET time_slot = '["Tuesday:9:00-10:00", "Tuesday:10:00-11:00", "Wednesday:9:00-10:00", "Friday:9:00-10:00"]'::jsonb
+WHERE id = 'a0000000-0000-0000-0000-000000000004'; -- David Lim
+
+UPDATE mock_mentor SET time_slot = '["Monday:14:00-15:00", "Monday:15:00-16:00", "Wednesday:14:00-15:00", "Friday:15:00-16:00"]'::jsonb
+WHERE id = 'a0000000-0000-0000-0000-000000000005'; -- Elena Cruz
+
+UPDATE mock_mentor SET time_slot = '["Monday:8:00-9:00", "Monday:18:00-19:00", "Thursday:8:00-9:00", "Thursday:18:00-19:00"]'::jsonb
+WHERE id = 'a0000000-0000-0000-0000-000000000006'; -- Felix Tan
+
+-- ── Update mock_mentee_groups time slots ─────────────────────────────────────
+
+UPDATE mock_mentee_groups SET time_slot = '["Monday:9:00-10:00", "Wednesday:9:00-10:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000001'; -- Group Prometheus
+
+UPDATE mock_mentee_groups SET time_slot = '["Wednesday:9:00-10:00", "Friday:14:00-15:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000002'; -- Neural Architects
+
+UPDATE mock_mentee_groups SET time_slot = '["Monday:10:00-11:00", "Friday:14:00-15:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000003'; -- Data Forge
+
+UPDATE mock_mentee_groups SET time_slot = '["Monday:9:00-10:00", "Wednesday:9:00-10:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000004'; -- Algorithm X
+
+UPDATE mock_mentee_groups SET time_slot = '["Tuesday:14:00-15:00", "Thursday:14:00-15:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000005'; -- Code Collective
+
+UPDATE mock_mentee_groups SET time_slot = '["Thursday:15:00-16:00", "Friday:17:00-18:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000006'; -- DevStack
+
+UPDATE mock_mentee_groups SET time_slot = '["Tuesday:14:00-15:00", "Friday:17:00-18:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000007'; -- WebForge
+
+UPDATE mock_mentee_groups SET time_slot = '["Tuesday:14:00-15:00", "Thursday:14:00-15:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000008'; -- System Builders
+
+UPDATE mock_mentee_groups SET time_slot = '["Monday:8:00-9:00", "Wednesday:8:00-9:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000009'; -- CipherForce
+
+UPDATE mock_mentee_groups SET time_slot = '["Monday:9:00-10:00", "Thursday:8:00-9:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000010'; -- SecureGuard
+
+UPDATE mock_mentee_groups SET time_slot = '["Wednesday:8:00-9:00", "Thursday:8:00-9:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000011'; -- NetShield
+
+UPDATE mock_mentee_groups SET time_slot = '["Tuesday:9:00-10:00", "Wednesday:9:00-10:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000012'; -- DataVault
+
+UPDATE mock_mentee_groups SET time_slot = '["Wednesday:9:00-10:00", "Friday:9:00-10:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000013'; -- QueryPros
+
+UPDATE mock_mentee_groups SET time_slot = '["Tuesday:10:00-11:00", "Friday:9:00-10:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000014'; -- SchemaBuilders
+
+UPDATE mock_mentee_groups SET time_slot = '["Monday:14:00-15:00", "Wednesday:14:00-15:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000015'; -- VisionLab
+
+UPDATE mock_mentee_groups SET time_slot = '["Wednesday:14:00-15:00", "Friday:15:00-16:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000016'; -- PixelMinds
+
+UPDATE mock_mentee_groups SET time_slot = '["Monday:15:00-16:00", "Friday:15:00-16:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000017'; -- SightTech
+
+UPDATE mock_mentee_groups SET time_slot = '["Monday:8:00-9:00", "Thursday:8:00-9:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000018'; -- MobileHub
+
+UPDATE mock_mentee_groups SET time_slot = '["Monday:8:00-9:00", "Thursday:18:00-19:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000019'; -- IoTLink
+
+UPDATE mock_mentee_groups SET time_slot = '["Thursday:18:00-19:00"]'::jsonb
+WHERE id = 'b0000000-0000-0000-0000-000000000020'; -- EmbedDev

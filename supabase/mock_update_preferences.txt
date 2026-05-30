@@ -1,0 +1,17 @@
+-- Run this in the Supabase SQL Editor to add the mock preference tables.
+-- Required for "Run Matching (Mock)" to work correctly — the algorithm writes
+-- preference lists here instead of polluting the real mentee_preferences /
+-- mentor_preferences tables.
+-- Safe to re-run — uses IF NOT EXISTS.
+
+CREATE TABLE IF NOT EXISTS mock_mentee_preferences (
+    mentee_group_id uuid PRIMARY KEY REFERENCES mock_mentee_groups(id) ON DELETE CASCADE,
+    ranked_mentors  jsonb NOT NULL DEFAULT '[]'::jsonb,
+    created_at      timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS mock_mentor_preferences (
+    mentor_id      uuid PRIMARY KEY REFERENCES mock_mentor(id) ON DELETE CASCADE,
+    ranked_mentees jsonb NOT NULL DEFAULT '[]'::jsonb,
+    created_at     timestamptz DEFAULT now()
+);

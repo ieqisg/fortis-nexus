@@ -1,0 +1,94 @@
+-- Run this in the Supabase SQL Editor to add the proposal phase to already-seeded mock tables.
+-- Creates mock_papers and mock_paper_comments, then inserts 12 proposals and 6 mentor comments.
+-- Safe to re-run — all statements use IF NOT EXISTS / ON CONFLICT DO NOTHING.
+
+-- ── Create tables ────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS mock_papers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    mentee_group_id UUID REFERENCES mock_mentee_groups(id) ON DELETE CASCADE,
+    mentor_id UUID REFERENCES mock_mentor(id) ON DELETE CASCADE,
+    title TEXT,
+    file_name TEXT,
+    file_path TEXT,
+    status TEXT DEFAULT 'pending',
+    submitted_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS mock_paper_comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    paper_id UUID REFERENCES mock_papers(id) ON DELETE CASCADE,
+    mentor_id UUID REFERENCES mock_mentor(id) ON DELETE CASCADE,
+    comment TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── Seed mock_papers (12 rows — 6 reviewed, 6 pending) ───────────────────────
+
+INSERT INTO mock_papers (id, mentee_group_id, mentor_id, title, file_name, file_path, status, submitted_at) VALUES
+-- Ana Reyes groups
+('c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001',
+ 'Predicting Student Academic Performance using Machine Learning', NULL, NULL, 'reviewed',
+ NOW() - INTERVAL '12 days'),
+('c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001',
+ 'Deep Learning for Medical Image Diagnosis', NULL, NULL, 'pending',
+ NOW() - INTERVAL '2 days'),
+-- Ben Santos groups
+('c0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000002',
+ 'Full-stack Web Application for University Event Management using React and Node.js', NULL, NULL, 'reviewed',
+ NOW() - INTERVAL '10 days'),
+('c0000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000002',
+ 'Progressive Web Application for Course Scheduling using TypeScript and React', NULL, NULL, 'pending',
+ NOW() - INTERVAL '1 day'),
+-- Clara Mendoza groups
+('c0000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000003',
+ 'Penetration Testing Framework for Web Application Security', NULL, NULL, 'reviewed',
+ NOW() - INTERVAL '14 days'),
+('c0000000-0000-0000-0000-000000000006', 'b0000000-0000-0000-0000-000000000011', 'a0000000-0000-0000-0000-000000000003',
+ 'Network Intrusion Detection System using Cybersecurity and Python', NULL, NULL, 'pending',
+ NOW() - INTERVAL '3 days'),
+-- David Lim groups
+('c0000000-0000-0000-0000-000000000007', 'b0000000-0000-0000-0000-000000000012', 'a0000000-0000-0000-0000-000000000004',
+ 'Distributed Database System for Healthcare Records Management', NULL, NULL, 'reviewed',
+ NOW() - INTERVAL '9 days'),
+('c0000000-0000-0000-0000-000000000008', 'b0000000-0000-0000-0000-000000000013', 'a0000000-0000-0000-0000-000000000004',
+ 'Big Data Analytics Platform using Apache Spark and SQL', NULL, NULL, 'pending',
+ NOW() - INTERVAL '2 days'),
+-- Elena Cruz groups
+('c0000000-0000-0000-0000-000000000009', 'b0000000-0000-0000-0000-000000000015', 'a0000000-0000-0000-0000-000000000005',
+ 'Real-time Object Detection using YOLO and PyTorch', NULL, NULL, 'reviewed',
+ NOW() - INTERVAL '11 days'),
+('c0000000-0000-0000-0000-000000000010', 'b0000000-0000-0000-0000-000000000016', 'a0000000-0000-0000-0000-000000000005',
+ 'Facial Recognition System using Convolutional Neural Networks and OpenCV', NULL, NULL, 'pending',
+ NOW() - INTERVAL '1 day'),
+-- Felix Tan groups
+('c0000000-0000-0000-0000-000000000011', 'b0000000-0000-0000-0000-000000000018', 'a0000000-0000-0000-0000-000000000006',
+ 'Cross-platform Flutter Application for Smart Home IoT Control', NULL, NULL, 'reviewed',
+ NOW() - INTERVAL '7 days'),
+('c0000000-0000-0000-0000-000000000012', 'b0000000-0000-0000-0000-000000000019', 'a0000000-0000-0000-0000-000000000006',
+ 'IoT-based Environmental Monitoring System with Android Mobile Dashboard', NULL, NULL, 'pending',
+ NOW() - INTERVAL '3 days')
+ON CONFLICT (id) DO NOTHING;
+
+-- ── Seed mock_paper_comments (6 rows — one per reviewed paper) ───────────────
+
+INSERT INTO mock_paper_comments (id, paper_id, mentor_id, comment, created_at) VALUES
+('d0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001',
+ 'Strong methodology overall. The use of scikit-learn pipelines is well-suited for this dataset size. I recommend adding a cross-validation section to strengthen the evaluation — consider k-fold with stratified splits given the class imbalance you described.',
+ NOW() - INTERVAL '10 days'),
+('d0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000002',
+ 'Good structure and the React component breakdown is clean. The API layer needs more detail — clarify how you handle session state between the Node.js backend and the React frontend. Also expand the error-handling section for failed event submissions.',
+ NOW() - INTERVAL '8 days'),
+('d0000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000003',
+ 'Solid threat modeling section. The penetration testing scope is clearly defined. For the next revision, include a CVSS scoring table for each identified vulnerability and add a remediation timeline. The Kali Linux toolchain selection is appropriate for the target environment.',
+ NOW() - INTERVAL '12 days'),
+('d0000000-0000-0000-0000-000000000004', 'c0000000-0000-0000-0000-000000000007', 'a0000000-0000-0000-0000-000000000004',
+ 'The schema design is well thought out for the OLTP workload. Revise the ETL pipeline diagram — it currently shows the transformation step before extraction, which is misleading. Also benchmark the PostgreSQL partitioning strategy against a baseline before finalizing.',
+ NOW() - INTERVAL '7 days'),
+('d0000000-0000-0000-0000-000000000005', 'c0000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000005',
+ 'YOLO v8 is a good choice for the real-time constraint. The mAP results look promising but the paper needs an ablation study comparing anchor-based vs anchor-free detection heads. Also clarify the frame rate benchmarks — are those measured on GPU or CPU inference?',
+ NOW() - INTERVAL '9 days'),
+('d0000000-0000-0000-0000-000000000006', 'c0000000-0000-0000-0000-000000000011', 'a0000000-0000-0000-0000-000000000006',
+ 'Flutter integration with the MQTT broker is well-implemented. Add a section on offline resilience — what happens when the IoT gateway loses connectivity? The embedded sensor calibration process also needs more documentation for reproducibility.',
+ NOW() - INTERVAL '5 days')
+ON CONFLICT (id) DO NOTHING;

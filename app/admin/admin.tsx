@@ -58,7 +58,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog, fetchPapersByORCID, fetchPapersByIEEE, setMentorAdminRole, adminUpdateMentorPassword, adminUpdateMentorEmail } from "@/lib/actions/adminActions"
+import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog, fetchPapersByORCID, fetchPapersByIEEE, setMentorAdminRole, adminUpdateMentorPassword, adminUpdateMentorEmail, getMockUserData, getLatestMockAlgorithmLog, rollbackMockMatches, getMockPaperStats, getMockPapers } from "@/lib/actions/adminActions"
 import type { PublishedPaper, PrevMentoredThesis } from "@/types/mentorTypes"
 import type { GroupMembers } from "@/types/menteeTypes"
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector"
@@ -110,6 +110,10 @@ export default function Admin() {
   const [deletingUser, setDeletingUser] = useState(false)
   const [matchingMode, setMatchingMode] = useState<string | null>(null)
   const matching = matchingMode !== null
+  const [dataSource, setDataSource] = useState<"supabase" | "mock">("supabase")
+  const [mockPaperStats, setMockPaperStats] = useState<{ total: number; pending: number; reviewed: number } | null>(null)
+  const [mockPapers, setMockPapers] = useState<any[]>([])
+  const [expandedComment, setExpandedComment] = useState<string | null>(null)
   const [matchResult, setMatchResult] = useState<any>(null)
   const [matchLog, setMatchLog] = useState<any>(null)
   const [visibleUsers, setVisibleUsers] = useState(10)
@@ -165,6 +169,27 @@ export default function Admin() {
   const [editNewPassword, setEditNewPassword] = useState("")
   const [showEditPassword, setShowEditPassword] = useState(false)
 
+  const refreshData = async (source: "supabase" | "mock") => {
+    const [userResult, logResult] = await Promise.all([
+      source === "mock" ? getMockUserData() : getAllUserData(),
+      source === "mock" ? getLatestMockAlgorithmLog() : getLatestAlgorithmLog(),
+    ])
+    if (userResult.success) {
+      setMentors(userResult.data.mentors ?? [])
+      setMentees(userResult.data.mentee ?? [])
+    }
+    if (logResult.success && logResult.log) setMatchLog(logResult.log)
+    else if (source === "mock") setMatchLog(null)
+    if (source === "mock") {
+      const [paperStats, papersResult] = await Promise.all([getMockPaperStats(), getMockPapers()])
+      if (paperStats.success) setMockPaperStats({ total: paperStats.total, pending: paperStats.pending, reviewed: paperStats.reviewed })
+      if (papersResult.success) setMockPapers(papersResult.papers)
+    } else {
+      setMockPaperStats(null)
+      setMockPapers([])
+    }
+  }
+
   const handleToggleAdmin = async (mentorId: string, currentIsAdmin: boolean) => {
     setTogglingAdmin(mentorId)
     const result = await setMentorAdminRole(mentorId, !currentIsAdmin)
@@ -184,7 +209,7 @@ export default function Admin() {
       const res = await fetch("/api/run-matching", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode }),
+        body: JSON.stringify({ mode, source: dataSource }),
       })
       const data = await res.json()
       setMatchResult(data)
@@ -192,11 +217,7 @@ export default function Admin() {
         setMatchLog(data.log)
       }
       if (data.success) {
-        const result = await getAllUserData()
-        if (result.success) {
-          setMentors(result.data.mentors ?? [])
-          setMentees(result.data.mentee ?? [])
-        }
+        await refreshData(dataSource)
       }
     } catch (err) {
       toast.error("Failed to run matching")
@@ -206,7 +227,7 @@ export default function Admin() {
 
   const handleRollback = async () => {
     setRollingBack(true)
-    const result = await rollbackMatches()
+    const result = dataSource === "mock" ? await rollbackMockMatches() : await rollbackMatches()
     if (result.success) {
       setMentors(prev => prev.map(m => ({ ...m, matches: [] })))
       setMentees(prev => prev.map(m => ({ ...m, matches: null })))
@@ -491,6 +512,13 @@ export default function Admin() {
     fetchData()
   }, [])
 
+  useEffect(() => {
+    if (loading) return
+    setMatchResult(null)
+    refreshData(dataSource)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataSource])
+
   const totalAssigned = mentors.reduce((sum, m) => sum + (m.matches?.length ?? 0), 0)
   const totalCapacity = mentors.reduce((sum, m) => sum + (m.mentor_capacity ?? 0), 0)
   const matchesCompleted = mentees.filter(m => m.matches).length
@@ -618,22 +646,59 @@ export default function Admin() {
 
             {/* Run Matching Buttons */}
             <div className="mt-4 space-y-3">
+              {/* Data source toggle */}
+              <div className="flex flex-col gap-1.5">
+                <p className="text-xs font-medium text-slate-600">Data Source</p>
+                <div className="flex rounded-lg border border-slate-200 w-fit overflow-hidden">
+                  <button
+                    onClick={() => setDataSource("supabase")}
+                    disabled={matching || rollingBack}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                      dataSource === "supabase"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    Real Data
+                  </button>
+                  <button
+                    onClick={() => setDataSource("mock")}
+                    disabled={matching || rollingBack}
+                    className={`px-4 py-2 text-sm font-medium transition-colors border-l border-slate-200 ${
+                      dataSource === "mock"
+                        ? "bg-amber-500 text-white"
+                        : "bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    Mock Data
+                  </button>
+                </div>
+                {dataSource === "mock" && (
+                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1 w-fit">
+                    Demo mode &middot; 6 mentors &middot; 20 mentees &middot; results saved to mock tables
+                    {mockPaperStats && mockPaperStats.total > 0 && (
+                      <> &middot; {mockPaperStats.total} proposals ({mockPaperStats.reviewed} reviewed &middot; {mockPaperStats.pending} pending)</>
+                    )}
+                  </p>
+                )}
+              </div>
+
               <div className="flex flex-wrap gap-3">
                 <div className="flex flex-col items-start gap-1">
                   <Button
                     onClick={() => handleRunMatching()}
                     disabled={matching || rollingBack}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className={dataSource === "mock" ? "bg-amber-500 hover:bg-amber-600" : "bg-blue-600 hover:bg-blue-700"}
                   >
                     {matching ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Running...
+                        Running{dataSource === "mock" ? " (Mock)" : ""}...
                       </>
                     ) : (
                       <>
                         <Scale className="w-4 h-4 mr-2" />
-                        Run Matching
+                        Run Matching{dataSource === "mock" ? " (Mock)" : ""}
                       </>
                     )}
                   </Button>
@@ -1312,6 +1377,86 @@ export default function Admin() {
             </Card>
           </div>
 
+          {/* ── RESEARCH PROPOSALS (mock mode only) ── */}
+          {dataSource === "mock" && mockPapers.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-amber-600" /> Research Proposals
+                </CardTitle>
+                <CardDescription>
+                  Mock proposal submissions — {mockPaperStats?.reviewed ?? 0} reviewed &middot; {mockPaperStats?.pending ?? 0} awaiting feedback
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Group</TableHead>
+                      <TableHead>Proposal Title</TableHead>
+                      <TableHead>Mentor Reviewer</TableHead>
+                      <TableHead>Submitted</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Feedback</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mockPapers.map((paper: any) => {
+                      const comment = paper.comments?.[0]
+                      const isExpanded = expandedComment === paper.id
+                      return (
+                        <>
+                          <TableRow key={paper.id}>
+                            <TableCell className="font-medium whitespace-nowrap">
+                              {paper.mentee_group?.group_name ?? "-"}
+                            </TableCell>
+                            <TableCell className="max-w-xs">
+                              <span className="line-clamp-2 text-sm">{paper.title}</span>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {paper.mentor ? `${paper.mentor.first_name} ${paper.mentor.last_name}` : "-"}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-sm text-slate-500">
+                              {new Date(paper.submitted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={paper.status === "reviewed" ? "bg-green-600" : "bg-amber-500"}>
+                                {paper.status === "reviewed" ? "Reviewed" : "Pending"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {comment ? (
+                                <button
+                                  onClick={() => setExpandedComment(isExpanded ? null : paper.id)}
+                                  className="text-xs text-blue-600 hover:underline"
+                                >
+                                  {isExpanded ? "Hide" : "View feedback"}
+                                </button>
+                              ) : (
+                                <span className="text-xs text-slate-400">Awaiting review</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                          {isExpanded && comment && (
+                            <TableRow key={`${paper.id}-comment`} className="bg-slate-50">
+                              <TableCell colSpan={6} className="py-3 px-4">
+                                <p className="text-sm text-slate-700 italic">&ldquo;{comment.comment}&rdquo;</p>
+                                <p className="text-xs text-slate-400 mt-1">
+                                  — {paper.mentor?.first_name} {paper.mentor?.last_name} &middot;{" "}
+                                  {new Date(comment.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                </p>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+
           {/* ── ALGORITHM LOGS ── */}
           <div id="alerts">
             <Card>
@@ -1364,14 +1509,14 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    {/* Phase 1: Data Collection */}
+                    {/* Step 1: Data Collection */}
                     <div className="border rounded-lg overflow-hidden">
                       <button
                         onClick={() => setPhase1Open(v => !v)}
                         className="w-full p-4 bg-blue-50 border-b border-blue-200 flex justify-between items-center text-left"
                       >
                         <div className="flex items-center gap-3">
-                          <h3 className="font-semibold">Phase 1: Data Collection & Preprocessing</h3>
+                          <h3 className="font-semibold">Step 1: Data Collection & Preprocessing</h3>
                           <span className="text-xs text-slate-500 bg-blue-100 px-2 py-0.5 rounded-full">
                             {matchLog.phase1.mentors_count} mentors · {matchLog.phase1.mentees_count} mentees
                           </span>
@@ -1405,13 +1550,13 @@ export default function Admin() {
                       )}
                     </div>
 
-                    {/* Phase 2: Compatibility Scoring */}
+                    {/* Step 2: Compatibility Scoring */}
                     <div className="border rounded-lg overflow-hidden">
                       <button
                         onClick={() => setPhase2Open(v => !v)}
                         className="w-full p-4 bg-emerald-50 border-b border-emerald-200 flex justify-between items-center text-left"
                       >
-                        <h3 className="font-semibold">Phase 2: Compatibility Scoring</h3>
+                        <h3 className="font-semibold">Step 2: Compatibility Scoring</h3>
                         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${phase2Open ? "rotate-180" : ""}`} />
                       </button>
                       {phase2Open && (
@@ -1556,13 +1701,13 @@ export default function Admin() {
                       )}
                     </div>
 
-                    {/* Phase 3: Matching */}
+                    {/* Step 3: Matching */}
                     <div className="border rounded-lg overflow-hidden">
                       <button
                         onClick={() => setPhase3Open(v => !v)}
                         className="w-full p-4 bg-amber-50 border-b border-amber-200 flex justify-between items-center text-left"
                       >
-                        <h3 className="font-semibold">Phase 3: Hospital-Resident Matching (Gale-Shapley)</h3>
+                        <h3 className="font-semibold">Step 3: Hospital-Resident Matching (Gale-Shapley)</h3>
                         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${phase3Open ? "rotate-180" : ""}`} />
                       </button>
                       {phase3Open && (
