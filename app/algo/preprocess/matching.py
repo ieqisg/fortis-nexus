@@ -118,20 +118,25 @@ def hospital_resident(
             resident_assignment[r_id] = h_id
             proposal_events.append({"round": round_num, "type": "accept", "proposer": r_id, "to": h_id, "replaced": None})
         else:
-            worst_r_id    = max(assigned, key=lambda rid: hospital_rank[h_id].get(rid, float("inf")))
-            current_rank  = hospital_rank[h_id].get(r_id, float("inf"))
-            worst_rank    = hospital_rank[h_id].get(worst_r_id, float("inf"))
-
-            if current_rank < worst_rank:
-                assigned.remove(worst_r_id)
-                assigned.append(r_id)
-                resident_assignment[r_id] = h_id
-                del resident_assignment[worst_r_id]
-                free_residents.append(worst_r_id)
-                proposal_events.append({"round": round_num, "type": "replace", "proposer": r_id, "to": h_id, "replaced": worst_r_id})
-            else:
+            if not assigned:
+                # capacity == 0: mentor accepts no one, always reject
                 free_residents.append(r_id)
                 proposal_events.append({"round": round_num, "type": "reject", "proposer": r_id, "to": h_id, "replaced": None})
+            else:
+                worst_r_id    = max(assigned, key=lambda rid: hospital_rank[h_id].get(rid, float("inf")))
+                current_rank  = hospital_rank[h_id].get(r_id, float("inf"))
+                worst_rank    = hospital_rank[h_id].get(worst_r_id, float("inf"))
+
+                if current_rank < worst_rank:
+                    assigned.remove(worst_r_id)
+                    assigned.append(r_id)
+                    resident_assignment[r_id] = h_id
+                    del resident_assignment[worst_r_id]
+                    free_residents.append(worst_r_id)
+                    proposal_events.append({"round": round_num, "type": "replace", "proposer": r_id, "to": h_id, "replaced": worst_r_id})
+                else:
+                    free_residents.append(r_id)
+                    proposal_events.append({"round": round_num, "type": "reject", "proposer": r_id, "to": h_id, "replaced": None})
 
     return resident_assignment, hospital_assignments, proposal_events
 
@@ -363,7 +368,7 @@ def verify_stability(
 
             if len(assigned) < capacity:
                 blocking_pairs.append((r_id, h_id))
-            else:
+            elif assigned:
                 worst_r_id = max(assigned, key=lambda rid: mentor_rank[h_id].get(rid, float("inf")))
                 if mentor_rank[h_id].get(r_id, float("inf")) < mentor_rank[h_id].get(worst_r_id, float("inf")):
                     blocking_pairs.append((r_id, h_id))

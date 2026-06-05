@@ -13,7 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
-import { ArrowLeft, UserRound, Users, Plus, X, Clock, Check, Eye, EyeOff } from "lucide-react";
+import { SearchableTagSelect } from "@/components/ui/SearchableTagSelect";
+import { TECHNICAL_SKILLS_OPTIONS, FORTE_OPTIONS } from "@/lib/mentorOptions";
+import { ArrowLeft, UserRound, Users, Clock, Check, Eye, EyeOff } from "lucide-react";
 import { MentorFormProfile } from "@/types/mentorTypes";
 import { UserAuth } from "@/app/context/authContext";
 import { MentorInsert } from "@/types/modelTypes";
@@ -47,8 +49,6 @@ export default function MentorCompleteProfile() {
         email: "",
     })
 
-    const [skillInput, setSkillInput] = useState("");
-    const [forteInput, setForteInput] = useState("");
     const [passwordData, setPasswordData] = useState({
         newPassword: "",
         confirmPassword: "",
@@ -140,37 +140,6 @@ export default function MentorCompleteProfile() {
 
     };
 
-    const addSkill = () => {
-        const value = skillInput.trim();
-        if (!value) return;
-        if (formData.technical_skills.includes(value)) return;
-        setFormData((prev) => ({
-            ...prev,
-            technical_skills: [...prev.technical_skills, value]
-        }));
-        setSkillInput("");
-    };
-
-    const addForte = () => {
-        const value = forteInput.trim();
-        if (!value) return;
-        if (formData.forte.includes(value)) return;
-
-        setFormData((prev) => ({
-            ...prev,
-            forte: [...prev.forte, value]
-        }));
-        setForteInput("");
-    };
-
-    const handleSkillKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            addSkill();
-            addForte();
-        }
-    };
-
     const handleCancel = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -254,54 +223,14 @@ export default function MentorCompleteProfile() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="technical-skills">Technical Skills *</Label>
-
-                                <div className="flex gap-2">
-                                    <Input
-                                        id="technical-skills"
-                                        placeholder="e.g. Python, Javascript, Java, C++ etc..."
-                                        value={skillInput}
-                                        onChange={(e) => setSkillInput(e.target.value)}
-                                        onKeyDown={handleSkillKeyDown}
-                                    />
-
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={addSkill}
-                                        className="bg-blue-700"
-                                    >
-                                        <Plus className="w-4 h-4 text-white" />
-                                    </Button>
-                                </div>
-
-                                <p className="text-sm text-gray-500">
-                                    Add your technical skills and press Enter or click +
-                                </p>
-
-                                {/* Added skills */}
-                                <div className="flex flex-wrap gap-2">
-                                    {formData.technical_skills.map((skills, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm"
-                                        >
-                                            {skills}
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    setFormData((prev) => ({
-                                                        ...prev,
-                                                        technical_skills: prev.technical_skills.filter((_, i) => i !== index)
-                                                    }))
-                                                }
-                                            >
-                                                <X className="w-3 h-3" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
+                                <Label>Technical Skills *</Label>
+                                <SearchableTagSelect
+                                    options={TECHNICAL_SKILLS_OPTIONS}
+                                    selected={formData.technical_skills}
+                                    onChange={(tags) => setFormData((prev) => ({ ...prev, technical_skills: tags }))}
+                                    placeholder="Search languages, frameworks, tools..."
+                                    badgeClassName="border-green-200 text-green-800 bg-green-100"
+                                />
                                 <div className="space-y-2">
                                     <Label htmlFor="description">
                                         Brief Description about yourself*
@@ -320,53 +249,14 @@ export default function MentorCompleteProfile() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="forte">Forte/Specialization *</Label>
-
-                                <div className="flex gap-2">
-                                    <Input
-                                        id="Forte"
-                                        placeholder="e.g. Image Processing, Machine Learning, Computer Vision etc..."
-                                        value={forteInput}
-                                        onChange={(e) => setForteInput(e.target.value)}
-                                        onKeyDown={handleSkillKeyDown}
-                                    />
-
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={addForte}
-                                        className="bg-blue-700"
-                                    >
-                                        <Plus className="w-4 h-4 text-white" />
-                                    </Button>
-                                </div>
-
-                                <p className="text-sm text-gray-500">
-                                    Add your Forte/Specialization and press Enter or click +
-                                </p>
-
-                                <div className="flex flex-wrap gap-2">
-                                    {formData.forte.map((item, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm"
-                                        >
-                                            {item}
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    setFormData((prev) => ({
-                                                        ...prev,
-                                                        forte: prev.forte.filter((_, i) => i !== index)
-                                                    }))
-                                                }
-                                            >
-                                                <X className="w-3 h-3" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
+                                <Label>Forte / Specialization *</Label>
+                                <SearchableTagSelect
+                                    options={FORTE_OPTIONS}
+                                    selected={formData.forte}
+                                    onChange={(tags) => setFormData((prev) => ({ ...prev, forte: tags }))}
+                                    placeholder="Search algorithms, domains, research areas..."
+                                    badgeClassName="border-green-200 text-green-800 bg-green-100"
+                                />
                             </div>
                             <div className="space-y-2 relative">
                                 <Label htmlFor="description">

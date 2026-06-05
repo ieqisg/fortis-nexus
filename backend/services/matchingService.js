@@ -27,7 +27,7 @@ function runMatchingScript(mode = "fair-matching", source = "supabase") {
             return reject({ success: false, message: `Script not found: ${PYTHON_SCRIPT}` })
         }
 
-        const validSources = ["supabase", "mock", "file"]
+        const validSources = ["supabase", "mock", "file", "demo"]
         const safeSource = validSources.includes(source) ? source : "supabase"
 
         console.log("🔗 Spawning Python matching script...")

@@ -58,10 +58,12 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog, fetchPapersByORCID, fetchPapersByIEEE, setMentorAdminRole, adminUpdateMentorPassword, adminUpdateMentorEmail, getMockUserData, getLatestMockAlgorithmLog, rollbackMockMatches, getMockPaperStats, getMockPapers } from "@/lib/actions/adminActions"
+import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog, fetchPapersByORCID, fetchPapersByIEEE, setMentorAdminRole, adminUpdateMentorPassword, adminUpdateMentorEmail, getMockUserData, getLatestMockAlgorithmLog, rollbackMockMatches, getMockPaperStats, getMockPapers, getDemoUserData, getLatestDemoAlgorithmLog, rollbackDemoMatches } from "@/lib/actions/adminActions"
 import type { PublishedPaper, PrevMentoredThesis } from "@/types/mentorTypes"
 import type { GroupMembers } from "@/types/menteeTypes"
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector"
+import { SearchableTagSelect } from "@/components/ui/SearchableTagSelect"
+import { TECHNICAL_SKILLS_OPTIONS, FORTE_OPTIONS } from "@/lib/mentorOptions"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getAnnouncements, createAnnouncement, deleteAnnouncement, type Announcement } from "@/lib/actions/announcementActions"
 import { Textarea } from "@/components/ui/textarea"
@@ -101,8 +103,6 @@ export default function Admin() {
   const [editMenteeTimeSlots, setEditMenteeTimeSlots] = useState<string[]>([])
   const [editMenteeMembers, setEditMenteeMembers] = useState<GroupMembers[]>([])
   const [editMenteeLeaderIndex, setEditMenteeLeaderIndex] = useState(0)
-  const [skillInput, setSkillInput] = useState("")
-  const [forteInput, setForteInput] = useState("")
   const [fetchingPapers, setFetchingPapers] = useState(false)
   const [savingEdit, setSavingEdit] = useState(false)
   const [userToDelete, setUserToDelete] = useState<any>(null)
@@ -110,7 +110,7 @@ export default function Admin() {
   const [deletingUser, setDeletingUser] = useState(false)
   const [matchingMode, setMatchingMode] = useState<string | null>(null)
   const matching = matchingMode !== null
-  const [dataSource, setDataSource] = useState<"supabase" | "mock">("supabase")
+  const [dataSource, setDataSource] = useState<"supabase" | "mock" | "demo">("supabase")
   const [mockPaperStats, setMockPaperStats] = useState<{ total: number; pending: number; reviewed: number } | null>(null)
   const [mockPapers, setMockPapers] = useState<any[]>([])
   const [expandedComment, setExpandedComment] = useState<string | null>(null)
@@ -169,17 +169,21 @@ export default function Admin() {
   const [editNewPassword, setEditNewPassword] = useState("")
   const [showEditPassword, setShowEditPassword] = useState(false)
 
-  const refreshData = async (source: "supabase" | "mock") => {
+  const refreshData = async (source: "supabase" | "mock" | "demo") => {
     const [userResult, logResult] = await Promise.all([
-      source === "mock" ? getMockUserData() : getAllUserData(),
-      source === "mock" ? getLatestMockAlgorithmLog() : getLatestAlgorithmLog(),
+      source === "mock" ? getMockUserData()
+      : source === "demo" ? getDemoUserData()
+      : getAllUserData(),
+      source === "mock" ? getLatestMockAlgorithmLog()
+      : source === "demo" ? getLatestDemoAlgorithmLog()
+      : getLatestAlgorithmLog(),
     ])
     if (userResult.success) {
       setMentors(userResult.data.mentors ?? [])
       setMentees(userResult.data.mentee ?? [])
     }
     if (logResult.success && logResult.log) setMatchLog(logResult.log)
-    else if (source === "mock") setMatchLog(null)
+    else if (source === "mock" || source === "demo") setMatchLog(null)
     if (source === "mock") {
       const [paperStats, papersResult] = await Promise.all([getMockPaperStats(), getMockPapers()])
       if (paperStats.success) setMockPaperStats({ total: paperStats.total, pending: paperStats.pending, reviewed: paperStats.reviewed })
@@ -227,7 +231,9 @@ export default function Admin() {
 
   const handleRollback = async () => {
     setRollingBack(true)
-    const result = dataSource === "mock" ? await rollbackMockMatches() : await rollbackMatches()
+    const result = dataSource === "mock" ? await rollbackMockMatches()
+      : dataSource === "demo" ? await rollbackDemoMatches()
+      : await rollbackMatches()
     if (result.success) {
       setMentors(prev => prev.map(m => ({ ...m, matches: [] })))
       setMentees(prev => prev.map(m => ({ ...m, matches: null })))
@@ -260,8 +266,6 @@ export default function Admin() {
 
   const openEditDialog = async (user: any) => {
     setSelectedUser(user)
-    setSkillInput("")
-    setForteInput("")
     setEditNewPassword("")
     setShowEditPassword(false)
     if (user.type === "mentor") {
@@ -688,17 +692,21 @@ export default function Admin() {
                   <Button
                     onClick={() => handleRunMatching()}
                     disabled={matching || rollingBack}
-                    className={dataSource === "mock" ? "bg-amber-500 hover:bg-amber-600" : "bg-blue-600 hover:bg-blue-700"}
+                    className={
+                      dataSource === "mock" ? "bg-amber-500 hover:bg-amber-600"
+                      : dataSource === "demo" ? "bg-purple-600 hover:bg-purple-700"
+                      : "bg-blue-600 hover:bg-blue-700"
+                    }
                   >
                     {matching ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Running{dataSource === "mock" ? " (Mock)" : ""}...
+                        Running{dataSource === "mock" ? " (Mock)" : dataSource === "demo" ? " (O(n) Demo)" : ""}...
                       </>
                     ) : (
                       <>
                         <Scale className="w-4 h-4 mr-2" />
-                        Run Matching{dataSource === "mock" ? " (Mock)" : ""}
+                        Run Matching{dataSource === "mock" ? " (Mock)" : dataSource === "demo" ? " (O(n) Demo)" : ""}
                       </>
                     )}
                   </Button>
@@ -2006,33 +2014,23 @@ export default function Admin() {
                     </div>
                     <div className="space-y-1">
                       <Label>Forte / Specialization</Label>
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {editMentorForte.map((f, i) => (
-                          <Badge key={i} variant="outline" className="text-xs border-indigo-200 text-indigo-700 bg-indigo-50 flex items-center gap-1">
-                            {f}
-                            <button type="button" onClick={() => setEditMentorForte(prev => prev.filter((_, j) => j !== i))} className="ml-0.5 hover:text-red-500"><X className="w-3 h-3" /></button>
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <Input placeholder="Add specialization..." value={forteInput} onChange={e => setForteInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && forteInput.trim()) { e.preventDefault(); setEditMentorForte(prev => [...prev, forteInput.trim()]); setForteInput("") } }} />
-                        <Button type="button" variant="outline" size="sm" onClick={() => { if (forteInput.trim()) { setEditMentorForte(prev => [...prev, forteInput.trim()]); setForteInput("") } }}>Add</Button>
-                      </div>
+                      <SearchableTagSelect
+                        options={FORTE_OPTIONS}
+                        selected={editMentorForte}
+                        onChange={setEditMentorForte}
+                        placeholder="Search algorithms, domains..."
+                        badgeClassName="border-indigo-200 text-indigo-700 bg-indigo-50"
+                      />
                     </div>
                     <div className="space-y-1">
                       <Label>Technical Skills</Label>
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {editMentorSkills.map((s, i) => (
-                          <Badge key={i} variant="outline" className="text-xs border-slate-200 text-slate-600 flex items-center gap-1">
-                            {s}
-                            <button type="button" onClick={() => setEditMentorSkills(prev => prev.filter((_, j) => j !== i))} className="ml-0.5 hover:text-red-500"><X className="w-3 h-3" /></button>
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <Input placeholder="Add skill..." value={skillInput} onChange={e => setSkillInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && skillInput.trim()) { e.preventDefault(); setEditMentorSkills(prev => [...prev, skillInput.trim()]); setSkillInput("") } }} />
-                        <Button type="button" variant="outline" size="sm" onClick={() => { if (skillInput.trim()) { setEditMentorSkills(prev => [...prev, skillInput.trim()]); setSkillInput("") } }}>Add</Button>
-                      </div>
+                      <SearchableTagSelect
+                        options={TECHNICAL_SKILLS_OPTIONS}
+                        selected={editMentorSkills}
+                        onChange={setEditMentorSkills}
+                        placeholder="Search languages, frameworks, tools..."
+                        badgeClassName="border-slate-200 text-slate-600 bg-slate-50"
+                      />
                     </div>
                   </div>
 
