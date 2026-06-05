@@ -292,6 +292,8 @@ export async function adminCreateMentor(payload: {
     password: string
     first_name: string
     last_name: string
+    orcid?: string | null
+    ieee_id?: string | null
 }) {
     const { data, error: authError } = await supabase.auth.admin.createUser({
         email: payload.email,
@@ -307,6 +309,8 @@ export async function adminCreateMentor(payload: {
         last_name: payload.last_name,
         role: "mentor",
         profile_completed: false,
+        orcid: payload.orcid ?? null,
+        ieee_id: payload.ieee_id ?? null,
     })
     if (error) {
         await supabase.auth.admin.deleteUser(data.user.id)

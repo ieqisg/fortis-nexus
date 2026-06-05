@@ -62,6 +62,8 @@ import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMente
 import type { PublishedPaper, PrevMentoredThesis } from "@/types/mentorTypes"
 import type { GroupMembers } from "@/types/menteeTypes"
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector"
+import { SearchableTagSelect } from "@/components/ui/SearchableTagSelect"
+import { TECHNICAL_SKILLS_OPTIONS, FORTE_OPTIONS } from "@/lib/mentorOptions"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getAnnouncements, createAnnouncement, deleteAnnouncement, type Announcement } from "@/lib/actions/announcementActions"
 import { Textarea } from "@/components/ui/textarea"
@@ -101,8 +103,6 @@ export default function Admin() {
   const [editMenteeTimeSlots, setEditMenteeTimeSlots] = useState<string[]>([])
   const [editMenteeMembers, setEditMenteeMembers] = useState<GroupMembers[]>([])
   const [editMenteeLeaderIndex, setEditMenteeLeaderIndex] = useState(0)
-  const [skillInput, setSkillInput] = useState("")
-  const [forteInput, setForteInput] = useState("")
   const [fetchingPapers, setFetchingPapers] = useState(false)
   const [savingEdit, setSavingEdit] = useState(false)
   const [userToDelete, setUserToDelete] = useState<any>(null)
@@ -266,8 +266,6 @@ export default function Admin() {
 
   const openEditDialog = async (user: any) => {
     setSelectedUser(user)
-    setSkillInput("")
-    setForteInput("")
     setEditNewPassword("")
     setShowEditPassword(false)
     if (user.type === "mentor") {
@@ -678,17 +676,6 @@ export default function Admin() {
                   >
                     Mock Data
                   </button>
-                  <button
-                    onClick={() => setDataSource("demo")}
-                    disabled={matching || rollingBack}
-                    className={`px-4 py-2 text-sm font-medium transition-colors border-l border-slate-200 ${
-                      dataSource === "demo"
-                        ? "bg-purple-600 text-white"
-                        : "bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    O(n) Demo
-                  </button>
                 </div>
                 {dataSource === "mock" && (
                   <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1 w-fit">
@@ -696,11 +683,6 @@ export default function Admin() {
                     {mockPaperStats && mockPaperStats.total > 0 && (
                       <> &middot; {mockPaperStats.total} proposals ({mockPaperStats.reviewed} reviewed &middot; {mockPaperStats.pending} pending)</>
                     )}
-                  </p>
-                )}
-                {dataSource === "demo" && (
-                  <p className="text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded px-2 py-1 w-fit">
-                    O(n) demo &middot; 6 mentors &middot; 6 mentees &middot; disjoint domains &middot; completes in 1 round with zero rejections
                   </p>
                 )}
               </div>
@@ -2032,33 +2014,23 @@ export default function Admin() {
                     </div>
                     <div className="space-y-1">
                       <Label>Forte / Specialization</Label>
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {editMentorForte.map((f, i) => (
-                          <Badge key={i} variant="outline" className="text-xs border-indigo-200 text-indigo-700 bg-indigo-50 flex items-center gap-1">
-                            {f}
-                            <button type="button" onClick={() => setEditMentorForte(prev => prev.filter((_, j) => j !== i))} className="ml-0.5 hover:text-red-500"><X className="w-3 h-3" /></button>
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <Input placeholder="Add specialization..." value={forteInput} onChange={e => setForteInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && forteInput.trim()) { e.preventDefault(); setEditMentorForte(prev => [...prev, forteInput.trim()]); setForteInput("") } }} />
-                        <Button type="button" variant="outline" size="sm" onClick={() => { if (forteInput.trim()) { setEditMentorForte(prev => [...prev, forteInput.trim()]); setForteInput("") } }}>Add</Button>
-                      </div>
+                      <SearchableTagSelect
+                        options={FORTE_OPTIONS}
+                        selected={editMentorForte}
+                        onChange={setEditMentorForte}
+                        placeholder="Search algorithms, domains..."
+                        badgeClassName="border-indigo-200 text-indigo-700 bg-indigo-50"
+                      />
                     </div>
                     <div className="space-y-1">
                       <Label>Technical Skills</Label>
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {editMentorSkills.map((s, i) => (
-                          <Badge key={i} variant="outline" className="text-xs border-slate-200 text-slate-600 flex items-center gap-1">
-                            {s}
-                            <button type="button" onClick={() => setEditMentorSkills(prev => prev.filter((_, j) => j !== i))} className="ml-0.5 hover:text-red-500"><X className="w-3 h-3" /></button>
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <Input placeholder="Add skill..." value={skillInput} onChange={e => setSkillInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && skillInput.trim()) { e.preventDefault(); setEditMentorSkills(prev => [...prev, skillInput.trim()]); setSkillInput("") } }} />
-                        <Button type="button" variant="outline" size="sm" onClick={() => { if (skillInput.trim()) { setEditMentorSkills(prev => [...prev, skillInput.trim()]); setSkillInput("") } }}>Add</Button>
-                      </div>
+                      <SearchableTagSelect
+                        options={TECHNICAL_SKILLS_OPTIONS}
+                        selected={editMentorSkills}
+                        onChange={setEditMentorSkills}
+                        placeholder="Search languages, frameworks, tools..."
+                        badgeClassName="border-slate-200 text-slate-600 bg-slate-50"
+                      />
                     </div>
                   </div>
 
