@@ -24,7 +24,7 @@ export async function getAllUserData() {
         supabase
             .from("mentor")
             .select(`
-                id, first_name, last_name, email, mentor_capacity, is_admin,
+                id, first_name, last_name, email, mentor_capacity, is_admin, is_disabled,
                 matches(
                     status, compatibility_score, matched_keywords,
                     mentee:matches_mentee_group_id_fkey(id, group_name, research_title)
@@ -33,7 +33,7 @@ export async function getAllUserData() {
         supabase
             .from("MENTEE_GROUPS")
             .select(`
-                id, group_name, email, research_title, group_members,
+                id, group_name, email, research_title, group_members, is_disabled,
                 matches(
                     status, compatibility_score,
                     mentor:matches_mentor_id_fkey(first_name, last_name)
@@ -138,6 +138,13 @@ export async function adminEditMentee(menteeId: string, payload: {
     return { success: true }
 }
 
+export async function adminDisableUser(userId: string, userType: "mentor" | "mentee") {
+    const table = userType === "mentor" ? "mentor" : "MENTEE_GROUPS"
+    const { error } = await supabase.from(table).update({ is_disabled: true }).eq("id", userId)
+    if (error) return { success: false, message: error.message }
+    return { success: true }
+}
+
 export async function adminDeleteUser(userId: string, userType: "mentor" | "mentee") {
     const table = userType === "mentor" ? "mentor" : "MENTEE_GROUPS"
     const { error } = await supabase.from(table).delete().eq("id", userId)
@@ -181,7 +188,7 @@ export async function getMockUserData() {
         supabase
             .from("mock_mentor")
             .select(`
-                id, first_name, last_name, email, mentor_capacity, is_admin,
+                id, first_name, last_name, email, mentor_capacity, is_admin, is_disabled,
                 matches:mock_matches(
                     status, compatibility_score, matched_keywords,
                     mentee:mock_matches_mentee_group_id_fkey(id, group_name, research_title)
@@ -190,7 +197,7 @@ export async function getMockUserData() {
         supabase
             .from("mock_mentee_groups")
             .select(`
-                id, group_name, email, research_title, group_members,
+                id, group_name, email, research_title, group_members, is_disabled,
                 matches:mock_matches(
                     status, compatibility_score,
                     mentor:mock_matches_mentor_id_fkey(first_name, last_name)
@@ -226,7 +233,7 @@ export async function getDemoUserData() {
         supabase
             .from("demo_mentor")
             .select(`
-                id, first_name, last_name, email, mentor_capacity, is_admin,
+                id, first_name, last_name, email, mentor_capacity, is_admin, is_disabled,
                 matches:demo_matches(
                     status, compatibility_score, matched_keywords,
                     mentee:demo_matches_mentee_group_id_fkey(id, group_name, research_title)
@@ -235,7 +242,7 @@ export async function getDemoUserData() {
         supabase
             .from("demo_mentee_groups")
             .select(`
-                id, group_name, email, research_title, group_members,
+                id, group_name, email, research_title, group_members, is_disabled,
                 matches:demo_matches(
                     status, compatibility_score,
                     mentor:demo_matches_mentor_id_fkey(first_name, last_name)

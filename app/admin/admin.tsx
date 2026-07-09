@@ -58,7 +58,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog, fetchPapersByORCID, fetchPapersByIEEE, setMentorAdminRole, adminUpdateMentorPassword, adminUpdateMentorEmail, getMockUserData, getLatestMockAlgorithmLog, rollbackMockMatches, getMockPaperStats, getMockPapers, getDemoUserData, getLatestDemoAlgorithmLog, rollbackDemoMatches } from "@/lib/actions/adminActions"
+import { getAllUserData, overrideMentorCapacity, adminEditMentor, adminEditMentee, adminDisableUser, adminDeleteUser, rollbackMatches, adminCreateMentor, adminCreateMentee, getMentorDetail, getMenteeDetail, cleanupOrphanedMentees, getLatestAlgorithmLog, fetchPapersByORCID, fetchPapersByIEEE, setMentorAdminRole, adminUpdateMentorPassword, adminUpdateMentorEmail, getMockUserData, getLatestMockAlgorithmLog, rollbackMockMatches, getMockPaperStats, getMockPapers, getDemoUserData, getLatestDemoAlgorithmLog, rollbackDemoMatches } from "@/lib/actions/adminActions"
 import type { PublishedPaper, PrevMentoredThesis } from "@/types/mentorTypes"
 import type { GroupMembers } from "@/types/menteeTypes"
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector"
@@ -478,21 +478,21 @@ export default function Admin() {
     setCreatingUser(false)
   }
 
-  const handleDeleteConfirm = async () => {
+  const handleDisableConfirm = async () => {
     if (!userToDelete) return
     setDeletingUser(true)
-    const result = await adminDeleteUser(userToDelete.id, userToDelete.type)
+    const result = await adminDisableUser(userToDelete.id, userToDelete.type)
     if (result.success) {
       if (userToDelete.type === "mentor") {
-        setMentors(prev => prev.filter(m => m.id !== userToDelete.id))
+        setMentors(prev => prev.map(m => m.id === userToDelete.id ? { ...m, is_disabled: true } : m))
       } else {
-        setMentees(prev => prev.filter(m => m.id !== userToDelete.id))
+        setMentees(prev => prev.map(m => m.id === userToDelete.id ? { ...m, is_disabled: true } : m))
       }
       setIsDeleteDialogOpen(false)
       setUserToDelete(null)
-      toast.success("User deleted")
+      toast.success("User disabled successfully")
     } else {
-      toast.error(result.message ?? "Failed to delete user")
+      toast.error(result.message ?? "Failed to disable user")
     }
     setDeletingUser(false)
   }
@@ -909,7 +909,9 @@ export default function Admin() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge>
+                          <Badge variant="secondary" className={user.is_disabled ? "bg-gray-300 text-gray-800" : "bg-green-100 text-green-800"}>
+                            {user.is_disabled ? "Disabled" : "Active"}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
@@ -2330,29 +2332,29 @@ export default function Admin() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Delete Confirmation Dialog ── */}
+      {/* ── Disable Confirmation Dialog ── */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-red-600">Delete User</DialogTitle>
+            <DialogTitle className="text-amber-600">Disable User</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete{" "}
+              Are you sure you want to disable{" "}
               <strong>
                 {userToDelete?.type === "mentor"
                   ? `${userToDelete.first_name} ${userToDelete.last_name}`
                   : userToDelete?.group_name}
               </strong>?
-              This action cannot be undone and will remove all associated data.
+              The user's account will be disabled and they won't be able to access the system. Their data will be preserved.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
             <Button
-              onClick={handleDeleteConfirm}
+              onClick={handleDisableConfirm}
               disabled={deletingUser}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-amber-600 hover:bg-amber-700 text-white"
             >
-              {deletingUser ? "Deleting..." : "Delete"}
+              {deletingUser ? "Disabling..." : "Disable"}
             </Button>
           </DialogFooter>
         </DialogContent>
