@@ -286,7 +286,7 @@ def pick_fairer_matching(
     d_mentor_meo = _mentor_dissatisfaction(assignment_mentor_optimal, mentor_prefs)
     total_meo    = d_mentee_meo + d_mentor_meo
 
-    print(f"\n  ⚖️  Fairness Comparison:")
+    print(f"\n    Fairness Comparison:")
     print(f"  Mentee-optimal → mentee: {d_mentee_mo:.4f}  mentor: {d_mentor_mo:.4f}  total: {total_mo:.4f}")
     print(f"  Mentor-optimal → mentee: {d_mentee_meo:.4f}  mentor: {d_mentor_meo:.4f}  total: {total_meo:.4f}")
 
@@ -306,10 +306,10 @@ def pick_fairer_matching(
     }
 
     if total_mo <= total_meo:
-        print("  ✅ Mentee-optimal selected (lower combined dissatisfaction)")
+        print("   Mentee-optimal selected (lower combined dissatisfaction)")
         return assignment_mentee_optimal, "mentee-optimal", dissatisfaction_data
     else:
-        print("  ✅ Mentor-optimal selected (lower combined dissatisfaction)")
+        print("   Mentor-optimal selected (lower combined dissatisfaction)")
         return assignment_mentor_optimal, "mentor-optimal", dissatisfaction_data
 
 
@@ -374,12 +374,12 @@ def verify_stability(
                     blocking_pairs.append((r_id, h_id))
 
     if blocking_pairs:
-        print(f"\n  ⚠️  {len(blocking_pairs)} blocking pairs found — matching is UNSTABLE")
+        print(f"\n    {len(blocking_pairs)} blocking pairs found — matching is UNSTABLE")
         for r_id, h_id in blocking_pairs[:5]:
             print(f"    ({r_id}, {h_id})")
         return False, len(blocking_pairs)
 
-    print("\n  ✅ Matching is STABLE — no blocking pairs found")
+    print("\n   Matching is STABLE — no blocking pairs found")
     return True, 0
 
 
@@ -472,16 +472,16 @@ def run_matching(
     }
 
     # ── Step 1: Scores ────────────────────────────────────────────────────────
-    print("\n📊 Step 1: Computing compatibility scores...")
+    print("\n Step 1: Computing compatibility scores...")
     scores, _ = compute_weighted_scores(mentors, mentees)
     boosted_scores = apply_top1_boost(scores)
 
     # ── Step 2: Preferences ───────────────────────────────────────────────────
-    print("\n📋 Step 2: Generating preference lists...")
+    print("\n Step 2: Generating preference lists...")
     mentee_prefs, mentor_prefs = generate_preferences(mentors, mentees, boosted_scores)
 
     # ── Step 3a: HR mentee-optimal ────────────────────────────────────────────
-    print("\n🏥 Step 3a: Running HR (mentee-optimal)...")
+    print("\n Step 3a: Running HR (mentee-optimal)...")
     assignment_mo, _, _ = hospital_resident(
         residents=mentees, hospitals=mentors,
         resident_prefs=mentee_prefs, hospital_prefs=mentor_prefs,
@@ -490,7 +490,7 @@ def run_matching(
     print(f"  Mentee-optimal matches: {len(assignment_mo)}")
 
     # ── Step 3b: HR mentor-optimal ────────────────────────────────────────────
-    print("\n🏥 Step 3b: Running HR (mentor-optimal)...")
+    print("\n Step 3b: Running HR (mentor-optimal)...")
     assignment_meo, _, _ = hospital_resident_mentor_optimal(
         residents=mentees, hospitals=mentors,
         resident_prefs=mentee_prefs, hospital_prefs=mentor_prefs,
@@ -499,7 +499,7 @@ def run_matching(
     print(f"  Mentor-optimal matches: {len(assignment_meo)}")
 
     # ── Step 4: Fairness comparison ───────────────────────────────────────────
-    print("\n⚖️  Step 4: Picking fairer matching...")
+    print("\n  Step 4: Picking fairer matching...")
     final_assignment, selected_variant, _ = pick_fairer_matching(
         mentors, mentees,
         assignment_mo, assignment_meo,
@@ -508,7 +508,7 @@ def run_matching(
     method = "fair-matching"
 
     # ── Step 5: Stability verification ───────────────────────────────────────
-    print("\n🔍 Step 5: Verifying stability...")
+    print("\n Step 5: Verifying stability...")
     is_stable, _ = verify_stability(
         final_assignment, mentors, mentees,
         mentee_prefs, mentor_prefs, hospital_capacity,
@@ -519,7 +519,7 @@ def run_matching(
     print(f"  Final: {len(final_assignment)}/{len(mentees)}")
 
     # ── Step 7: Build records ─────────────────────────────────────────────────
-    print("\n✅ Step 6: Building match records...")
+    print("\n Step 6: Building match records...")
     match_records = []
     for mentee_id, mentor_id in final_assignment.items():
         i = mentee_index[mentee_id]

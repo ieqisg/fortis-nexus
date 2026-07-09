@@ -192,6 +192,8 @@ export type Database = {
         Row: {
           available_days: string[] | null
           communication_preference: "FACE_TO_FACE" | "ONLINE_MEETING" | null
+          dpa_consent_accepted: boolean
+          dpa_consent_at: string | null
           email: string | null
           experience: number | null
           first_name: string | null
@@ -212,6 +214,8 @@ export type Database = {
         Insert: {
           available_days?: string[] | null
           communication_preference?: "FACE_TO_FACE" | "ONLINE_MEETING" | null
+          dpa_consent_accepted?: boolean
+          dpa_consent_at?: string | null
           email?: string | null
           experience?: number | null
           first_name?: string | null
@@ -232,6 +236,8 @@ export type Database = {
         Update: {
           available_days?: string[] | null
           communication_preference?: "FACE_TO_FACE" | "ONLINE_MEETING" | null
+          dpa_consent_accepted?: boolean
+          dpa_consent_at?: string | null
           email?: string | null
           experience?: number | null
           first_name?: string | null

@@ -20,12 +20,17 @@ export async function createMentorProfile(payload: Omit<MentorInsert, 'id' | 'pr
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, message: "Not authenticated" }
+    if (!payload.dpa_consent_accepted) {
+        return { success: false, message: "DPA consent is required to complete your mentor profile." }
+    }
 
     const { error } = await supabase
         .from("mentor")
         .update({
             ...payload,
             communication_preference: inferCommunicationPreference(payload.available_days ?? []),
+            dpa_consent_accepted: true,
+            dpa_consent_at: new Date().toISOString(),
             profile_completed: true,
         })
         .eq("id", user.id)

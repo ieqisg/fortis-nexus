@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js"
 import { MenteeGroupInsert } from "@/types/modelTypes"
 import { MenteeGroupUpdate } from "@/types/modelTypes"
 import { getSupabaseClient } from "@/app/config/getSupabaseClient"
+import type { CommunicationPreference } from "@/types/menteeTypes"
 
 const ONLINE_DAYS  = new Set(["Tuesday", "Friday"]);
 const F2F_DAYS     = new Set(["Monday", "Wednesday", "Thursday", "Saturday"]);
@@ -171,12 +172,52 @@ export async function getMenteeData() {
                 available_days,
                 time_slot,
                 communication_preference,
-                prev_mentored_thesis
+                prev_mentored_thesis,
+                published_papers
             )
         `)
         .eq("mentee_group_id", user.id)
 
-    return { success: true, data: { ...mentee, matches: matchRows ?? [] } }
+    const { data: prefsData } = await adminSupabase
+        .from("mentee_preferences")
+        .select("ranked_mentors")
+        .eq("mentee_group_id", user.id)
+        .single()
+
+    // Enrich ranked mentors with current availability and timeslot info
+    let enrichedPrefs = (prefsData?.ranked_mentors ?? []) as any[]
+    if (enrichedPrefs.length > 0) {
+        const mentorIds = enrichedPrefs.map(r => r.mentor_id)
+        const { data: mentorData, error: mentorError } = await adminSupabase
+            .from("mentor")
+            .select("id, available_days, time_slot")
+            .in("id", mentorIds)
+
+        const availabilityMap: Record<string, { available_days: string[]; time_slot: string[] }> = {}
+        if (!mentorError && mentorData) {
+            mentorData.forEach((m: any) => {
+                availabilityMap[m.id] = {
+                    available_days: m.available_days ?? [],
+                    time_slot: m.time_slot ?? [],
+                }
+            })
+        }
+
+        enrichedPrefs = enrichedPrefs.map((r) => ({
+            ...r,
+            available_days: availabilityMap[r.mentor_id]?.available_days ?? [],
+            time_slot: availabilityMap[r.mentor_id]?.time_slot ?? [],
+        }))
+    }
+
+    return {
+        success: true,
+        data: {
+            ...mentee,
+            matches: matchRows ?? [],
+            preferences: enrichedPrefs,
+        },
+    }
 
 }
 
@@ -184,13 +225,53 @@ export async function getMenteePreferences() {
     const supabase = await getSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, data: null }
+
     const { data, error } = await supabase
         .from("mentee_preferences")
         .select("ranked_mentors, created_at")
         .eq("mentee_group_id", user.id)
         .single()
-    if (error) return { success: false, data: null }
-    return { success: true, data: data.ranked_mentors as RankedMentor[] }
+    if (error || !data) return { success: false, data: null }
+
+    const ranked = data.ranked_mentors as RankedMentor[]
+    const mentorIds = ranked.map((r) => r.mentor_id)
+
+    const availabilityMap: Record<string, {
+        available_days: string[]
+        time_slot: string[]
+        communication_preference: string | null
+    }> = {}
+
+    if (mentorIds.length > 0) {
+        const adminSupabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+
+        const { data: mentorData, error: mentorError } = await adminSupabase
+            .from("mentor")
+            .select("id, available_days, time_slot, communication_preference")
+            .in("id", mentorIds)
+
+        if (!mentorError && mentorData) {
+            mentorData.forEach((mentor: any) => {
+                availabilityMap[mentor.id] = {
+                    available_days: mentor.available_days ?? [],
+                    time_slot: mentor.time_slot ?? [],
+                    communication_preference: mentor.communication_preference ?? null,
+                }
+            })
+        }
+    }
+
+    const enriched = ranked.map((r) => ({
+        ...r,
+        available_days: availabilityMap[r.mentor_id]?.available_days ?? [],
+        time_slot: availabilityMap[r.mentor_id]?.time_slot ?? [],
+        communication_preference: availabilityMap[r.mentor_id]?.communication_preference ?? null,
+    }))
+
+    return { success: true, data: enriched }
 }
 
 export type RankedMentor = {
@@ -199,6 +280,9 @@ export type RankedMentor = {
     name: string
     score: number
     matched_keywords: string[]
+    available_days?: string[]
+    time_slot?: string[]
+    communication_preference?: CommunicationPreference | null | string
 }
 
 export async function changeDefaultPassword(newPassword: string) {
