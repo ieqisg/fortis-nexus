@@ -1,27 +1,3 @@
-"""
-scoring.py
-
-5-pillar scoring pipeline:
-
-    Pillar                   Weight
-    ────────────────────────────────
-    keyword_similarity        0.75   main compatibility signal
-    experience                0.10   mentor background & history
-    availability              0.10   overlapping days/time slots
-    communication_preference  0.025  online vs face-to-face match
-    meeting_frequency         0.025  how often they can realistically meet
-    ────────────────────────────────
-    Total                     1.00
-
-Communication preference rules (inferred from available_days):
-    Tuesday, Friday          → ONLINE_MEETING
-    Mon, Wed, Thu, Sat       → FACE_TO_FACE
-    Mixed or unrecognized    → FLEXIBLE  (compatible with either)
-
-Meeting frequency:
-    Number of overlapping available days used as a proxy for
-    realistic weekly meeting frequency (normalized to 3 days max).
-"""
 
 from __future__ import annotations
 
@@ -134,11 +110,11 @@ class ScoringWeights:
         communication         0.025
         meeting_frequency     0.025
     """
-    keyword_similarity: float = 0.75
-    experience:         float = 0.10
+    keyword_similarity: float = 0.60
+    experience:         float = 0.20
     availability:       float = 0.10
-    communication:      float = 0.025
-    meeting_frequency:  float = 0.025
+    communication:      float = 0.05
+    meeting_frequency:  float = 0.05
 
     def __post_init__(self):
         total = (
@@ -761,7 +737,7 @@ def compute_weighted_scores(
     )
 
     # ── Keyword similarity ────────────────────────────────────────────────────
-    print(f"  📝 Extracting keywords and computing similarity [{keyword_method}]...")
+    print(f"   Extracting keywords and computing similarity [{keyword_method}]...")
 
     # Vocab sets pre-computed here and reused for the keyword-count bonus below
     # to avoid O(n×m) repeated calls to _extract_vocab_matches.
@@ -823,7 +799,7 @@ def compute_weighted_scores(
         kw_normalized = compute_keyword_similarity(mentor_kw_strings, mentee_kw_strings)
 
     # ── Availability ──────────────────────────────────────────────────────────
-    print("  📅 Computing availability scores...")
+    print("  Computing availability scores...")
     avail_matrix = np.array(
         [[_availability_score(mentor, mentee) for mentor in mentors]
          for mentee in mentees],
@@ -831,12 +807,12 @@ def compute_weighted_scores(
     )
 
     # ── Experience ────────────────────────────────────────────────────────────
-    print("  🎓 Computing experience scores...")
+    print("   Computing experience scores...")
     exp_scores = np.array([_experience_score(m) for m in mentors], dtype=np.float32)
     exp_matrix = np.tile(exp_scores, (len(mentees), 1))
 
     # ── Communication preference ──────────────────────────────────────────────
-    print("  💬 Computing communication preference scores...")
+    print("   Computing communication preference scores...")
     comm_matrix = np.zeros((len(mentees), len(mentors)), dtype=np.float32)
     comm_modes  = {}   # (i, j) → resolved_mode string for breakdowns
 
@@ -847,7 +823,7 @@ def compute_weighted_scores(
             comm_modes[(i, j)] = mode
 
     # ── Meeting frequency ─────────────────────────────────────────────────────
-    print("  📆 Computing meeting frequency scores...")
+    print("   Computing meeting frequency scores...")
     freq_matrix = np.array(
         [[_meeting_frequency_score(mentor, mentee) for mentor in mentors]
          for mentee in mentees],

@@ -91,7 +91,7 @@ Mentors create goals (milestones) for each group — with a title, description, 
 
 | Table | What it stores |
 |---|---|
-| `mentor` | Mentor profiles; `profile_completed` flag gates the onboarding redirect |
+| `mentor` | Mentor profiles; `profile_completed` flag gates the onboarding redirect; DPA consent fields record whether the mentor accepted use of published papers and previous mentored thesis information for matching |
 | `MENTEE_GROUPS` | Mentee group profiles |
 | `matches` | Pairing results: `mentor_id`, `mentee_group_id`, `compatibility_score`, `matched_keywords`, `algorithm`, `is_stable` |
 | `meetings` | Recurring meeting schedules and session notes |
@@ -164,3 +164,4 @@ Track significant system changes here. Add a new entry whenever `CLAUDE.md` inst
 | 2026-05-26 | `_kw_similarity_semantic()` rewritten to guarantee exact vocab intersections are always counted — two-step approach: Step 1 counts normalized exact matches directly (no TF-IDF needed); Step 2 runs semantic near-matching only on remaining unmatched mentee keywords; eliminates TF-IDF corpus artifacts that could miss obvious exact matches, ensuring score reflects what the matched keywords display shows | Matching Engine (`scoring.py`) |
 | 2026-05-26 | FLEXIBLE communication preference re-introduced — inferred when selected days include both face-to-face days (Mon/Wed/Thu/Sat) AND online days (Tue/Fri); only online days → ONLINE_MEETING; only face-to-face days → FACE_TO_FACE; DB check constraint updated on both `mentor` and `MENTEE_GROUPS` tables | Server Actions (`mentorActions.ts`, `menteeActions.ts`, `adminActions.ts`), Database |
 | 2026-05-29 | Mock data demo mode added — four new tables (`mock_mentor`, `mock_mentee_groups`, `mock_matches`, `mock_algorithm_logs`) seeded with 6 mentors and 20 synthetic mentees; Python pipeline reads from and writes to mock tables when `--source mock`; admin dashboard data source toggle now also controls which dataset is displayed; new server actions: `getMockUserData`, `getLatestMockAlgorithmLog`, `rollbackMockMatches` | Database (migration), Matching Engine (`main.py`), Server Actions (`adminActions.ts`), Admin Portal (`admin.tsx`) |
+| 2026-06-28 | Mentor DPA consent added during profile creation — mentors must accept consent for Fortis Nexus to use their published papers and previous mentored thesis paper information for matching before `profile_completed` is set; consent acceptance and timestamp are stored on the mentor row | Mentor Onboarding, Database, Server Actions |

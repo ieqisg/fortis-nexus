@@ -28,6 +28,8 @@ export interface MentorFormProfile {
     role: "mentor";
     profile_completed: boolean;
     email: string | null;
+    dpa_consent_accepted?: boolean;
+    dpa_consent_at?: string | null;
     prev_mentored_thesis?: PrevMentoredThesis[];
     orcid?: string;
     ieee_id?: string;

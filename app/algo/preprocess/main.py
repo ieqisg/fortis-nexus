@@ -128,12 +128,12 @@ def clear_matches(supabase, table="matches"):
 
 def save_matches(supabase, match_records: list[dict], table="matches"):
     if not match_records:
-        print("  ⚠️  No matches to save")
+        print("    No matches to save")
         return
     for record in match_records:
         record["matched_at"] = datetime.now(timezone.utc).isoformat()
     supabase.table(table).insert(match_records).execute()
-    print(f"  ✅ Saved {len(match_records)} matches to Supabase")
+    print(f"   Saved {len(match_records)} matches to Supabase")
 
 
 def save_preferences(
@@ -211,10 +211,10 @@ def save_preferences(
 
     if mentee_pref_rows:
         supabase.table(f"{TABLE_PREFIX}mentee_preferences").upsert(mentee_pref_rows).execute()
-        print(f"  ✅ Saved preference lists for {len(mentee_pref_rows)} mentees")
+        print(f"   Saved preference lists for {len(mentee_pref_rows)} mentees")
     if mentor_pref_rows:
         supabase.table(f"{TABLE_PREFIX}mentor_preferences").upsert(mentor_pref_rows).execute()
-        print(f"  ✅ Saved preference lists for {len(mentor_pref_rows)} mentors")
+        print(f"   Saved preference lists for {len(mentor_pref_rows)} mentors")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -265,12 +265,12 @@ if __name__ == "__main__":
         print(f"  STEP 1 · Connecting to {label}")
         print(SEP)
         supabase = get_supabase()
-        print("  ✅ Connected")
+        print("   Connected")
     else:
         print("  STEP 1 · Loading from file (no Supabase connection)")
         print(SEP)
         supabase = None
-        print(f"  ✅ Skipped (source={args.source})")
+        print(f"   Skipped (source={args.source})")
 
     # ── Step 2: Fetch + Keyword Extraction ────────────────────────────────────
     print(f"\n{SEP}")
@@ -293,10 +293,10 @@ if __name__ == "__main__":
         print(f"  Exported at: {snapshot.get('exported_at', 'unknown')}")
 
     if not mentors:
-        print("  ❌ No mentors found. Exiting.")
+        print("   No mentors found. Exiting.")
         exit(1)
     if not mentees:
-        print("  ❌ No mentees found. Exiting.")
+        print("   No mentees found. Exiting.")
         exit(1)
 
     print(f"  Fetched {len(mentors)} mentors, {len(mentees)} mentees")
@@ -569,7 +569,7 @@ if __name__ == "__main__":
         final_assignment, mentors, mentees,
         mentee_prefs, mentor_prefs, hospital_capacity,
     )
-    stability_label = "✅ STABLE — no blocking pairs" if is_stable else "⚠️  UNSTABLE — blocking pairs detected"
+    stability_label = " STABLE — no blocking pairs" if is_stable else "  UNSTABLE — blocking pairs detected"
     print(f"      {stability_label}")
 
     # ── Step 6: Build match records ───────────────────────────────────────────
@@ -600,7 +600,7 @@ if __name__ == "__main__":
             clear_matches(supabase, matches_table)
             save_matches(supabase, match_records, matches_table)
         except RuntimeError as e:
-            print(f"  ❌ {e}")
+            print(f"   {e}")
             raise
         try:
             save_preferences(
@@ -608,11 +608,11 @@ if __name__ == "__main__":
                 mentee_prefs, mentor_prefs,
             )
         except Exception as e:
-            print(f"  ⚠️  Preference save skipped: {e}")
+            print(f"    Preference save skipped: {e}")
             if TABLE_PREFIX:
                 print(f"      Run supabase/mock_update_preferences.txt in SQL Editor to enable this.")
     else:
-        print(f"  ⏭️  Skipped (source={args.source} — demo run, no DB writes)")
+        print(f"    Skipped (source={args.source} — demo run, no DB writes)")
 
     # ── Step 8: JSON log for Node.js ──────────────────────────────────────────
     log_output = {
@@ -689,5 +689,5 @@ if __name__ == "__main__":
         for m in unmatched_groups:
             print(f"    - {m.get('group_name', m['id'])}")
     print(SEP)
-    print("  ✅ Matching complete!")
+    print("   Matching complete!")
     print(DSEP)

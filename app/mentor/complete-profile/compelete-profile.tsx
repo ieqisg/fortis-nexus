@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AvailabilitySelector } from "@/components/ui/AvailabilitySelector";
 import { SearchableTagSelect } from "@/components/ui/SearchableTagSelect";
 import { TECHNICAL_SKILLS_OPTIONS, FORTE_OPTIONS } from "@/lib/mentorOptions";
-import { ArrowLeft, UserRound, Users, Clock, Check, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, UserRound, Users, Clock, Check, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { MentorFormProfile } from "@/types/mentorTypes";
 import { UserAuth } from "@/app/context/authContext";
 import { MentorInsert } from "@/types/modelTypes";
@@ -54,6 +54,7 @@ export default function MentorCompleteProfile() {
         confirmPassword: "",
     })
     const [passwordError, setPasswordError] = useState("")
+    const [dpaDecision, setDpaDecision] = useState<"accept" | "reject" | null>(null)
 
     const [showpasswordData, setShowpasswordData] = useState(false)
     const [showConfirmpasswordData, setShowConfirmpasswordData] = useState(false)
@@ -102,6 +103,10 @@ export default function MentorCompleteProfile() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (dpaDecision !== "accept") {
+            toast.error("You must accept the DPA consent to complete your mentor profile.")
+            return
+        }
         try {
             setLoading(true)
             const signInResult = await signIn()
@@ -123,6 +128,7 @@ export default function MentorCompleteProfile() {
                 available_days: formData.available_days,
                 time_slot: formData.time_slot,
                 role: "mentor",
+                dpa_consent_accepted: true,
             }
             const result = await createMentorProfile(payload)
 
@@ -130,6 +136,8 @@ export default function MentorCompleteProfile() {
                 toast.success("Mentor Profile Completed, Please Login again with your changed password")
                 await signOut()
                 router.push("/")
+            } else {
+                toast.error(result.message ?? "Failed to complete mentor profile")
             }
         } catch (err) {
             toast.error("An unexpected error occured")
@@ -169,7 +177,8 @@ export default function MentorCompleteProfile() {
             formData.mentor_capacity > 0 &&
             formData.available_days.length > 0 &&
             formData.time_slot.length > 0 &&
-            formData.role.trim() !== ""
+            formData.role.trim() !== "" &&
+            dpaDecision === "accept"
         );
     };
 
@@ -413,10 +422,69 @@ export default function MentorCompleteProfile() {
                                 </Card>
                             </div>
 
+                            <div>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <ShieldCheck className="w-5 h-5 text-blue-600" />
+                                            Data Privacy Agreement
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Consent is required before your profile can be used for mentor matching.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+                                            <p>
+                                                By accepting, you agree that Fortis Nexus may collect, store, and use the information you provide in your mentor profile for academic mentor matching and related system functions. This includes your research background, technical skills, areas of specialization, published papers, and previous mentored thesis papers.
+                                            </p>
+                                            <p className="mt-2">
+                                                This information may be processed to evaluate mentor-mentee compatibility, generate matching results, display relevant mentor profile details to authorized users, and support administrative review. The system will use this information only for Fortis Nexus academic advising and matching purposes.
+                                            </p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setDpaDecision("accept")}
+                                                className={`rounded-lg border p-4 text-left transition ${dpaDecision === "accept"
+                                                    ? "border-blue-600 bg-blue-50 text-blue-900"
+                                                    : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"
+                                                    }`}
+                                            >
+                                                <span className="font-semibold">Accept</span>
+                                                <span className="block text-sm mt-1">
+                                                    I agree to the use of my published papers and previous mentored thesis paper information for matching.
+                                                </span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setDpaDecision("reject")}
+                                                className={`rounded-lg border p-4 text-left transition ${dpaDecision === "reject"
+                                                    ? "border-red-500 bg-red-50 text-red-900"
+                                                    : "border-slate-200 bg-white text-slate-700 hover:border-red-300"
+                                                    }`}
+                                            >
+                                                <span className="font-semibold">Reject</span>
+                                                <span className="block text-sm mt-1">
+                                                    I do not agree to this data use and understand that my mentor profile cannot be completed.
+                                                </span>
+                                            </button>
+                                        </div>
+
+                                        {dpaDecision === "reject" && (
+                                            <p className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">
+                                                Your profile cannot be completed without this consent because the matching process uses these details to evaluate compatibility.
+                                            </p>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </div>
+
 
                             <div className="flex gap-2 justify-end">
                                 <Button
-                                    type="submit"
+                                    type="button"
                                     className=" bg-gray-600 "
                                     onClick={handleCancel}
                                     disabled={loading}
