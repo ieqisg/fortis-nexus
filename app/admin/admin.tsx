@@ -1275,7 +1275,7 @@ export default function Admin() {
                       <TableHead>Members</TableHead>
                       <TableHead>Thesis Title</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Assigned Mentor</TableHead>
+                      <TableHead>Recommended Mentor</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>

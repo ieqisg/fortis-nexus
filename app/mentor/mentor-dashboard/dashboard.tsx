@@ -1,14 +1,9 @@
 "use client";
 import MyMentees from "./my-mentees";
-import ProgressMentees from "./progress-mentee";
-import SubmittedPapers from "./submitted-papers";
-import Meeting from "./meeting";
-import Milestones from "./milestones";
-import MentorAnnouncements from "./mentor-announcements";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Sidebar from "@/components/ui/Sidebar";
 import { useMentor } from "@/app/context/mentorContext";
-import { Users, TrendingUp, FileText, CalendarDays, CheckCircle2, Clock, Megaphone, X, Target } from "lucide-react";
+import { Users, CheckCircle2, Clock, Megaphone, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getAnnouncements, Announcement } from "@/lib/actions/announcementActions";
 
@@ -58,14 +53,14 @@ export default function MentorDashboard() {
                                 <p className="text-2xl font-bold">{matchCount}</p>
                                 <p className="text-xs text-blue-100">Mentees</p>
                             </div>
-                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[72px]">
+                            {/* <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[72px]">
                                 <p className="text-2xl font-bold">{papers.length}</p>
                                 <p className="text-xs text-blue-100">Papers</p>
                             </div>
                             <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[72px]">
                                 <p className="text-2xl font-bold">{reviewedCount}</p>
                                 <p className="text-xs text-blue-100">Reviewed</p>
-                            </div>
+                            </div> */}
                         </div>
                     </div>
 
@@ -77,14 +72,14 @@ export default function MentorDashboard() {
                                 {matchCount} / {mentor?.mentor_capacity ?? "?"} capacity
                             </span>
                         </div>
-                        <div className="bg-white/10 backdrop-blur rounded-lg px-3 py-1.5 flex items-center gap-2">
+                        {/* <div className="bg-white/10 backdrop-blur rounded-lg px-3 py-1.5 flex items-center gap-2">
                             <CheckCircle2 className="w-3.5 h-3.5 text-blue-200" />
                             <span className="text-xs text-blue-100">{reviewedCount} reviewed</span>
                         </div>
                         <div className="bg-white/10 backdrop-blur rounded-lg px-3 py-1.5 flex items-center gap-2">
                             <Clock className="w-3.5 h-3.5 text-blue-200" />
                             <span className="text-xs text-blue-100">{pendingCount} pending</span>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
 
@@ -119,75 +114,18 @@ export default function MentorDashboard() {
                                 value="mentees"
                                 className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-3 py-2 text-sm whitespace-nowrap"
                             >
-                                <Users className="w-4 h-4 shrink-0" /> My Mentees
+                                <Users className="w-4 h-4 shrink-0" /> Recommended Mentees
                                 {matchCount > 0 && (
                                     <span className="bg-blue-100 text-blue-700 data-[state=active]:bg-white/20 data-[state=active]:text-white text-xs px-1.5 py-0.5 rounded-full">
                                         {matchCount}
                                     </span>
                                 )}
                             </TabsTrigger>
-                            <TabsTrigger
-                                value="progress"
-                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-3 py-2 text-sm whitespace-nowrap"
-                            >
-                                <TrendingUp className="w-4 h-4 shrink-0" /> Progress
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="papers"
-                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-3 py-2 text-sm whitespace-nowrap"
-                            >
-                                <FileText className="w-4 h-4 shrink-0" /> Papers
-                                {pendingCount > 0 && (
-                                    <span className="bg-amber-100 text-amber-700 text-xs px-1.5 py-0.5 rounded-full">
-                                        {pendingCount}
-                                    </span>
-                                )}
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="calendar"
-                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-3 py-2 text-sm whitespace-nowrap"
-                            >
-                                <CalendarDays className="w-4 h-4 shrink-0" /> Meetings
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="milestones"
-                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-3 py-2 text-sm whitespace-nowrap"
-                            >
-                                <Target className="w-4 h-4 shrink-0" /> Milestones
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="announcements"
-                                className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md px-3 py-2 text-sm whitespace-nowrap"
-                            >
-                                <Megaphone className="w-4 h-4 shrink-0" /> Announcements
-                            </TabsTrigger>
                         </TabsList>
                         </div>
 
                         <TabsContent value="mentees" className="space-y-4 mt-0">
                             <MyMentees matches={mentor?.matches ?? []} mentorId={mentor?.id ?? ""} />
-                        </TabsContent>
-
-                        <TabsContent value="progress" className="space-y-4 mt-0">
-                            <ProgressMentees />
-                        </TabsContent>
-
-                        <TabsContent value="papers" className="space-y-4 mt-0">
-                            <SubmittedPapers />
-                        </TabsContent>
-
-                        <TabsContent value="calendar" className="space-y-4 mt-0">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <Meeting matches={mentor?.matches ?? []} mentorTimeSlots={mentor?.time_slot ?? []} />
-                            </div>
-                        </TabsContent>
-
-                        <TabsContent value="milestones" className="space-y-4 mt-0">
-                            <Milestones matches={mentor?.matches ?? []} />
-                        </TabsContent>
-
-                        <TabsContent value="announcements" className="space-y-4 mt-0">
-                            <MentorAnnouncements />
                         </TabsContent>
                     </Tabs>
                 </div>

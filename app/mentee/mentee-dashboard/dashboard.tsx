@@ -83,14 +83,14 @@ export default function MenteeDashboard() {
               <p className="text-emerald-100 text-sm mt-1 line-clamp-1">{mentee?.research_title ?? ""}</p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[72px]">
+              {/* <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[72px]">
                 <p className="text-2xl font-bold">{papers.length}</p>
                 <p className="text-xs text-emerald-100">Papers</p>
               </div>
               <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[72px]">
                 <p className="text-2xl font-bold">{reviewedCount}</p>
                 <p className="text-xs text-emerald-100">Reviewed</p>
-              </div>
+              </div> */}
               {hasMatch && (
                 <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[72px]">
                   <p className="text-2xl font-bold">{scorePercentage}%</p>
