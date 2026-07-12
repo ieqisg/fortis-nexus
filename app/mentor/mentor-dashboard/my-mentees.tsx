@@ -363,7 +363,7 @@ export default function MyMentees({ matches, mentorId }: Props) {
 
             {/* Matched mentees */}
             {hasMatch ? (
-                matches.map((match) => (
+                [...matches].sort((a, b) => (b.compatibility_score ?? 0) - (a.compatibility_score ?? 0)).map((match) => (
                     <Card
                         key={match.mentee?.id}
                         onClick={() => setSelectedMatch(match)}
